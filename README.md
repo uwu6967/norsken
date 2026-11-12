@@ -58,7 +58,7 @@ javascript:(function(){var DROP=["telefon","mobil","e-post","epost","email","boo
 - **Stoler** vender mot bordet, kan snus (⟲ ⟳), og blir røde hvis de kolliderer.
 - **Klaring:** advarsel når det er under 90 cm mellom stolryggene.
 - **Merking per plass:** gluten, laktose, nøtter, skalldyr, diabetes, gravid, vegetar, annet,
-  gult **Ønske**, og **✎ Notat** med fritekst. Totalen vises og kommer med på utskriften.
+  veganer, pescetarianer, gult **Ønske**, og **✎ Notat** med fritekst. Totalen vises og kommer med på utskriften.
 - **Reservasjoner → bord:** én booking per linje (`12:30 2`, `B:7` låser bord). Fordeler etter
   husets vane: sidebordene 3, 6, 5, 8, 10, 9, 11, 7, 2, 4 først, aldri midten, over 5 personer → 16.
 - **Dagens liste:** åpne lista fra bokmerket «Last ned liste» og dra hvert navn til et bord selv.
