@@ -15,7 +15,7 @@ const ROOM_ID = (() => {
 })();
 const STORAGE_KEY = ROOMS[ROOM_ID].key;
 // Domino is not measured yet: a placeholder size until Danny sends a photo / tape.
-const DOMINO_ROOM = { w: 600, h: 1000 };
+const DOMINO_ROOM = { w: 500, h: 650 }; // from photos 2026-11-12, NOT measured
 // Staff habit for seating bookings (see BOOKINGS -> TABLES). Up here because
 // defaultState() needs it before the rest of the file has run.
 const DEFAULT_BOOKING_ORDER = "3, 6, 5, 8, 10, 9, 11, 7, 2, 4";
@@ -611,7 +611,10 @@ function normalizeState(parsed) {
     if (!next.furniture?.length) next.furniture = defaultFurniture();
     else migrateFurniture(next.furniture);
     next.dims = mergeDims(parsed.dims);
-    if (ROOM_ID === "domino" && !parsed.dims?.room) next.dims.room = { ...DOMINO_ROOM };
+    // the first guess (6 x 10 m) is replaced; a size typed under «Mål» is kept
+    if (ROOM_ID === "domino" && (!parsed.dims?.room || (parsed.dims.room.w === 600 && parsed.dims.room.h === 1000))) {
+      next.dims.room = { ...DOMINO_ROOM };
+    }
     next.showGrid = parsed.showGrid !== false;
     next.withChairs = parsed.withChairs !== false;
     next.showMeasure = parsed.showMeasure === true;
@@ -1985,6 +1988,31 @@ function relabelRoom() {
   const tables = all.filter((table) => table.lead);
   const used = new Set();
 
+  if (ROOM_ID === "domino") {
+    for (const table of tables) if (table.manual) used.add(table.manual);
+    let n = 1;
+    tables
+      .slice()
+      .sort((a, b) => a.y - b.y || a.x - b.x)
+      .forEach((table) => {
+        if (table.manual) {
+          table.label = table.manual;
+          return;
+        }
+        while (used.has(String(n))) n += 1;
+        table.label = String(n);
+        used.add(String(n));
+      });
+    for (const table of all) table.guests = seatsOf(table).length;
+    for (const table of all) table.groupInfo = null;
+    for (const members of groupsOf(all).values()) {
+      const lead = leadOf(members);
+      for (const member of members) if (member !== lead) member.label = lead.label;
+      lead.groupInfo = { count: members.length, gaps: groupGaps(members), strips: groupStrips(members) };
+    }
+    return;
+  }
+
   // A table with a manual number (1a, 1b, ...) keeps it and is taken out of
   // the automatic run. Its POSITION still counts, so the tables around it keep
   // the number their spot would normally give them.
@@ -2747,13 +2775,13 @@ function renderChrome() {
     btn.textContent = ROOMS[btn.dataset.room][en ? "en" : "no"];
     btn.classList.toggle("on", btn.dataset.room === ROOM_ID);
   });
-  if (presetBtn) presetBtn.hidden = ROOM_ID !== "spisestua";
+
   if (lunchBtn) lunchBtn.hidden = ROOM_ID !== "spisestua";
   document.getElementById("hint").textContent =
     ROOM_ID === "domino"
       ? en
-        ? `Domino: the room size (${fmt(room().w)} × ${fmt(room().h)}) is a guess until it is measured. Change it under «Mål». Drag tables in from storage.`
-        : `Domino: romstørrelsen (${fmt(room().w)} × ${fmt(room().h)}) er et anslag til den er målt. Endre under «Mål». Dra bord inn fra lageret.`
+        ? `Domino: top = the windows, right wall = the door to Spisestua. Room size (${fmt(room().w)} × ${fmt(room().h)}) and table size are guesses from photos until measured (change under «Mål»).`
+        : `Domino: øverst = vinduene, høyre vegg = døra til Spisestua. Romstørrelsen (${fmt(room().w)} × ${fmt(room().h)}) og bordene er anslag fra bilder til de er målt (endre under «Mål»).`
       : copy.hint;
   const measureBtn = document.getElementById("measure-btn");
   measureBtn.textContent = copy.measure;
@@ -3548,7 +3576,35 @@ render();
 // 6-10 right, top->bottom), 16 at the top middle, the langbord (14) down the
 // middle on the rug. Sizes and exact spots are a SUGGESTION to drag from,
 // not a measurement: the waitress corrects it and the board remembers.
+// Domino «Vanlig oppsett», read off Danny's photos (2026-11-12). Not measured:
+// three rectangular tables for 2 + 2, about 90 x 160 cm (ANSLAG).
+//  - by the window, short end to the window
+//  - along the right wall (the wall with the door to Spisestua), below the door
+//  - front left, across the room
+function dominoLayout() {
+  const r = room();
+  const placed = [];
+  const put = (x, y, rotated) => {
+    const table = makeTable("long", "room");
+    table.custom = { w: 90, l: 160 };
+    table.rotated = rotated;
+    setCenterCm(table, { x, y }, false);
+    placed.push(table);
+    return table;
+  };
+  put(r.w * 0.4, 110, false);
+  put(r.w - 110, r.h * 0.55, false);
+  put(150, r.h - 115, true);
+  const tray = [makeTable("long"), makeTable("long"), makeTable("small"), makeTable("small")];
+  state.tables = [...placed, ...tray];
+  state.selected = null;
+  relabelRoom();
+  save();
+  render();
+}
+
 function presetLayout(kind = "usual") {
+  if (ROOM_ID === "domino") return dominoLayout();
   const r = room();
   const placed = [];
   const put = (size, x, y, rotated = false) => {
