@@ -356,7 +356,15 @@
     </section>
     <p class="no-print"><button type="button" id="print">Skriv ut / lagre som PDF</button></p>
     <script>
-      const STORAGE_KEY = "norsken-layout-v3";
+      const ROOM_NAMES = { spisestua: { no: "Spisestua", en: "Dining room" }, domino: { no: "Domino", en: "Domino" } };
+      let ROOM_ID = window.__NORSKEN_ROOM__ || "spisestua";
+      if (!window.__NORSKEN_ROOM__) {
+        try {
+          const v = localStorage.getItem("norsken-room");
+          if (ROOM_NAMES[v]) ROOM_ID = v;
+        } catch {}
+      }
+      const STORAGE_KEY = ROOM_ID === "domino" ? "norsken-layout-domino-v1" : "norsken-layout-v3";
       const SEAT_MARKS = [
         { key: "gluten", color: "#2a78d6", code: "G", no: "Gluten", en: "Gluten" },
         { key: "laktose", color: "#eb6834", code: "L", no: "Laktose", en: "Lactose" },
@@ -421,13 +429,14 @@
         if (g && g.placed && Array.isArray(g.list)) {
           for (const table of state.tables || []) {
             if (table.name || table.zone !== "room") continue;
-            const on = g.list.filter((x) => g.placed[x.id] === table.id);
+            const on = g.list.filter((x) => g.placed[x.id] === table.id && ((g.room && g.room[x.id]) || "spisestua") === ROOM_ID);
             for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table });
             if (on.length) table.name = on.map((x) => `${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
           }
         }
       } catch {}
       const lang = state.lang === "en" ? "en" : "no";
+      document.title = `Norsken — ${ROOM_NAMES[ROOM_ID][lang]}`;
       const dims = (() => {
         const base = JSON.parse(JSON.stringify(DEFAULT_DIMS));
         const saved = state.dims;
@@ -589,7 +598,7 @@
       }
 
       document.documentElement.lang = lang;
-      document.getElementById("kicker").textContent = copy.kicker;
+      document.getElementById("kicker").textContent = ROOM_NAMES[ROOM_ID][lang];
       document.getElementById("list-title").textContent = copy.listTitle;
       document.getElementById("meta").innerHTML =
         `${new Date().toLocaleString(lang === "en" ? "en-GB" : "nb-NO")}<br />${fmt(r.w)} × ${fmt(r.h)}`;
@@ -629,11 +638,7 @@
       }
       room.appendChild(rulers);
 
-      const shell = document.createElement("div");
-      shell.innerHTML = `<div class="fixture window"></div>`;
-      while (shell.firstChild) room.appendChild(shell.firstChild);
-
-      const fixtures = state.fixtures || [
+      const fixtures = [] || [
         { id: "double-1", wall: "left", along: 24 },
         { id: "double-2", wall: "left", along: 68 },
         { id: "waitress", wall: "bottom", along: 50 },
@@ -646,7 +651,7 @@
         room.appendChild(el);
       }
 
-      const furniture = (state.furniture || []).filter((item) => dims[item.size]);
+      const furniture = []; // the old table is no longer on the map
       for (const item of furniture) {
         item.kind = "furniture";
         // against the top/bottom wall it lies along the wall (app.js syncFurniture)
@@ -764,7 +769,7 @@
         const rows = arrivals
           .map(
             (a) =>
-              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${en ? "Dining room" : "Spisestua"}</td><td class="b">${escHtml(a.table.label)}</td></tr>`,
+              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${escHtml(ROOM_NAMES[ROOM_ID][en ? "en" : "no"])}</td><td class="b">${escHtml(a.table.label)}</td></tr>`,
           )
           .join("");
         const taken = new Set(arrivals.map((a) => a.table.id));

@@ -1324,3 +1324,8 @@ textarea {
   outline: 3px solid var(--pine);
   outline-offset: 3px;
 }
+
+/* hidden chips (presets only in Spisestua) */
+.chip[hidden] {
+  display: none !important;
+}
