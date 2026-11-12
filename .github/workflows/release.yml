@@ -21,25 +21,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build (index.html + bokmerker.html)
+      - name: Build (index.html, print.html, LES-MEG.txt)
         run: python3 tools/build.py
 
       - name: Package Norsken.zip
         run: |
           mkdir -p dist/Norsken
-          cp index.html print.html bokmerker.html dist/Norsken/
-          cat > dist/Norsken/LES-MEG.txt <<'TXT'
-          Norsken - bordplan for Spisestua
-
-          1. Dobbeltklikk index.html: bordplanen åpner i nettleseren.
-          2. Dobbeltklikk bokmerker.html og dra de grønne knappene opp på bokmerkelinja
-             (Ctrl + Shift + B viser linja). Bruk dem på ResDiary -> Diary -> Print.
-
-          Ingenting installeres. Alt blir i nettleseren din.
-          TXT
-          sed -i 's/^          //' dist/Norsken/LES-MEG.txt
+          cp index.html print.html LES-MEG.txt dist/Norsken/
           (cd dist && zip -qr Norsken.zip Norsken)
-          cp bokmerker.html dist/bokmerker.html
+          cp LES-MEG.txt dist/LES-MEG.txt
 
       - name: Release notes (everything since the last release)
         run: |
@@ -48,7 +38,7 @@ jobs:
           {
             echo "## Last ned"
             echo "- **Norsken.zip**: pakk ut, dobbeltklikk \`index.html\`."
-            echo "- **bokmerker.html**: åpne den og dra ResDiary-bokmerkene til bokmerkelinja."
+            echo "- **LES-MEG.txt**: bruksanvisning + ResDiary-bokmerkene som tekst (kopier og lim inn)."
             echo
             echo "## Endringer"
             git log --no-merges --reverse --format='- **%s**%n%n%w(0,2,2)%b' $RANGE \
@@ -61,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v$(date -u +%Y.%m.%d)-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" dist/Norsken.zip dist/bokmerker.html \
+          gh release create "$TAG" dist/Norsken.zip dist/LES-MEG.txt \
             --target "$GITHUB_SHA" \
             --title "Norsken $(date -u +%d.%m.%Y) (#${GITHUB_RUN_NUMBER})" \
             --notes-file notes.md --latest
