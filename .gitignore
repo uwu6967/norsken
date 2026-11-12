@@ -2,3 +2,8 @@
 Thumbs.db
 *.pyc
 __pycache__/
+
+# ResDiary lists have guest names (NDA) - keep them on the PC only
+*.csv
+resdiary-*
+!resdiary/
