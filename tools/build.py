@@ -17,56 +17,35 @@ open(out,'w').write(idx); print('wrote', os.path.normpath(out), len(idx), 'bytes
 # print.html next to index.html: the local «Skriv ut» link opens it
 open(os.path.join(d, '..', 'print.html'),'w').write(prn); print('wrote print.html')
 
-# bokmerker.html: drag-to-bookmark-bar page for the ResDiary bookmarklets,
-# so nobody has to copy/paste code. Built from resdiary/*.js (first line = comment).
-import html as _h
+# ResDiary bookmarks as PLAIN TEXT (copy/paste as the bookmark's address):
+# written into README.md (between the BOKMERKER markers), resdiary/README.md
+# and LES-MEG.txt (the instructions file in the download). Source: resdiary/*.js.
+import re
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
 def bm(name):
     lines = open(os.path.join(root, 'resdiary', name), encoding='utf-8').read().split('\n')
     code = ''.join(l.strip() for l in lines[1:])
-    assert '//' not in code.replace('://', '') and '%' not in code, name
-    return _h.escape('javascript:' + code, quote=True)
+    assert '//' not in code.replace('://', ''), name
+    return 'javascript:' + code
 items = [
     ('rydd-liste.js', 'Rydd liste', 'Fjerner tomme rader og kolonnene Telefon, E-post, Booket den, Kundekoder og Forhåndsbestilling.'),
     ('til-bordplan.js', 'Til bordplan', 'Kopierer tid + antall (ingen navn). Lim inn i bordplanen under Reservasjoner → bord.'),
-    ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som CSV i Nedlastinger. Åpne den i bordplanen under «Dagens liste». Uten telefon, e-post, booket den, kundekoder og forhåndsbestilling. Filen blir bare på PC-en.'),
+    ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som en fil i Nedlastinger. Åpne den i bordplanen under «Dagens liste». Uten telefon, e-post, booket den, kundekoder og forhåndsbestilling. Fila blir bare på PC-en.'),
 ]
-cards = '\n'.join(
-    f'<li><a class="bm" href="{bm(f)}">{_h.escape(t)}</a><p>{_h.escape(d)}</p></li>' for f, t, d in items)
-page = f'''<!doctype html>
-<html lang="no">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Norsken – ResDiary-bokmerker</title>
-<style>
-body {{ margin: 0; background: #f3ebe0; color: #1d1812; font: 16px/1.5 system-ui, sans-serif; }}
-main {{ max-width: 640px; margin: 0 auto; padding: 24px 16px 40px; }}
-h1 {{ font-family: Georgia, serif; margin: 0 0 4px; }}
-ol.steps {{ padding-left: 20px; }}
-ul.list {{ list-style: none; padding: 0; display: grid; gap: 14px; }}
-ul.list li {{ background: #fffaf3; border-radius: 14px; padding: 14px 16px; box-shadow: 0 6px 20px rgba(40,28,16,.12); }}
-ul.list p {{ margin: 8px 0 0; color: #6d6258; font-size: 0.92rem; }}
-a.bm {{ display: inline-block; background: #2f4a3c; color: #fff; text-decoration: none; font-weight: 600;
-        border-radius: 999px; padding: 8px 16px; cursor: grab; }}
-.note {{ color: #6d6258; font-size: 0.9rem; }}
-</style>
-</head>
-<body>
-<main>
-<h1>ResDiary-bokmerker</h1>
-<ol class="steps">
-<li>Vis bokmerkelinja: <b>Ctrl + Shift + B</b>.</li>
-<li><b>Dra</b> en grønn knapp opp på bokmerkelinja (ikke klikk den her).</li>
-<li>Åpne ResDiary → Diary → <b>Print</b>, og klikk bokmerket.</li>
-</ol>
-<ul class="list">
-{cards}
-</ul>
-<p class="note">Alt skjer bare i nettleseren din. Ingenting sendes noe sted.</p>
-</main>
-</body>
-</html>
-'''
-open(os.path.join(root, 'bokmerker.html'), 'w', encoding='utf-8').write(page)
-print('wrote bokmerker.html')
+how = 'Lag et nytt bokmerke (høyreklikk bokmerkelinja → Legg til side), gi det navnet, og lim inn koden som nettadresse. Bruk dem på ResDiary → Diary → Print.'
+md = '\n'.join([how, ''] + [f'### {t}\n\n{d}\n\n```\n{bm(f)}\n```\n' for f, t, d in items])
+def put(path):
+    full = os.path.join(root, path)
+    text = open(full, encoding='utf-8').read()
+    new = re.sub(r'(<!-- BOKMERKER -->).*?(<!-- /BOKMERKER -->)', lambda m: m.group(1) + '\n' + md + '\n' + m.group(2), text, flags=re.S)
+    assert '<!-- BOKMERKER -->' in text, path
+    open(full, 'w', encoding='utf-8').write(new)
+put('README.md'); put(os.path.join('resdiary', 'README.md'))
+txt = ['Norsken - bordplan for Spisestua', '',
+       '1. Dobbeltklikk index.html: bordplanen åpner i nettleseren.',
+       '2. ResDiary-bokmerker: ' + how, '']
+for f, t, d in items:
+    txt += ['--- ' + t + ' ---', d, '', bm(f), '']
+txt += ['Ingenting installeres. Alt blir i nettleseren din.', '']
+open(os.path.join(root, 'LES-MEG.txt'), 'w', encoding='utf-8', newline='\r\n').write('\n'.join(txt))
+print('wrote bookmarks into README.md, resdiary/README.md, LES-MEG.txt')
