@@ -10,9 +10,10 @@ lagres planen bare i den nettleseren (ikke den felles planen).
 
 ## Last ned og bruk (ingen installering)
 
-1. Last ned: **[Norsken.zip](https://github.com/uwu6967/norsken/archive/refs/heads/main.zip)** og pakk den ut.
+1. Last ned **Norsken.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest) og pakk den ut.
+   (Hver oppdatering blir en ny release, med liste over hva som er endret.)
 2. Dobbeltklikk **`index.html`**: bordplanen åpner i nettleseren. Den lagres i den nettleseren.
-3. ResDiary-bokmerkene: dobbeltklikk **`bokmerker.html`** og dra de grønne knappene opp på
+3. ResDiary-bokmerkene: dobbeltklikk **`bokmerker.html`** (ligger i zip-en og som egen fil i releasen) og dra de grønne knappene opp på
    bokmerkelinja.
 
 Det er alt. Resten av filene trenger du ikke røre.

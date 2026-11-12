@@ -1,0 +1,67 @@
+name: Release
+
+# Every push to main = a new release with a ready-to-use download.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build (index.html + bokmerker.html)
+        run: python3 tools/build.py
+
+      - name: Package Norsken.zip
+        run: |
+          mkdir -p dist/Norsken
+          cp index.html bokmerker.html dist/Norsken/
+          cat > dist/Norsken/LES-MEG.txt <<'TXT'
+          Norsken - bordplan for Spisestua
+
+          1. Dobbeltklikk index.html: bordplanen åpner i nettleseren.
+          2. Dobbeltklikk bokmerker.html og dra de grønne knappene opp på bokmerkelinja
+             (Ctrl + Shift + B viser linja). Bruk dem på ResDiary -> Diary -> Print.
+
+          Ingenting installeres. Alt blir i nettleseren din.
+          TXT
+          sed -i 's/^          //' dist/Norsken/LES-MEG.txt
+          (cd dist && zip -qr Norsken.zip Norsken)
+          cp bokmerker.html dist/bokmerker.html
+
+      - name: Release notes (everything since the last release)
+        run: |
+          PREV=$(git tag --list 'v*' --sort=-creatordate | head -1)
+          RANGE=${PREV:+$PREV..}HEAD
+          {
+            echo "## Last ned"
+            echo "- **Norsken.zip**: pakk ut, dobbeltklikk \`index.html\`."
+            echo "- **bokmerker.html**: åpne den og dra ResDiary-bokmerkene til bokmerkelinja."
+            echo
+            echo "## Endringer"
+            git log --no-merges --reverse --format='- **%s**%n%n%w(0,2,2)%b' $RANGE \
+              | grep -v -E '^\s*(Co-Authored-By|Claude-Session):' | cat -s
+          } > notes.md
+          cat notes.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="v$(date -u +%Y.%m.%d)-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" dist/Norsken.zip dist/bokmerker.html \
+            --target "$GITHUB_SHA" \
+            --title "Norsken $(date -u +%d.%m.%Y) (#${GITHUB_RUN_NUMBER})" \
+            --notes-file notes.md --latest
