@@ -72,6 +72,18 @@
         </main>
 
         <aside class="tray" id="tray">
+          <div class="guest-rack" id="guest-rack">
+            <p class="kicker" id="guest-title">Dagens liste</p>
+            <p class="plate-note" id="guest-note"></p>
+            <div class="add-row">
+              <label class="add-btn guest-open">
+                <input type="file" id="guest-file" accept=".csv,text/csv" hidden />
+                <span id="guest-open">Åpne liste fra PC</span>
+              </label>
+              <button type="button" class="add-btn" id="guest-clear" hidden>Tøm liste</button>
+            </div>
+            <ul class="guest-list" id="guest-list"></ul>
+          </div>
           <div class="tray-head">
             <p class="kicker" id="tray-title">Lager / ikke i bruk</p>
             <div class="add-row" id="add-row"></div>

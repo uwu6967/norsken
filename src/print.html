@@ -353,6 +353,18 @@
           state = {};
         }
       }
+      // Dagens liste: guest names dragged onto tables live only in this
+      // browser (NDA), never in the plan. Put them on the printout here.
+      try {
+        const g = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
+        if (g && g.placed && Array.isArray(g.list)) {
+          for (const table of state.tables || []) {
+            if (table.name || table.zone !== "room") continue;
+            const on = g.list.filter((x) => g.placed[x.id] === table.id);
+            if (on.length) table.name = on.map((x) => `${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
+          }
+        }
+      } catch {}
       const lang = state.lang === "en" ? "en" : "no";
       const dims = (() => {
         const base = JSON.parse(JSON.stringify(DEFAULT_DIMS));

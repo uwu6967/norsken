@@ -31,6 +31,8 @@ Det er alt. Resten av filene trenger du ikke røre.
   gult **Ønske**, og **✎ Notat** med fritekst. Totalen vises og kommer med på utskriften.
 - **Reservasjoner → bord:** én booking per linje (`12:30 2`, `B:7` låser bord). Fordeler etter
   husets vane: sidebordene 3, 6, 5, 8, 10, 9, 11, 7, 2, 4 først, aldri midten, over 5 personer → 16.
+- **Dagens liste:** åpne lista fra bokmerket «Last ned liste» og dra hvert navn til et bord selv.
+  Navnene blir bare i nettleseren på den PC-en (ikke i den felles planen), og kommer med på utskriften.
 - **Skriv ut / PDF** på A4.
 
 ## Mål som fortsatt er anslag
@@ -47,6 +49,7 @@ Merket «ANSLAG» i appen til noen måler dem (endres under **Mål**):
 | | |
 |---|---|
 | `index.html` | **ferdig app** i én fil, bare åpne den |
+| `print.html` | utskriftssiden (åpnes fra «Skriv ut / PDF») |
 | `bokmerker.html` | **ResDiary-bokmerkene**, dra dem til bokmerkelinja |
 | `src/` | kildekoden: `index.html`, `app.js`, `styles.css`, `print.html` |
 | `tools/build.py` | bygger `index.html` fra `src/` |

@@ -14,6 +14,8 @@ tag='<script src="app.js?v=24"></script>'; assert tag in idx
 idx=idx.replace(tag,'<script>window.__NORSKEN_PRINT_SRC__ = "'+b64+'";</script>\n    <script>\n'+app+'\n</script>')
 out=os.path.join(d, '..', 'index.html')
 open(out,'w').write(idx); print('wrote', os.path.normpath(out), len(idx), 'bytes')
+# print.html next to index.html: the local «Skriv ut» link opens it
+open(os.path.join(d, '..', 'print.html'),'w').write(prn); print('wrote print.html')
 
 # bokmerker.html: drag-to-bookmark-bar page for the ResDiary bookmarklets,
 # so nobody has to copy/paste code. Built from resdiary/*.js (first line = comment).
@@ -25,9 +27,9 @@ def bm(name):
     assert '//' not in code.replace('://', '') and '%' not in code, name
     return _h.escape('javascript:' + code, quote=True)
 items = [
-    ('rydd-liste.js', 'Rydd liste', 'Fjerner tomme rader og kolonnene Telefon og E-post på utskriften.'),
+    ('rydd-liste.js', 'Rydd liste', 'Fjerner tomme rader og kolonnene Telefon, E-post, Booket den, Kundekoder og Forhåndsbestilling.'),
     ('til-bordplan.js', 'Til bordplan', 'Kopierer tid + antall (ingen navn). Lim inn i bordplanen under Reservasjoner → bord.'),
-    ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som CSV i Nedlastinger. Uten telefon/e-post. Filen blir bare på PC-en.'),
+    ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som CSV i Nedlastinger. Åpne den i bordplanen under «Dagens liste». Uten telefon, e-post, booket den, kundekoder og forhåndsbestilling. Filen blir bare på PC-en.'),
 ]
 cards = '\n'.join(
     f'<li><a class="bm" href="{bm(f)}">{_h.escape(t)}</a><p>{_h.escape(d)}</p></li>' for f, t, d in items)

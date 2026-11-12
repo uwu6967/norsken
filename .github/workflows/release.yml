@@ -27,7 +27,7 @@ jobs:
       - name: Package Norsken.zip
         run: |
           mkdir -p dist/Norsken
-          cp index.html bokmerker.html dist/Norsken/
+          cp index.html print.html bokmerker.html dist/Norsken/
           cat > dist/Norsken/LES-MEG.txt <<'TXT'
           Norsken - bordplan for Spisestua
 
