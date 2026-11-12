@@ -531,7 +531,7 @@ function defaultState() {
       if (ROOM_ID === "domino") d.room = { ...DOMINO_ROOM };
       return d;
     })(),
-    tables: starterTables(),
+    tables: ROOM_ID === "domino" ? dominoStarter() : starterTables(),
     fixtures: defaultFixtures(),
     furniture: defaultFurniture(),
     paintings: defaultPaintings(),
@@ -1526,14 +1526,19 @@ function assignBookings() {
   clearBookedNames();
   const floor = roomTables().filter((t) => t.lead !== false && t.label);
   const labelMap = new Map(floor.map((t) => [String(t.label).toLowerCase(), t]));
-  const order = String(state.bookingOrder || DEFAULT_BOOKING_ORDER)
-    .split(/[^0-9a-z]+/i)
-    .map((s) => s.toLowerCase())
-    .filter((s) => labelMap.has(s) && isSideTable(labelMap.get(s)));
-  const side = floor
-    .filter((t) => isSideTable(t) && !order.includes(String(t.label).toLowerCase()))
-    .sort(byLabel)
-    .map((t) => String(t.label).toLowerCase());
+  const domino = ROOM_ID === "domino";
+  const order = domino
+    ? floor.slice().sort(byLabel).map((t) => String(t.label).toLowerCase())
+    : String(state.bookingOrder || DEFAULT_BOOKING_ORDER)
+        .split(/[^0-9a-z]+/i)
+        .map((s) => s.toLowerCase())
+        .filter((s) => labelMap.has(s) && isSideTable(labelMap.get(s)));
+  const side = domino
+    ? []
+    : floor
+        .filter((t) => isSideTable(t) && !order.includes(String(t.label).toLowerCase()))
+        .sort(byLabel)
+        .map((t) => String(t.label).toLowerCase());
   const taken = new Set();
   const rows = [];
   const sorted = bookings.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
@@ -1549,7 +1554,7 @@ function assignBookings() {
   }
   for (const b of free) {
     let list;
-    if (b.guests > 5) {
+    if (b.guests > 5 && !domino) {
       const bigs = floor.filter((t) => t.size === "big").map((t) => String(t.label).toLowerCase());
       list = ["16", ...bigs, ...order, ...side];
     } else {
@@ -1565,10 +1570,66 @@ function assignBookings() {
     row.table.seatCount = row.guests;
     row.table.booked = true;
   }
+  if (!domino) overflowToDomino(rows.filter((row) => !row.table));
   rows.sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   const spare = order.filter((label) => !taken.has(label));
   const shared = floor.some((t) => String(t.label) === "14");
   bookingResult = { rows, spare, shared };
+}
+
+// Domino is the last resort (Danny 2026-11-12): bookings that do not fit in
+// Spisestua get a Domino table. Domino's plan is read and written straight in
+// this browser's storage; it is started from the photo layout if it is empty.
+function readRoomPlan(id) {
+  try {
+    const plan = JSON.parse(localStorage.getItem(ROOMS[id].key) || "null");
+    if (plan?.tables?.length) return plan;
+  } catch {}
+  return null;
+}
+
+function clearDominoBooked() {
+  const plan = readRoomPlan("domino");
+  if (!plan) return;
+  for (const table of plan.tables) {
+    if (!table.booked) continue;
+    table.name = null;
+    delete table.seatCount;
+    table.booked = false;
+  }
+  try {
+    localStorage.setItem(ROOMS.domino.key, JSON.stringify(plan));
+  } catch {}
+}
+
+function overflowToDomino(rows) {
+  clearDominoBooked();
+  if (!rows.length) return;
+  const plan = readRoomPlan("domino") || { tables: dominoStarter() };
+  const cap = (t) => {
+    if (Number.isFinite(t.seatCount) && t.seatCount > 0 && !t.booked) return t.seatCount;
+    if (t.size === "long") return 2 * Math.max(1, Math.floor(((t.custom && t.custom.l) || state.dims.long.l) / Math.max(20, state.dims.chairBig.d)));
+    if (t.size === "oval") return 8;
+    if (t.size === "big") return 6;
+    return 4;
+  };
+  const free = plan.tables
+    .filter((t) => t.zone === "room" && t.lead !== false && t.label)
+    .sort((a, b) => (parseInt(a.label, 10) || 999) - (parseInt(b.label, 10) || 999));
+  const taken = new Set();
+  for (const row of rows) {
+    const pick = free.find((t) => !taken.has(t.id) && cap(t) >= row.guests) || null;
+    if (!pick) continue;
+    taken.add(pick.id);
+    pick.name = `${row.time ? `${row.time} ` : ""}${row.name}`.trim().slice(0, 28) || null;
+    pick.seatCount = row.guests;
+    pick.booked = true;
+    row.table = pick;
+    row.room = "domino";
+  }
+  try {
+    localStorage.setItem(ROOMS.domino.key, JSON.stringify(plan));
+  } catch {}
 }
 
 function renderBookings() {
@@ -1604,7 +1665,7 @@ function renderBookings() {
     .map(
       (r) =>
         `<tr><td>${esc(r.time || "–")}</td><td>${esc(r.name || "–")}</td><td>${r.guests}</td><td>${
-          r.table ? `<strong>${esc(r.table.label)}</strong>` : `<span class="tight">${copy.bookNone}</span>`
+          r.table ? `<strong>${esc(r.room ? `${ROOMS[r.room].no} ${r.table.label}` : r.table.label)}</strong>` : `<span class="tight">${copy.bookNone}</span>`
         }</td></tr>`,
     )
     .join("")}</tbody></table></div>${extra.length ? `<p class="book-extra"><strong>${copy.bookExtra}:</strong> ${esc(extra.join(", "))}</p>` : ""}`;
@@ -2780,8 +2841,8 @@ function renderChrome() {
   document.getElementById("hint").textContent =
     ROOM_ID === "domino"
       ? en
-        ? `Domino: top = the windows, right wall = the door to Spisestua. Room size (${fmt(room().w)} × ${fmt(room().h)}) and table size are guesses from photos until measured (change under «Mål»).`
-        : `Domino: øverst = vinduene, høyre vegg = døra til Spisestua. Romstørrelsen (${fmt(room().w)} × ${fmt(room().h)}) og bordene er anslag fra bilder til de er målt (endre under «Mål»).`
+        ? "Domino is the last resort: used only when Spisestua is full. «Assign tables» in Spisestua sends what does not fit here. Top = the windows, right wall = the door to Spisestua."
+        : "Domino er siste utvei: brukes bare når Spisestua er full. «Fordel bord» i Spisestua sender det som ikke får plass hit. Øverst = vinduene, høyre vegg = døra til Spisestua."
       : copy.hint;
   const measureBtn = document.getElementById("measure-btn");
   measureBtn.textContent = copy.measure;
@@ -3150,6 +3211,7 @@ document.getElementById("book-run")?.addEventListener("click", () => {
 });
 document.getElementById("book-clear")?.addEventListener("click", () => {
   clearBookedNames();
+  if (ROOM_ID === "spisestua") clearDominoBooked();
   bookingResult = null;
   save();
   render();
@@ -3581,22 +3643,33 @@ render();
 //  - by the window, short end to the window
 //  - along the right wall (the wall with the door to Spisestua), below the door
 //  - front left, across the room
-function dominoLayout() {
-  const r = room();
-  const placed = [];
-  const put = (x, y, rotated) => {
-    const table = makeTable("long", "room");
+// Pure (no `state`): also used to start a Domino plan from Spisestua when
+// «Fordel bord» needs the overflow room and Domino was never opened.
+function dominoTablesAt(r) {
+  const spots = [
+    [r.w * 0.4, 110, false],
+    [r.w - 110, r.h * 0.55, false],
+    [150, r.h - 115, true],
+  ];
+  return spots.map(([x, y, rotated], i) => {
+    const table = makeTable("long");
+    table.zone = "room";
     table.custom = { w: 90, l: 160 };
     table.rotated = rotated;
-    setCenterCm(table, { x, y }, false);
-    placed.push(table);
+    table.x = (x / r.w) * 100;
+    table.y = (y / r.h) * 100;
+    table.label = String(i + 1);
+    table.lead = true;
     return table;
-  };
-  put(r.w * 0.4, 110, false);
-  put(r.w - 110, r.h * 0.55, false);
-  put(150, r.h - 115, true);
-  const tray = [makeTable("long"), makeTable("long"), makeTable("small"), makeTable("small")];
-  state.tables = [...placed, ...tray];
+  });
+}
+
+function dominoStarter() {
+  return [...dominoTablesAt(DOMINO_ROOM), makeTable("long"), makeTable("long"), makeTable("small"), makeTable("small")];
+}
+
+function dominoLayout() {
+  state.tables = [...dominoTablesAt(room()), makeTable("long"), makeTable("long"), makeTable("small"), makeTable("small")];
   state.selected = null;
   relabelRoom();
   save();
