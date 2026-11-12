@@ -50,7 +50,8 @@ javascript:(function(){var DROP=["telefon","mobil","e-post","epost","email","boo
 
 ## Det den gjør
 
-- **Rommet** i ekte mål (7,00 × 13,60 m), dører, vinduer, sidebordet, rutenett per meter.
+- **To rom:** Spisestua (7,00 × 13,60 m, målt) og Domino (størrelse er et anslag til det er målt). Bytt med knappene øverst. Hvert rom har sin egen plan.
+- **Rutenett** per meter.
 - **Bord:** lite (Ø130), stort (Ø150), ovalt (16), langbord (to halvdeler som trekkes fra hverandre).
 - **Vanlig oppsett** og **Lunsj-oppsett** med ett trykk.
 - **Langbord + plater:** skriv antall personer, så velger den de korteste platene dere faktisk har

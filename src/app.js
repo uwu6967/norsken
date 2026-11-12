@@ -1,4 +1,21 @@
-const STORAGE_KEY = "norsken-layout-v3";
+// Rooms (2026-11-12): Spisestua and Domino. Each room is its own plan with
+// its own storage key and shared doc. The picked room is per browser.
+const ROOMS = {
+  spisestua: { no: "Spisestua", en: "Dining room", key: "norsken-layout-v3", doc: "plan/current" },
+  domino: { no: "Domino", en: "Domino", key: "norsken-layout-domino-v1", doc: "plan/domino" },
+};
+const ROOM_KEY = "norsken-room";
+const ROOM_ID = (() => {
+  try {
+    const v = localStorage.getItem(ROOM_KEY);
+    return ROOMS[v] ? v : "spisestua";
+  } catch {
+    return "spisestua";
+  }
+})();
+const STORAGE_KEY = ROOMS[ROOM_ID].key;
+// Domino is not measured yet: a placeholder size until Danny sends a photo / tape.
+const DOMINO_ROOM = { w: 600, h: 1000 };
 // Staff habit for seating bookings (see BOOKINGS -> TABLES). Up here because
 // defaultState() needs it before the rest of the file has run.
 const DEFAULT_BOOKING_ORDER = "3, 6, 5, 8, 10, 9, 11, 7, 2, 4";
@@ -452,7 +469,7 @@ function getFurniture(id) {
 
 // Everything on the floor that a waitress has to walk around.
 function obstacles() {
-  return [...roomTables(), ...state.furniture];
+  return roomTables(); // doors, window and the old table are no longer on the map
 }
 
 function defaultFixtures() {
@@ -509,7 +526,11 @@ function defaultState() {
     showGrid: true,
     showMeasure: false,
     withChairs: true,
-    dims: cloneDims(),
+    dims: (() => {
+      const d = cloneDims();
+      if (ROOM_ID === "domino") d.room = { ...DOMINO_ROOM };
+      return d;
+    })(),
     tables: starterTables(),
     fixtures: defaultFixtures(),
     furniture: defaultFurniture(),
@@ -590,6 +611,7 @@ function normalizeState(parsed) {
     if (!next.furniture?.length) next.furniture = defaultFurniture();
     else migrateFurniture(next.furniture);
     next.dims = mergeDims(parsed.dims);
+    if (ROOM_ID === "domino" && !parsed.dims?.room) next.dims.room = { ...DOMINO_ROOM };
     next.showGrid = parsed.showGrid !== false;
     next.withChairs = parsed.withChairs !== false;
     next.showMeasure = parsed.showMeasure === true;
@@ -917,7 +939,7 @@ function save() {
 // floor plan is shared; language, grid/chair toggles and the selection stay
 // per person. Opened as a plain local file, none of this runs and the board
 // keeps using localStorage only.
-const SHARED_DOC = "plan/current";
+const SHARED_DOC = ROOMS[ROOM_ID].doc;
 const SHARED_KEYS = ["tables", "fixtures", "furniture", "dims", "paintings", "bookingsText", "bookingOrder"];
 const CLIENT_ID = Math.random().toString(36).slice(2);
 const share = { db: null, ready: false, timer: null, lastSent: "", canWrite: true, status: "local", at: null };
@@ -2523,10 +2545,16 @@ function finishDrag(clientX, clientY) {
     document.querySelectorAll(".guest-target").forEach((n) => n.classList.remove("guest-target"));
     if (!current.moved) return;
     const hit = guestDropTable(clientX, clientY);
-    const before = getTable(guests.placed[current.id]);
-    if (hit) guests.placed[current.id] = hit.id;
-    else if (pointIn(document.getElementById("guest-rack"), clientX, clientY)) delete guests.placed[current.id];
-    else return;
+    const g0 = guests.list.find((g) => g.id === current.id);
+    const before = g0 ? guestTable(g0) : null;
+    if (!guests.room) guests.room = {};
+    if (hit) {
+      guests.placed[current.id] = hit.id;
+      guests.room[current.id] = ROOM_ID;
+    } else if (pointIn(document.getElementById("guest-rack"), clientX, clientY)) {
+      delete guests.placed[current.id];
+      delete guests.room[current.id];
+    } else return;
     saveGuests();
     if (before) guestSeats(before);
     if (hit) guestSeats(hit);
@@ -2625,17 +2653,15 @@ function renderRoom() {
   const el = document.getElementById("room");
   el.innerHTML = "";
   el.classList.toggle("no-grid", !state.showGrid);
+  const rr = room();
+  el.style.aspectRatio = `${rr.w} / ${rr.h}`;
+  el.style.width = `min(100%, calc(72vh * ${rr.w} / ${rr.h}), ${Math.round((460 * (rr.w / rr.h)) / (700 / 1360))}px)`;
   if (state.showGrid) {
     el.appendChild(gridLayer());
     el.appendChild(rulerLayer());
   }
-  const windowEl = document.createElement("div");
-  windowEl.className = "fixture window";
-  el.appendChild(windowEl);
   for (const node of plateInserts()) el.appendChild(node);
   for (const node of seatNodes()) el.appendChild(node);
-  for (const item of state.furniture) el.appendChild(furnitureButton(item));
-  for (const fixture of state.fixtures) el.appendChild(doorButton(fixture));
   if (state.showPaintings) for (const painting of state.paintings) el.appendChild(paintingButton(painting));
   for (const table of roomTables()) el.appendChild(tableButton(table, false));
 }
@@ -2712,7 +2738,23 @@ function renderChrome() {
   const lunchBtn = document.getElementById("lunch-btn");
   if (lunchBtn && lunchBtn.dataset.armed !== "1") lunchBtn.textContent = copy.lunch;
   if (share.status !== "local" || window.claude?.use) setShareStatus(share.status, share.at);
-  document.getElementById("hint").textContent = copy.hint;
+  const en = state.lang === "en";
+  const roomName = ROOMS[ROOM_ID][en ? "en" : "no"];
+  const kicker = document.querySelector(".topbar .kicker");
+  if (kicker) kicker.textContent = `${roomName} · ${en ? "layout" : "oppsett"}`;
+  document.title = `Norsken — ${roomName}`;
+  document.querySelectorAll("[data-room]").forEach((btn) => {
+    btn.textContent = ROOMS[btn.dataset.room][en ? "en" : "no"];
+    btn.classList.toggle("on", btn.dataset.room === ROOM_ID);
+  });
+  if (presetBtn) presetBtn.hidden = ROOM_ID !== "spisestua";
+  if (lunchBtn) lunchBtn.hidden = ROOM_ID !== "spisestua";
+  document.getElementById("hint").textContent =
+    ROOM_ID === "domino"
+      ? en
+        ? `Domino: the room size (${fmt(room().w)} × ${fmt(room().h)}) is a guess until it is measured. Change it under «Mål». Drag tables in from storage.`
+        : `Domino: romstørrelsen (${fmt(room().w)} × ${fmt(room().h)}) er et anslag til den er målt. Endre under «Mål». Dra bord inn fra lageret.`
+      : copy.hint;
   const measureBtn = document.getElementById("measure-btn");
   measureBtn.textContent = copy.measure;
   measureBtn.classList.toggle("on", state.showMeasure);
@@ -2748,8 +2790,6 @@ const FIELDS = [
   { key: "longL", path: ["long", "l"], min: 50, max: 900, est: "long" },
   // Depth is taped (60); only the length is an estimate, so only the length
   // field carries the sidebord ANSLAG badge and typing a depth does not clear it.
-  { key: "sidebordW", path: ["sidebord", "w"], min: 20, max: 300 },
-  { key: "sidebordL", path: ["sidebord", "l"], min: 40, max: 900, est: "sidebord" },
   { key: "chairBigD", path: ["chairBig", "d"], min: 25, max: 120, est: "chairBig" },
   { key: "chairSmallD", path: ["chairSmall", "d"], min: 25, max: 120, est: "chairSmall" },
   { key: "coverD", path: ["cover", "d"], min: 40, max: 120, est: "cover" },
@@ -3595,10 +3635,19 @@ function loadGuests() {
   try {
     const g = JSON.parse(localStorage.getItem(GUESTS_KEY) || "null");
     if (g && Array.isArray(g.list)) {
-      return { file: String(g.file || ""), list: g.list, placed: g.placed && typeof g.placed === "object" ? g.placed : {} };
+      return {
+        file: String(g.file || ""),
+        list: g.list,
+        placed: g.placed && typeof g.placed === "object" ? g.placed : {},
+        room: g.room && typeof g.room === "object" ? g.room : {},
+      };
     }
   } catch {}
-  return { file: "", list: [], placed: {} };
+  return { file: "", list: [], placed: {}, room: {} };
+}
+
+function guestRoom(guest) {
+  return guests.room?.[guest.id] || "spisestua";
 }
 
 function saveGuests() {
@@ -3677,12 +3726,13 @@ function guestsFromCsv(text) {
 
 // A placed guest only counts while its table is on the floor.
 function guestTable(guest) {
+  if (guestRoom(guest) !== ROOM_ID) return null;
   const table = getTable(guests.placed[guest.id]);
   return table && table.zone === "room" ? table : null;
 }
 
 function guestsOn(table) {
-  return guests.list.filter((g) => guests.placed[g.id] === table.id && table.zone === "room");
+  return guests.list.filter((g) => guests.placed[g.id] === table.id && guestRoom(g) === ROOM_ID && table.zone === "room");
 }
 
 function guestLabel(table) {
@@ -3713,7 +3763,7 @@ function renderGuests() {
   set("guest-clear", en ? "Clear list" : "Tøm liste");
   const clear = document.getElementById("guest-clear");
   if (clear) clear.hidden = !guests.list.length;
-  const placed = guests.list.filter((g) => guestTable(g)).length;
+  const placed = guests.list.filter((g) => guests.placed[g.id]).length;
   set(
     "guest-note",
     guestMsg ||
@@ -3730,12 +3780,13 @@ function renderGuests() {
   list.innerHTML = "";
   for (const g of guests.list) {
     const table = guestTable(g);
+    const elsewhere = !table && guests.placed[g.id] && guestRoom(g) !== ROOM_ID ? ROOMS[guestRoom(g)] : null;
     const li = document.createElement("li");
-    li.className = `guest-item${table ? " placed" : ""}`;
+    li.className = `guest-item${table || elsewhere ? " placed" : ""}`;
     li.dataset.id = g.id;
     li.innerHTML = `<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${
       g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""
-    }${table ? `<span class="g-table">→ ${esc(table.label)}</span><button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Remove from table" : "Fjern fra bordet"}">✕</button>` : ""}${
+    }${elsewhere ? `<span class="g-table">→ ${esc(elsewhere[en ? "en" : "no"])}</span>` : ""}${table ? `<span class="g-table">→ ${esc(table.label)}</span><button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Remove from table" : "Fjern fra bordet"}">✕</button>` : ""}${
       g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
     }`;
     li.addEventListener("pointerdown", (event) => {
@@ -3757,14 +3808,14 @@ document.getElementById("guest-file")?.addEventListener("change", async (event) 
     return;
   }
   guestMsg = "";
-  guests = { file: file.name, list, placed: {} };
+  guests = { file: file.name, list, placed: {}, room: {} };
   saveGuests();
   render();
 });
 
 document.getElementById("guest-clear")?.addEventListener("click", (event) => {
   if (!armed(event.currentTarget, state.lang === "en" ? "Sure?" : "Sikker?")) return;
-  guests = { file: "", list: [], placed: {} };
+  guests = { file: "", list: [], placed: {}, room: {} };
   saveGuests();
   render();
 });
@@ -3772,8 +3823,10 @@ document.getElementById("guest-clear")?.addEventListener("click", (event) => {
 document.getElementById("guest-list")?.addEventListener("click", (event) => {
   const id = event.target.closest(".g-x")?.dataset.unplace;
   if (!id) return;
-  const before = getTable(guests.placed[id]);
+  const g0 = guests.list.find((g) => g.id === id);
+  const before = g0 ? guestTable(g0) : null;
   delete guests.placed[id];
+  if (guests.room) delete guests.room[id];
   saveGuests();
   if (before) guestSeats(before);
   save();
@@ -3819,7 +3872,7 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
     const guestData = JSON.stringify(guests).replace(/</g, "\\u003c");
     const baked = html.replace(
       "<script>",
-      `<script>window.__NORSKEN_STATE__ = ${data}; window.__NORSKEN_GUESTS__ = ${guestData};</script>\n    <script>`,
+      `<script>window.__NORSKEN_STATE__ = ${data}; window.__NORSKEN_GUESTS__ = ${guestData}; window.__NORSKEN_ROOM__ = "${ROOM_ID}";</script>\n    <script>`,
     );
     const day = new Date().toISOString().slice(0, 10);
     await downloads.save({ filename: `norsken-oppsett-${day}.html`, data: baked });
@@ -3829,3 +3882,16 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
 });
 
 connectShare();
+
+// Room switch: save this room, remember the pick, reload into the other room.
+document.querySelectorAll("[data-room]").forEach((btn) =>
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.room;
+    if (!ROOMS[next] || next === ROOM_ID) return;
+    save();
+    try {
+      localStorage.setItem(ROOM_KEY, next);
+    } catch {}
+    location.reload();
+  }),
+);
