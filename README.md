@@ -50,7 +50,7 @@ javascript:(function(){var DROP=["telefon","mobil","e-post","epost","email","boo
 
 ## Det den gjør
 
-- **To rom:** Spisestua (7,00 × 13,60 m, målt) og Domino (størrelse er et anslag til det er målt). Bytt med knappene øverst. Hvert rom har sin egen plan.
+- **To rom:** Spisestua og Domino (rommet ved siden av). Domino er siste utvei: «Fordel bord» fyller Spisestua først og sender bare det som ikke får plass til Domino. Bytt rom med knappene øverst.
 - **Rutenett** per meter.
 - **Bord:** lite (Ø130), stort (Ø150), ovalt (16), langbord (to halvdeler som trekkes fra hverandre).
 - **Vanlig oppsett** og **Lunsj-oppsett** med ett trykk.

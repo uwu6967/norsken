@@ -422,7 +422,31 @@
       for (const table of state.tables || []) {
         if (table.zone !== "room" || table.lead === false || !table.name) continue;
         const parts = timeOf(table.name);
-        arrivals.push({ time: parts.time, name: parts.name, pax: table.guests, table });
+        arrivals.push({ time: parts.time, name: parts.name, pax: table.guests, table, room: ROOM_ID });
+      }
+      // The arrivals page is the whole evening: the other room's bookings too.
+      const OTHER = ROOM_ID === "domino" ? "spisestua" : "domino";
+      let otherPlan = null;
+      try {
+        otherPlan = JSON.parse(localStorage.getItem(OTHER === "domino" ? "norsken-layout-domino-v1" : "norsken-layout-v3") || "null");
+      } catch {}
+      let guestStore = null;
+      try {
+        guestStore = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
+      } catch {}
+      for (const table of (otherPlan && otherPlan.tables) || []) {
+        if (table.zone !== "room" || table.lead === false) continue;
+        if (table.name) {
+          const parts = timeOf(table.name);
+          arrivals.push({ time: parts.time, name: parts.name, pax: table.guests || table.seatCount, table, room: OTHER });
+        }
+        if (guestStore && guestStore.placed && Array.isArray(guestStore.list)) {
+          for (const x of guestStore.list) {
+            if (guestStore.placed[x.id] === table.id && ((guestStore.room && guestStore.room[x.id]) || "spisestua") === OTHER) {
+              arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table, room: OTHER });
+            }
+          }
+        }
       }
       try {
         const g = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
@@ -430,7 +454,7 @@
           for (const table of state.tables || []) {
             if (table.name || table.zone !== "room") continue;
             const on = g.list.filter((x) => g.placed[x.id] === table.id && ((g.room && g.room[x.id]) || "spisestua") === ROOM_ID);
-            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table });
+            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table, room: ROOM_ID });
             if (on.length) table.name = on.map((x) => `${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
           }
         }
@@ -764,12 +788,17 @@
       if (arrivals.length) {
         const en = lang === "en";
         document.getElementById("list-title").textContent = en ? "Arrivals" : "Ankomster";
-        arrivals.sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || labelSortKey(a.table.label)[0] - labelSortKey(b.table.label)[0]);
+        arrivals.sort(
+          (a, b) =>
+            (a.time || "99").localeCompare(b.time || "99") ||
+            (a.room === b.room ? 0 : a.room === "spisestua" ? -1 : 1) ||
+            labelSortKey(a.table.label)[0] - labelSortKey(b.table.label)[0],
+        );
         const total = arrivals.reduce((sum, a) => sum + (Number(a.pax) || 0), 0);
         const rows = arrivals
           .map(
             (a) =>
-              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${escHtml(ROOM_NAMES[ROOM_ID][en ? "en" : "no"])}</td><td class="b">${escHtml(a.table.label)}</td></tr>`,
+              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${escHtml(ROOM_NAMES[a.room || ROOM_ID][en ? "en" : "no"])}</td><td class="b">${escHtml(a.table.label)}</td></tr>`,
           )
           .join("");
         const taken = new Set(arrivals.map((a) => a.table.id));
