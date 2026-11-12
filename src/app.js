@@ -1845,6 +1845,23 @@ function seatPositions(table) {
     // diagonals. That is the only rotation that means anything here.
     // seatTurn (degrees) is set with the ⟲ ⟳ buttons; the old Roter half-place still counts
     const turn = (table.rotated ? Math.PI / count : 0) + ((Number(table.seatTurn) || 0) * Math.PI) / 180;
+    // 1-3 guests sit with their backs to the nearest wall (Danny's sketch,
+    // 2026-11-12): 2 = both wall-side diagonals, 3 = those two plus one on
+    // the open side ("just pick a side"), 4+ = the normal even split.
+    // ⟲ ⟳ still turn it: seatTurn counts from the default 45.
+    if (count <= 3) {
+      const cl = clearances(table);
+      const walls = [
+        [cl.left, Math.PI],
+        [cl.right, 0],
+        [cl.top, -Math.PI / 2],
+        [cl.bottom, Math.PI / 2],
+      ].sort((p, q) => p[0] - q[0]);
+      const wall = walls[0][1] + (((Number(table.seatTurn) || 0) - 45) * Math.PI) / 180;
+      const q = Math.PI / 4;
+      const angles = count === 1 ? [wall] : count === 2 ? [wall - q, wall + q] : [wall - q, wall + q, wall + Math.PI - q];
+      return angles.map((angle) => ({ x: c.x + Math.cos(angle) * radius, y: c.y + Math.sin(angle) * radius, a: (angle * 180) / Math.PI }));
+    }
     for (let i = 0; i < count; i += 1) {
       const angle = -Math.PI / 2 + turn + (i * 2 * Math.PI) / count;
       out.push({ x: c.x + Math.cos(angle) * radius, y: c.y + Math.sin(angle) * radius, a: (angle * 180) / Math.PI });
@@ -2504,10 +2521,14 @@ function finishDrag(clientX, clientY) {
     document.querySelectorAll(".guest-target").forEach((n) => n.classList.remove("guest-target"));
     if (!current.moved) return;
     const hit = guestDropTable(clientX, clientY);
+    const before = getTable(guests.placed[current.id]);
     if (hit) guests.placed[current.id] = hit.id;
     else if (pointIn(document.getElementById("guest-rack"), clientX, clientY)) delete guests.placed[current.id];
     else return;
     saveGuests();
+    if (before) guestSeats(before);
+    if (hit) guestSeats(hit);
+    save();
     render();
     return;
   }
@@ -3338,6 +3359,7 @@ document.getElementById("label-row").addEventListener("click", (event) => {
   const picked = getTable(state.selected);
   const table = seatOwner(picked);
   if (!table) return;
+  delete table.seatFromGuest; // set by hand now
   if (seats === "auto") delete table.seatCount;
   else if (picked.size === "long") planPlates(picked, seatsOf(table).length + Number(seats)); // + / − on a langbord pulls it apart or closes it with plates
   else table.seatCount = Math.max(1, Math.min(40, seatCount(table) + Number(seats)));
@@ -3441,6 +3463,7 @@ document.getElementById("drawer-measure").addEventListener("click", (event) => {
     const picked = getTable(state.selected);
     const table = seatOwner(picked);
     if (!table) return;
+    delete table.seatFromGuest; // set by hand now
     if (seats === "auto") delete table.seatCount;
     else if (picked.size === "long") planPlates(picked, seatsOf(table).length + Number(seats));
     else table.seatCount = Math.max(1, Math.min(40, seatCount(table) + Number(seats)));
@@ -3745,10 +3768,31 @@ document.getElementById("guest-clear")?.addEventListener("click", (event) => {
 document.getElementById("guest-list")?.addEventListener("click", (event) => {
   const id = event.target.closest(".g-x")?.dataset.unplace;
   if (!id) return;
+  const before = getTable(guests.placed[id]);
   delete guests.placed[id];
   saveGuests();
+  if (before) guestSeats(before);
+  save();
   render();
 });
+
+// Chairs follow the party: a table gets as many chairs as its biggest
+// booking. Only chairs set this way are undone when the guests leave; a
+// count the waitress set by hand with + / − is left alone.
+function guestSeats(table) {
+  if (table.kind === "plate") return;
+  const pax = guestsOn(table).map((g) => Number(g.pax) || 0);
+  const most = pax.length ? Math.max(...pax) : 0;
+  if (most > 0) {
+    if (table.seatFromGuest || !Number.isFinite(table.seatCount)) {
+      table.seatCount = most;
+      table.seatFromGuest = true;
+    }
+  } else if (table.seatFromGuest) {
+    delete table.seatCount;
+    delete table.seatFromGuest;
+  }
+}
 
 // --- print in the hosted page -------------------------------------------------
 // The hosted frame blocks window.print and new tabs. There the button builds a
