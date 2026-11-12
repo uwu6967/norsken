@@ -29,7 +29,7 @@ def bm(name):
     return 'javascript:' + code
 items = [
     ('rydd-liste.js', 'Rydd liste', 'Fjerner tomme rader og kolonnene Telefon, E-post, Booket den, Kundekoder og Forhåndsbestilling.'),
-    ('til-bordplan.js', 'Til bordplan', 'Kopierer tid + antall (ingen navn). Lim inn i bordplanen under Reservasjoner → bord.'),
+    ('til-bordplan.js', 'Til bordplan', 'Kopierer tid, antall og etternavn. Lim inn i bordplanen under Reservasjoner → bord.'),
     ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som en fil i Nedlastinger. Åpne den i bordplanen under «Dagens liste». Uten telefon, e-post, booket den, kundekoder og forhåndsbestilling. Fila blir bare på PC-en.'),
 ]
 how = 'Lag et nytt bokmerke (høyreklikk bokmerkelinja → Legg til side), gi det navnet, og lim inn koden som nettadresse. Bruk dem på ResDiary → Diary → Print.'
