@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <title>Norsken — Spisestua</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 12mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Outfit, system-ui, sans-serif;
+        color: #1d1812;
+        background: white;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        margin-bottom: 10px;
+      }
+      .kicker {
+        margin: 0;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-size: 11px;
+        color: #8a6238;
+      }
+      h1 {
+        margin: 0;
+        font-family: Fraunces, Georgia, serif;
+        font-size: 28px;
+      }
+      #meta {
+        margin: 0;
+        font-size: 11px;
+        color: #6d6258;
+        text-align: right;
+        line-height: 1.5;
+      }
+      .room {
+        position: relative;
+        height: 205mm;
+        width: auto;
+        max-width: 100%;
+        margin: 0 auto;
+        background: #fdfaf5;
+        border: 7px solid #cbb79a;
+        overflow: hidden;
+        break-inside: avoid;
+      }
+      .grid-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+      }
+      .ruler-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        font-size: 7px;
+        font-weight: 700;
+        color: #3f5c4d;
+      }
+      .ruler-layer span {
+        position: absolute;
+        line-height: 1;
+      }
+      .ruler-layer .top {
+        top: 2px;
+        transform: translateX(-50%);
+      }
+      .ruler-layer .left {
+        left: 2px;
+        transform: translateY(-50%);
+      }
+      .fixture {
+        position: absolute;
+        z-index: 2;
+      }
+      .window {
+        top: 0;
+        left: 24%;
+        width: 52%;
+        height: 1.6%;
+        background: #c9e7f4;
+        border-bottom: 3px solid #8a6238;
+      }
+      .door {
+        background: #f3d0cb;
+        border: 2px solid #b42318;
+      }
+      .door.left {
+        left: -1%;
+        width: 5.5%;
+        height: 8%;
+        transform: translateY(-50%);
+      }
+      .door.bottom {
+        bottom: -0.6%;
+        width: 24%;
+        height: 4%;
+        transform: translateX(-50%);
+      }
+      .corner {
+        top: 0;
+        right: 0;
+        width: 6%;
+        height: 3.4%;
+        background: #2b261f;
+      }
+      .table {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 1px solid #1d1812;
+        background: white;
+        display: grid;
+        place-items: center;
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 650;
+        font-size: 11px;
+        z-index: 6;
+      }
+      .round {
+        border-radius: 50%;
+      }
+      .plate {
+        border-radius: 8px;
+      }
+      .seat {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 1px solid #b0a189;
+        border-radius: 2px;
+        background: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 5.5px;
+        font-weight: 700;
+        line-height: 1;
+        z-index: 4;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .legend {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        font-size: 10px;
+      }
+      .legend span.k {
+        display: inline-grid;
+        place-items: center;
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        font-size: 7px;
+        font-weight: 700;
+        margin-right: 4px;
+        vertical-align: middle;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .plate-insert {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 0.4pt solid #6d5636;
+        background: repeating-linear-gradient(90deg, #e6d3b3 0 3pt, #d3bb94 3pt 6pt);
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .table.named {
+        font-size: 7pt;
+        font-weight: 700;
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+        padding: 1mm;
+      }
+
+      .furniture {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 2px solid #8a6238;
+        background: repeating-linear-gradient(45deg, #ded0b8 0 5px, #d2c1a4 5px 10px);
+        display: grid;
+        place-items: center;
+        font-size: 6px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-align: center;
+        z-index: 5;
+      }
+      .scale-note {
+        margin: 8px 0 0;
+        text-align: center;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6d6258;
+      }
+      section.list {
+        margin-top: 14px;
+        break-inside: avoid;
+      }
+      @media print {
+        section.list {
+          break-before: page;
+          margin-top: 0;
+        }
+      }
+      table.measure {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10.5px;
+        margin-top: 6px;
+      }
+      table.measure th {
+        text-align: left;
+        font-size: 8px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6d6258;
+        padding: 0 8px 4px 0;
+      }
+      table.measure td {
+        padding: 3.5px 8px 3.5px 0;
+        border-top: 1px solid #e3d6c5;
+      }
+      table.measure .n {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 650;
+        font-size: 12px;
+      }
+      .tight {
+        color: #b42318;
+        font-weight: 700;
+      }
+      .warnings {
+        margin-top: 8px;
+        font-size: 10.5px;
+      }
+      .warnings p {
+        margin: 0 0 3px;
+      }
+      .warnings .ok {
+        color: #2f4a3c;
+      }
+      .warnings .warn-title {
+        color: #b42318;
+        font-weight: 700;
+      }
+      .plates { margin-top: 8px; font-size: 10.5px; }
+      .plates ul { margin: 2px 0 0; padding-left: 16px; }
+      .warnings ul {
+        margin: 0;
+        padding-left: 16px;
+      }
+      .no-print {
+        margin-top: 12px;
+        text-align: center;
+      }
+      button {
+        font: inherit;
+        border: 0;
+        background: #2f4a3c;
+        color: white;
+        border-radius: 999px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      @media print {
+        .no-print {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="kicker" id="kicker">Spisestua</p>
+        <h1>Norsken</h1>
+      </div>
+      <p id="meta"></p>
+    </header>
+    <div class="room" id="room"></div>
+    <p class="scale-note" id="scale-note"></p>
+    <section class="list">
+      <p class="kicker" id="list-title">Målliste</p>
+      <div id="list-body"></div>
+      <div class="warnings" id="warnings"></div>
+    </section>
+    <p class="no-print"><button type="button" id="print">Skriv ut / lagre som PDF</button></p>
+    <script>
+      const STORAGE_KEY = "norsken-layout-v3";
+      const SEAT_MARKS = [
+        { key: "gluten", color: "#2a78d6", code: "G", no: "Gluten", en: "Gluten" },
+        { key: "laktose", color: "#eb6834", code: "L", no: "Laktose", en: "Lactose" },
+        { key: "notter", color: "#1baf7a", code: "N", no: "Nøtter", en: "Nuts" },
+        { key: "skalldyr", color: "#eda100", code: "S", no: "Skalldyr", en: "Shellfish" },
+        { key: "diabetes", color: "#e87ba4", code: "D", no: "Diabetes", en: "Diabetes" },
+        { key: "gravid", color: "#008300", code: "Gr", no: "Gravid", en: "Pregnant" },
+        { key: "vegetar", color: "#4a3aa7", code: "V", no: "Vegetar", en: "Vegetarian" },
+        { key: "annet", color: "#e34948", code: "A", no: "Annet", en: "Other" },
+      ];
+      function markOf(key) { return SEAT_MARKS.find((m) => m.key === key) || null; }
+      function inkOn(hex) {
+        const n = parseInt(hex.slice(1), 16);
+        const srgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+          const c = v / 255;
+          return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2] > 0.42 ? "#1d1812" : "#ffffff";
+      }
+      const DEFAULT_DIMS = {
+        room: { w: 700, h: 1360 },
+        small: { d: 132 },
+        big: { d: 160 },
+        plateS: { w: 37, l: 90, n: 2 },
+        plateM: { w: 49.5, l: 90, n: 2 },
+        plateL: { w: 80, l: 90, n: 2 },
+        long: { w: 90, l: 220 },
+        sidebord: { w: 60, l: 178 },
+        aisle: 90,
+        snap: 10,
+        est: { small: false, big: true, long: true, plateS: false, plateM: false, plateL: true, sidebord: true },
+      };
+
+      let state = window.__NORSKEN_STATE__ || null;
+      if (!state) {
+        try {
+          state = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        } catch {
+          state = {};
+        }
+      }
+      const lang = state.lang === "en" ? "en" : "no";
+      const dims = (() => {
+        const base = JSON.parse(JSON.stringify(DEFAULT_DIMS));
+        const saved = state.dims;
+        if (!saved || typeof saved !== "object") return base;
+        if (saved.room) Object.assign(base.room, saved.room);
+        if (saved.small) Object.assign(base.small, saved.small);
+        if (saved.big) Object.assign(base.big, saved.big);
+        if (saved.sidebord) Object.assign(base.sidebord, saved.sidebord);
+        if (saved.long) Object.assign(base.long, saved.long);
+        if (saved.plateS) Object.assign(base.plateS, saved.plateS);
+        if (saved.plateM) Object.assign(base.plateM, saved.plateM);
+        if (saved.plateL) Object.assign(base.plateL, saved.plateL);
+        if (Number.isFinite(saved.aisle)) base.aisle = saved.aisle;
+        if (saved.est) Object.assign(base.est, saved.est);
+        return base;
+      })();
+      const r = dims.room;
+
+      const copy =
+        lang === "en"
+          ? {
+              kicker: "Dining room",
+              listTitle: "Measurement list",
+              colTable: "Table",
+              colSize: "Size",
+              colWindow: "From window",
+              nameLabel: "Name",
+              seats: "People",
+              gapSuggest: "suggestion",
+              gapEmpty: "no plate inserted",
+              colLeft: "From left wall",
+              colNearest: "Nearest table",
+              small: "Small",
+              big: "Large",
+              long: "Long table",
+              plateS: "small plate", plateM: "medium plate", plateL: "large plate",
+              furniture: { sidebord: "Old table" },
+              gapLabel: "Gap", noPlate: "no plate fits", needPlate: "Plates needed",
+              est: "est.",
+              warnTitle: "Too tight for a waitress",
+              warnOk: "Every gap is at least",
+              scale: "1 square = 1 m",
+              empty: "No tables on the floor yet.",
+              none: "none",
+            }
+          : {
+              kicker: "Spisestua",
+              listTitle: "Målliste",
+              colTable: "Bord",
+              colSize: "Størrelse",
+              colWindow: "Fra vindu",
+              colLeft: "Fra venstre vegg",
+              colNearest: "Nærmeste bord",
+              small: "Lite",
+              big: "Stort",
+              long: "Langbord",
+              plateS: "liten plate", plateM: "medium plate", plateL: "stor plate",
+              nameLabel: "Navn",
+              seats: "Personer",
+              gapSuggest: "forslag",
+              gapEmpty: "ingen plate lagt inn",
+              furniture: { sidebord: "Gammelt bord" },
+              gapLabel: "Mellomrom", noPlate: "ingen plate passer", needPlate: "Trenger plate",
+              est: "anslag",
+              warnTitle: "For trangt for servitør",
+              warnOk: "Alle avstander er minst",
+              scale: "1 rute = 1 m",
+              empty: "Ingen bord på gulvet ennå.",
+              none: "ingen",
+            };
+
+      function fmt(cm) {
+        if (cm == null || !Number.isFinite(cm)) return "–";
+        const dec = lang === "en" ? "." : ",";
+        const v = Math.round(cm);
+        if (Math.abs(v) >= 100) return `${(v / 100).toFixed(2).replace(".", dec)} m`;
+        return `${v} cm`;
+      }
+      const PLATES = ["plateS", "plateM", "plateL"];
+      const isPlate = (size) => size === "long";
+      function normSize(table) {
+        if (PLATES.includes(table.size)) return "long"; // plates are inserts, not tables
+        return dims[table.size] ? table.size : "small";
+      }
+      function isRound(item) {
+        const spec = dims[normSize(item)];
+        return spec && spec.d != null;
+      }
+      // The A4 is for the staff: a guest name beats a table number.
+      function item0Label(table) {
+        if (table.lead === false) return "";
+        return table.name || table.label || "";
+      }
+      function obstacleName(item) {
+        if (item.kind === "furniture") return copy.furniture[item.size] || item.size;
+        return `${copy.colTable} ${item.label}`;
+      }
+      function customCm(table) {
+        const c = normSize(table) === "long" ? table.custom : null;
+        return c && Number.isFinite(c.w) && Number.isFinite(c.l) ? c : null;
+      }
+      function sizeCm(table) {
+        const own = customCm(table);
+        if (own) return { w: own.w, h: own.l };
+        const spec = dims[normSize(table)];
+        if (spec.d != null) return { w: spec.d, h: spec.d };
+        return { w: spec.w, h: spec.l };
+      }
+      function tableCm(table) {
+        const s = sizeCm(table);
+        return table.rotated ? { w: s.h, h: s.w } : { w: s.w, h: s.h };
+      }
+      function centerCm(table) {
+        return { x: (table.x / 100) * r.w, y: (table.y / 100) * r.h };
+      }
+      function clearances(table) {
+        const c = centerCm(table);
+        const s = tableCm(table);
+        return {
+          top: c.y - s.h / 2,
+          bottom: r.h - (c.y + s.h / 2),
+          left: c.x - s.w / 2,
+          right: r.w - (c.x + s.w / 2),
+        };
+      }
+      const withChairs = state.withChairs !== false;
+      function occupiedCm(item) {
+        const s = tableCm(item);
+        if (!withChairs || item.kind === "furniture") return s;
+        if (!(item.seatsRender || []).length) return s;
+        const pad = (dims.chairBig ? dims.chairBig.d : 54) * 1.12 * 2;
+        return { w: s.w + pad, h: s.h + pad };
+      }
+      function gapCm(a, b) {
+        const ca = centerCm(a);
+        const cb = centerCm(b);
+        const sa = occupiedCm(a);
+        const sb = occupiedCm(b);
+        if (isRound(a) && isRound(b)) {
+          return Math.hypot(ca.x - cb.x, ca.y - cb.y) - sa.w / 2 - sb.w / 2;
+        }
+        const dx = Math.abs(ca.x - cb.x) - (sa.w + sb.w) / 2;
+        const dy = Math.abs(ca.y - cb.y) - (sa.h + sb.h) / 2;
+        if (dx > 0 && dy > 0) return Math.hypot(dx, dy);
+        return Math.max(dx, dy);
+      }
+      function sizeLabel(table) {
+        const size = normSize(table);
+        const spec = dims[size];
+        const tag = dims.est[size] ? ` (${copy.est})` : "";
+        const own = customCm(table);
+        if (own) return `${copy[size]} ${own.w}×${own.l} cm`;
+        if (isPlate(size)) return `${copy[size]} ${spec.w}×${spec.l} cm${tag}`;
+        return `${copy[size]} ⌀${Math.round(spec.d)} cm${tag}`;
+      }
+
+      document.documentElement.lang = lang;
+      document.getElementById("kicker").textContent = copy.kicker;
+      document.getElementById("list-title").textContent = copy.listTitle;
+      document.getElementById("meta").innerHTML =
+        `${new Date().toLocaleString(lang === "en" ? "en-GB" : "nb-NO")}<br />${fmt(r.w)} × ${fmt(r.h)}`;
+      document.getElementById("scale-note").textContent = `${copy.scale} · ${fmt(r.w)} × ${fmt(r.h)}`;
+      document.getElementById("print").textContent = lang === "en" ? "Print / save as PDF" : "Skriv ut / lagre som PDF";
+
+      const room = document.getElementById("room");
+      room.style.aspectRatio = `${r.w} / ${r.h}`;
+
+      const mx = (10000 / r.w).toFixed(4);
+      const my = (10000 / r.h).toFixed(4);
+      const grid = document.createElement("div");
+      grid.className = "grid-layer";
+      grid.style.backgroundImage = [
+        `repeating-linear-gradient(90deg, rgba(47,74,60,0.30) 0 1px, transparent 1px ${mx}%)`,
+        `repeating-linear-gradient(180deg, rgba(47,74,60,0.30) 0 1px, transparent 1px ${my}%)`,
+        `repeating-linear-gradient(90deg, rgba(47,74,60,0.12) 0 1px, transparent 1px ${(mx / 2).toFixed(4)}%)`,
+        `repeating-linear-gradient(180deg, rgba(47,74,60,0.12) 0 1px, transparent 1px ${(my / 2).toFixed(4)}%)`,
+      ].join(",");
+      room.appendChild(grid);
+
+      const rulers = document.createElement("div");
+      rulers.className = "ruler-layer";
+      for (let m = 1; m * 100 < r.w; m += 1) {
+        const el = document.createElement("span");
+        el.className = "top";
+        el.style.left = `${((m * 100) / r.w) * 100}%`;
+        el.textContent = m;
+        rulers.appendChild(el);
+      }
+      for (let m = 1; m * 100 < r.h; m += 1) {
+        const el = document.createElement("span");
+        el.className = "left";
+        el.style.top = `${((m * 100) / r.h) * 100}%`;
+        el.textContent = m;
+        rulers.appendChild(el);
+      }
+      room.appendChild(rulers);
+
+      const shell = document.createElement("div");
+      shell.innerHTML = `<div class="fixture window"></div><div class="fixture corner"></div>`;
+      while (shell.firstChild) room.appendChild(shell.firstChild);
+
+      const fixtures = state.fixtures || [
+        { id: "double-1", wall: "left", along: 24 },
+        { id: "double-2", wall: "left", along: 68 },
+        { id: "waitress", wall: "bottom", along: 50 },
+      ];
+      for (const fixture of fixtures) {
+        const el = document.createElement("div");
+        el.className = `fixture door ${fixture.wall}`;
+        if (fixture.wall === "left") el.style.top = `${fixture.along}%`;
+        else el.style.left = `${fixture.along}%`;
+        room.appendChild(el);
+      }
+
+      const furniture = (state.furniture || []).filter((item) => dims[item.size]);
+      for (const item of furniture) {
+        item.kind = "furniture";
+        const cm = sizeCm(item);
+        const el = document.createElement("div");
+        el.className = "furniture";
+        el.style.left = `${item.x}%`;
+        el.style.top = `${item.y}%`;
+        el.style.width = `${(cm.w / r.w) * 100}%`;
+        el.style.height = `${(cm.h / r.h) * 100}%`;
+        el.textContent = copy.furniture[item.size] || "";
+        room.appendChild(el);
+      }
+
+      const tables = (state.tables || []).filter((item) => item.zone === "room");
+      const leads = tables.filter((item) => item.lead !== false);
+
+      // Plates laid into the gaps. app.js bakes the geometry into
+      // groupInfo.strips so the print does not redo gapBand / orderGroup.
+      for (const lead of leads) {
+        for (const strip of (lead.groupInfo && lead.groupInfo.strips) || []) {
+          const el = document.createElement("div");
+          el.className = "plate-insert";
+          el.style.left = strip.left + "%";
+          el.style.top = strip.top + "%";
+          el.style.width = strip.w + "%";
+          el.style.height = strip.h + "%";
+          room.appendChild(el);
+        }
+      }
+      for (const table of tables) {
+        const el = document.createElement("div");
+        const cm = tableCm(table);
+        el.className = `table ${isPlate(normSize(table)) ? "plate" : "round"}`;
+        el.style.left = `${table.x}%`;
+        el.style.top = `${table.y}%`;
+        el.style.width = `${(cm.w / r.w) * 100}%`;
+        el.style.height = `${(cm.h / r.h) * 100}%`;
+        const text = item0Label(table);
+        if (table.name && table.lead !== false) el.classList.add("named");
+        el.textContent = text;
+        room.appendChild(el);
+      }
+
+      function labelSortKey(label) {
+        const m = String(label ?? "").match(/^(\d+)?(.*)$/);
+        return [m[1] ? Number(m[1]) : 999, (m[2] || "").toLowerCase()];
+      }
+      const chairPct = {
+        w: ((dims.chairBig ? dims.chairBig.d : 54) / r.w) * 100,
+        h: ((dims.chairBig ? dims.chairBig.d : 54) / r.h) * 100,
+      };
+      const usedMarks = new Set();
+      for (const table of tables) {
+        for (const seat of table.seatsRender || []) {
+          const mark = markOf(seat.mark);
+          const el = document.createElement("div");
+          el.className = "seat" + (mark ? " marked" : "");
+          el.style.left = seat.x + "%";
+          el.style.top = seat.y + "%";
+          el.style.width = chairPct.w + "%";
+          el.style.height = chairPct.h + "%";
+          if (mark) {
+            el.style.background = mark.color;
+            el.style.borderColor = mark.color;
+            el.style.color = inkOn(mark.color);
+            el.textContent = mark.code;
+            usedMarks.add(mark.key);
+          }
+          room.appendChild(el);
+        }
+      }
+
+      const sorted = leads.slice().sort((a, b) => {
+        const ka = labelSortKey(a.label);
+        const kb = labelSortKey(b.label);
+        return ka[0] - kb[0] || ka[1].localeCompare(kb[1]);
+      });
+      const listBody = document.getElementById("list-body");
+      if (!sorted.length) {
+        listBody.innerHTML = `<p>${copy.empty}</p>`;
+      } else {
+        const rows = sorted
+          .map((table) => {
+            const c = clearances(table);
+            let near = null;
+            for (const other of [...tables, ...furniture]) {
+              if (other === table) continue;
+              if (table.group && other.group === table.group) continue;
+              const gap = gapCm(table, other);
+              if (!near || gap < near.gap) near = { table: other, gap };
+            }
+            const nearCell = near
+              ? `<span class="${near.gap < dims.aisle ? "tight" : ""}">${obstacleName(near.table)} · ${fmt(near.gap)}</span>`
+              : copy.none;
+            return `<tr><td class="n">${table.label}</td><td>${table.name || "&ndash;"}</td><td>${table.guests != null ? table.guests : ""}</td><td>${sizeLabel(table)}</td><td>${fmt(c.top)}</td><td>${fmt(c.left)}</td><td>${nearCell}</td></tr>`;
+          })
+          .join("");
+        listBody.innerHTML = `<table class="measure"><thead><tr><th>${copy.colTable}</th><th>${copy.nameLabel}</th><th>${copy.seats}</th><th>${copy.colSize}</th><th>${copy.colWindow}</th><th>${copy.colLeft}</th><th>${copy.colNearest}</th></tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      const items = [...tables, ...furniture];
+      const cmNum = (value) => {
+        if (!Number.isFinite(value)) return "-";
+        const r1 = Math.round(value * 10) / 10;
+        return Number.isInteger(r1) ? String(r1) : r1.toFixed(1).replace(".", lang === "en" ? "." : ",");
+      };
+      const plateLines = [];
+      for (const lead of leads) {
+        const info = lead.groupInfo;
+        if (!info || !info.gaps || !info.gaps.length) continue;
+        for (const entry of info.gaps) {
+          let names = "";
+          let total = 0;
+          let ok = false;
+          if (entry.plates && entry.plates.length) {
+            const counts = new Map();
+            for (const size of entry.plates) counts.set(size, (counts.get(size) || 0) + 1);
+            names = [...counts.entries()]
+              .map(([size, c]) => (c > 1 ? c + " x " : "") + (copy[size] || size))
+              .join(" + ");
+            total = cmNum(
+              entry.plates.reduce((sum, size) => sum + ((dims[size] && dims[size].w) || 0), 0),
+            );
+            ok = true;
+          } else if (entry.plate) {
+            names = (entry.plate.parts || [])
+              .map((p) => (p.count > 1 ? p.count + " x " : "") + (copy[p.size] || p.size))
+              .join(" + ");
+            total = Math.round(entry.plate.total);
+            ok = entry.plate.fits;
+            if (names) names = (copy.gapSuggest || "forslag") + ": " + names;
+          }
+          plateLines.push(
+            `<li>${copy.colTable} ${lead.label}: ${copy.gapLabel} <strong>${cmNum(entry.gap)} cm</strong> &rarr; ` +
+              (names ? `${names} = ${total} cm` : copy.gapEmpty || copy.noPlate) +
+              (ok ? "" : ' <span class="tight">!</span>') +
+              `</li>`,
+          );
+        }
+      }
+
+      const tight = [];
+      for (let i = 0; i < items.length; i += 1) {
+        for (let j = i + 1; j < items.length; j += 1) {
+          if (items[i].kind === "furniture" && items[j].kind === "furniture") continue;
+          if (items[i].group && items[i].group === items[j].group) continue;
+          const gap = gapCm(items[i], items[j]);
+          if (gap < dims.aisle) tight.push({ a: items[i], b: items[j], gap });
+        }
+      }
+      tight.sort((x, y) => x.gap - y.gap);
+      if (plateLines.length) {
+        const pl = document.createElement("div");
+        pl.className = "plates";
+        pl.innerHTML = `<p class="kicker">${copy.needPlate}</p><ul>${plateLines.join("")}</ul>`;
+        document.querySelector("section.list").appendChild(pl);
+      }
+
+      if (usedMarks.size) {
+        const lg = document.createElement("div");
+        lg.className = "legend";
+        lg.innerHTML = SEAT_MARKS.filter((m) => usedMarks.has(m.key))
+          .map(
+            (m) =>
+              `<span><span class="k" style="background:${m.color};color:${inkOn(m.color)}">${m.code}</span>${lang === "en" ? m.en : m.no}</span>`,
+          )
+          .join("");
+        document.querySelector("section.list").appendChild(lg);
+      }
+
+      const warnEl = document.getElementById("warnings");
+      if (!tables.length) {
+        warnEl.innerHTML = "";
+      } else if (!tight.length) {
+        warnEl.innerHTML = `<p class="ok">✓ ${copy.warnOk} ${fmt(dims.aisle)}.</p>`;
+      } else {
+        warnEl.innerHTML =
+          `<p class="warn-title">⚠ ${copy.warnTitle} (&lt; ${fmt(dims.aisle)})</p><ul>` +
+          tight.map((p) => `<li>${obstacleName(p.a)} ↔ ${obstacleName(p.b)}: <strong>${fmt(p.gap)}</strong></li>`).join("") +
+          `</ul>`;
+      }
+
+      document.getElementById("print").addEventListener("click", () => window.print());
+      window.addEventListener("load", () => setTimeout(() => window.print(), 300));
+    </script>
+  </body>
+</html>
