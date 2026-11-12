@@ -8,6 +8,15 @@ regn ut hvilke bordplater langbordet trenger, merk allergier per plass og skriv 
 `index.html` her er hele appen i én fil. Åpner du den rett fra disk eller på GitHub Pages,
 lagres planen bare i den nettleseren (ikke den felles planen).
 
+## Last ned og bruk (ingen installering)
+
+1. Last ned: **[Norsken.zip](https://github.com/uwu6967/norsken/archive/refs/heads/main.zip)** og pakk den ut.
+2. Dobbeltklikk **`index.html`**: bordplanen åpner i nettleseren. Den lagres i den nettleseren.
+3. ResDiary-bokmerkene: dobbeltklikk **`bokmerker.html`** og dra de grønne knappene opp på
+   bokmerkelinja.
+
+Det er alt. Resten av filene trenger du ikke røre.
+
 ## Det den gjør
 
 - **Rommet** i ekte mål (7,00 × 13,60 m), dører, vinduer, sidebordet, rutenett per meter.
@@ -36,12 +45,14 @@ Merket «ANSLAG» i appen til noen måler dem (endres under **Mål**):
 
 | | |
 |---|---|
-| `index.html` | ferdig app i én fil (bygget fra `src/`) |
+| `index.html` | **ferdig app** i én fil, bare åpne den |
+| `bokmerker.html` | **ResDiary-bokmerkene**, dra dem til bokmerkelinja |
 | `src/` | kildekoden: `index.html`, `app.js`, `styles.css`, `print.html` |
 | `tools/build.py` | bygger `index.html` fra `src/` |
 | `resdiary/` | bokmerkene for ResDiary-utskriften |
 
-Bygg etter endringer i `src/`:
+Bare for den som endrer koden (du trenger ikke dette): etter endringer i `src/` eller
+`resdiary/` lager denne `index.html` og `bokmerker.html` på nytt:
 
 ```
 python3 tools/build.py

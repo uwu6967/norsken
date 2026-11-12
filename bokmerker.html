@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Norsken – ResDiary-bokmerker</title>
+<style>
+body { margin: 0; background: #f3ebe0; color: #1d1812; font: 16px/1.5 system-ui, sans-serif; }
+main { max-width: 640px; margin: 0 auto; padding: 24px 16px 40px; }
+h1 { font-family: Georgia, serif; margin: 0 0 4px; }
+ol.steps { padding-left: 20px; }
+ul.list { list-style: none; padding: 0; display: grid; gap: 14px; }
+ul.list li { background: #fffaf3; border-radius: 14px; padding: 14px 16px; box-shadow: 0 6px 20px rgba(40,28,16,.12); }
+ul.list p { margin: 8px 0 0; color: #6d6258; font-size: 0.92rem; }
+a.bm { display: inline-block; background: #2f4a3c; color: #fff; text-decoration: none; font-weight: 600;
+        border-radius: 999px; padding: 8px 16px; cursor: grab; }
+.note { color: #6d6258; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+<h1>ResDiary-bokmerker</h1>
+<ol class="steps">
+<li>Vis bokmerkelinja: <b>Ctrl + Shift + B</b>.</li>
+<li><b>Dra</b> en grønn knapp opp på bokmerkelinja (ikke klikk den her).</li>
+<li>Åpne ResDiary → Diary → <b>Print</b>, og klikk bokmerket.</li>
+</ol>
+<ul class="list">
+<li><a class="bm" href="javascript:(function(){var DROP=[&quot;telefon&quot;,&quot;e-post&quot;,&quot;epost&quot;];document.querySelectorAll(&quot;tr.blank&quot;).forEach(function(r){r.remove();});document.querySelectorAll(&quot;tr&quot;).forEach(function(r){var c=Array.from(r.querySelectorAll(&quot;td&quot;));if(c.length&amp;&amp;c.every(function(d){return !d.textContent.trim();}))r.remove();});document.querySelectorAll(&quot;table&quot;).forEach(function(t){var rows=Array.from(t.rows),head=rows.find(function(r){return Array.from(r.cells).some(function(c){return /telefon/i.test(c.textContent);});});if(!head)return;var n=head.cells.length,kill=[];Array.from(head.cells).forEach(function(c,i){var s=c.textContent.toLowerCase().replace(/\s+/g,&quot;&quot;);if(DROP.some(function(w){return s.indexOf(w.replace(/\s+/g,&quot;&quot;))&gt;=0;}))kill.push(i);});kill.sort(function(a,b){return b-a;});rows.forEach(function(r){if(r.cells.length===n)kill.forEach(function(i){r.cells[i].remove();});});});})();">Rydd liste</a><p>Fjerner tomme rader og kolonnene Telefon og E-post på utskriften.</p></li>
+<li><a class="bm" href="javascript:(function(){var out=[];document.querySelectorAll(&quot;table&quot;).forEach(function(t){var rows=Array.from(t.rows),head=rows.find(function(r){return Array.from(r.cells).some(function(c){return /gjester/i.test(c.textContent);});});if(!head)return;var idx=function(re){return Array.from(head.cells).findIndex(function(c){return re.test(c.textContent);});};var ti=idx(/^\s*tid/i),gi=idx(/gjester/i),bi=idx(/^\s*bord\s*$/i);rows.forEach(function(r){if(r===head||r.cells.length!==head.cells.length)return;var tm=r.cells[ti].textContent.replace(/\s+/g,&quot;&quot;);if(!/^\d{1,2}[:.]\d{2}$/.test(tm))return;var g=parseInt(r.cells[gi].textContent,10)||2;out.push(tm+&quot; &quot;+g);});});var txt=out.join(&quot;\n&quot;);if(!txt){alert(&quot;Fant ingen bookinger her.&quot;);return;}var done=function(){alert(out.length+&quot; bookinger kopiert (bare tid + antall, ingen navn). Lim inn i Bordplan → Reservasjoner.&quot;);};if(navigator.clipboard&amp;&amp;navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){prompt(&quot;Kopier:&quot;,txt);});}else{prompt(&quot;Kopier:&quot;,txt);}})();">Til bordplan</a><p>Kopierer tid + antall (ingen navn). Lim inn i bordplanen under Reservasjoner → bord.</p></li>
+<li><a class="bm" href="javascript:(function(){var DROP=[&quot;telefon&quot;,&quot;mobil&quot;,&quot;e-post&quot;,&quot;epost&quot;,&quot;email&quot;];var clean=function(s){return s.replace(/\s+/g,&quot; &quot;).trim();};var esc=function(s){return /[&quot;;\n]/.test(s)?&#x27;&quot;&#x27;+s.replace(/&quot;/g,&#x27;&quot;&quot;&#x27;)+&#x27;&quot;&#x27;:s;};var lines=[],count=0,lastHead=&quot;&quot;;document.querySelectorAll(&quot;table&quot;).forEach(function(t){var rows=Array.from(t.rows),head=rows.find(function(r){return Array.from(r.cells).some(function(c){return /gjester/i.test(c.textContent);});});if(!head)return;var keep=[];Array.from(head.cells).forEach(function(c,i){var s=c.textContent.toLowerCase().replace(/\s+/g,&quot;&quot;);if(!DROP.some(function(w){return s.indexOf(w)&gt;=0;}))keep.push(i);});var ti=Array.from(head.cells).findIndex(function(c){return /^\s*tid/i.test(c.textContent);});var h=keep.map(function(i){return esc(clean(head.cells[i].textContent));}).join(&quot;;&quot;);if(h!==lastHead){lines.push(h);lastHead=h;}rows.forEach(function(r){if(r===head||r.cells.length!==head.cells.length)return;if(ti&gt;=0&amp;&amp;!/^\d{1,2}[:.]\d{2}$/.test(r.cells[ti].textContent.replace(/\s+/g,&quot;&quot;)))return;var v=keep.map(function(i){return esc(clean(r.cells[i].textContent));});if(!v.join(&quot;&quot;).trim())return;lines.push(v.join(&quot;;&quot;));count++;});});if(!count){alert(&quot;Fant ingen bookinger her. Åpne utskriftssiden i ResDiary (Diary → Print) først.&quot;);return;}var d=new Date(),p=function(n){return String(n).padStart(2,&quot;0&quot;);};var name=&quot;resdiary-&quot;+d.getFullYear()+&quot;-&quot;+p(d.getMonth()+1)+&quot;-&quot;+p(d.getDate())+&quot;_&quot;+p(d.getHours())+p(d.getMinutes())+&quot;.csv&quot;;var blob=new Blob([&quot;﻿&quot;+lines.join(&quot;\r\n&quot;)+&quot;\r\n&quot;],{type:&quot;text/csv;charset=utf-8&quot;});var a=document.createElement(&quot;a&quot;);a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);alert(count+&quot; bookinger lagret som &quot;+name+&quot; i Nedlastinger. Filen er bare på denne PC-en.&quot;);})();">Last ned liste</a><p>Lagrer lista (tid, gjester, navn, bord, kommentar) som CSV i Nedlastinger. Uten telefon/e-post. Filen blir bare på PC-en.</p></li>
+</ul>
+<p class="note">Alt skjer bare i nettleseren din. Ingenting sendes noe sted.</p>
+</main>
+</body>
+</html>
