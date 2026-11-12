@@ -103,7 +103,7 @@ const isPlate = (size) => SIZE_KINDS[size] === "plate";
 const i18n = {
   no: {
     kicker: "Spisestua · oppsett",
-    hint: "Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–10, og 11 hvis det trengs.",
+    hint: "Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.",
     tray: "Lager / ikke i bruk",
     print: "Skriv ut / PDF",
     reset: "Tomt rom",
@@ -243,7 +243,7 @@ const i18n = {
   },
   en: {
     kicker: "Dining room · layout",
-    hint: "Storage is blank. Numbers follow the room: 1 bottom left, 6 top right, 16 middle top. The right side is 6–10, and 11 only if that extra table is there.",
+    hint: "Storage is blank. Numbers follow the room: 1 bottom left, 6 top right, 16 middle top. The right side is 6–11.",
     tray: "Storage / not in use",
     print: "Print / PDF",
     reset: "Empty room",
@@ -3535,8 +3535,10 @@ function presetLayout(kind = "usual") {
   const step = (r.h - 2 * 200) / 4;
   // left column, table 1 nearest the waitress door (bottom) is the big one
   for (let i = 0; i < 5; i += 1) put(i === 0 ? "big" : "small", leftX, r.h - 200 - i * step);
-  // right column, 6 at the top
-  for (let i = 0; i < 5; i += 1) put("small", rightX, 200 + i * step);
+  // right column 6-11, 6 at the top (Danny 2026-11-12: "normally there's
+  // table 6 - 11"). Same first/last spot as the left column, six tables.
+  const rightStep = (r.h - 2 * 200) / 5;
+  for (let i = 0; i < 6; i += 1) put("small", rightX, 200 + i * rightStep);
   put("oval", r.w / 2, 170).seatTurn = 30; // 16 is the oval table: 3 + 3, none at the ends
   if (kind === "lunch") {
     // Lunch after a selskap (user photos IMG_2839-2842): two langbord end to end

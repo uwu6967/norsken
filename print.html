@@ -27,7 +27,7 @@
         display: flex;
         justify-content: space-between;
         align-items: end;
-        margin-bottom: 10px;
+        margin-bottom: 4px;
       }
       .kicker {
         margin: 0;
@@ -50,7 +50,7 @@
       }
       .room {
         position: relative;
-        height: 205mm;
+        height: 244mm;
         width: auto;
         max-width: 100%;
         margin: 0 auto;
@@ -184,12 +184,61 @@
         -webkit-print-color-adjust: exact;
       }
 
+      .table {
+        font-size: 15px;
+      }
       .table.named {
-        font-size: 7pt;
+        font-size: 8.5pt;
         font-weight: 700;
         line-height: 1.1;
         overflow-wrap: anywhere;
         padding: 1mm;
+        text-align: center;
+      }
+      .table .sub {
+        display: block;
+        margin-top: 1mm;
+        font-family: Outfit, system-ui, sans-serif;
+        font-size: 7pt;
+        font-weight: 600;
+        color: #4a3f35;
+      }
+      .table .pax {
+        display: block;
+        font-family: Outfit, system-ui, sans-serif;
+        font-size: 7pt;
+        font-weight: 600;
+        color: #4a3f35;
+      }
+      table.arrivals {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      table.arrivals th {
+        text-align: left;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6d6258;
+        padding: 0 10px 5px 0;
+        border-bottom: 1.5px solid #1d1812;
+      }
+      table.arrivals td {
+        padding: 6px 10px 6px 0;
+        border-bottom: 1px solid #d9cbb8;
+      }
+      table.arrivals td.t,
+      table.arrivals td.b {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 650;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .free {
+        margin-top: 10px;
+        font-size: 11px;
       }
 
       .furniture {
@@ -357,12 +406,23 @@
       }
       // Dagens liste: guest names dragged onto tables live only in this
       // browser (NDA), never in the plan. Put them on the printout here.
+      const arrivals = [];
+      const timeOf = (text) => {
+        const m = String(text || "").match(/^(\d{1,2})[:.](\d{2})\s*(.*)$/);
+        return m ? { time: `${m[1].padStart(2, "0")}:${m[2]}`, name: m[3] } : { time: "", name: String(text || "") };
+      };
+      for (const table of state.tables || []) {
+        if (table.zone !== "room" || table.lead === false || !table.name) continue;
+        const parts = timeOf(table.name);
+        arrivals.push({ time: parts.time, name: parts.name, pax: table.guests, table });
+      }
       try {
         const g = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
         if (g && g.placed && Array.isArray(g.list)) {
           for (const table of state.tables || []) {
             if (table.name || table.zone !== "room") continue;
             const on = g.list.filter((x) => g.placed[x.id] === table.id);
+            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table });
             if (on.length) table.name = on.map((x) => `${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
           }
         }
@@ -589,7 +649,9 @@
       const furniture = (state.furniture || []).filter((item) => dims[item.size]);
       for (const item of furniture) {
         item.kind = "furniture";
-        const cm = sizeCm(item);
+        // against the top/bottom wall it lies along the wall (app.js syncFurniture)
+        item.rotated = item.wall === "top" || item.wall === "bottom";
+        const cm = tableCm(item);
         const el = document.createElement("div");
         el.className = "furniture";
         el.style.left = `${item.x}%`;
@@ -625,8 +687,24 @@
         el.style.width = `${(cm.w / r.w) * 100}%`;
         el.style.height = `${(cm.h / r.h) * 100}%`;
         const text = item0Label(table);
-        if (table.name && table.lead !== false) el.classList.add("named");
-        el.textContent = text;
+        const paxWord = lang === "en" ? "pers" : "pers";
+        if (table.name && table.lead !== false) {
+          el.classList.add("named");
+          const name = document.createElement("span");
+          name.textContent = text;
+          const sub = document.createElement("span");
+          sub.className = "sub";
+          sub.textContent = `${copy.colTable} ${table.label} · ${table.guests} ${paxWord}`;
+          el.append(name, sub);
+        } else {
+          el.textContent = text;
+          if (text && table.lead !== false && table.guests) {
+            const pax = document.createElement("span");
+            pax.className = "pax";
+            pax.textContent = `${table.guests} ${paxWord}`;
+            el.appendChild(pax);
+          }
+        }
         room.appendChild(el);
       }
 
@@ -677,7 +755,26 @@
         return ka[0] - kb[0] || ka[1].localeCompare(kb[1]);
       });
       const listBody = document.getElementById("list-body");
-      if (!sorted.length) {
+      const escHtml = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      if (arrivals.length) {
+        const en = lang === "en";
+        document.getElementById("list-title").textContent = en ? "Arrivals" : "Ankomster";
+        arrivals.sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || labelSortKey(a.table.label)[0] - labelSortKey(b.table.label)[0]);
+        const total = arrivals.reduce((sum, a) => sum + (Number(a.pax) || 0), 0);
+        const rows = arrivals
+          .map(
+            (a) =>
+              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${en ? "Dining room" : "Spisestua"}</td><td class="b">${escHtml(a.table.label)}</td></tr>`,
+          )
+          .join("");
+        const taken = new Set(arrivals.map((a) => a.table.id));
+        const free = sorted.filter((t) => !taken.has(t.id) && t.label).map((t) => t.label);
+        listBody.innerHTML =
+          `<table class="arrivals"><thead><tr><th>${en ? "Time" : "Tid"}</th><th>${en ? "Name" : "Navn"}</th><th>${en ? "People" : "Pers."}</th><th>${en ? "Room" : "Rom"}</th><th>${en ? "Table" : "Bord"}</th></tr></thead><tbody>${rows}</tbody></table>` +
+          `<p class="free"><strong>${en ? "Bookings" : "Bookinger"}: ${arrivals.length} · ${en ? "people" : "personer"}: ${total}</strong>${
+            free.length ? ` &nbsp;·&nbsp; ${en ? "Free tables" : "Ledige bord"}: ${escHtml(free.join(", "))}` : ""
+          }</p>`;
+      } else if (!sorted.length) {
         listBody.innerHTML = `<p>${copy.empty}</p>`;
       } else {
         const rows = sorted
@@ -779,7 +876,7 @@
       }
 
       const warnEl = document.getElementById("warnings");
-      if (!tables.length) {
+      if (!tables.length || arrivals.length) {
         warnEl.innerHTML = "";
       } else if (!tight.length) {
         warnEl.innerHTML = `<p class="ok">✓ ${copy.warnOk} ${fmt(dims.aisle)}.</p>`;
