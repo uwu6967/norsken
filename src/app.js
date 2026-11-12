@@ -663,6 +663,10 @@ function normalizeState(parsed) {
 }
 
 let state = loadState();
+// Dagens liste: guest names, local to this browser only (see renderGuests).
+const GUESTS_KEY = "norsken-guests-v1";
+let guests = loadGuests();
+let guestMsg = "";
 let drag = null;
 
 // --- measurement helpers ---------------------------------------------------
@@ -2348,14 +2352,15 @@ function tableButton(table, inTray) {
   // only a per-table custom size is shown.
   const sizeName = own ? `${cmNum(own.w)}×${cmNum(own.l)}` : table.size === "long" || table.size === "oval" ? "" : copy[table.size];
   const floorTag = [sizeName, `${seatsOf(table).length}p`].filter(Boolean).join(" · ");
+  const shownName = table.name || guestLabel(table);
   if (inTray) btn.title = sizeLabelCm(table);
   btn.innerHTML = inTray
     ? sizeName ? `<span class="size-tag">${sizeName}</span>` : ""
     : table.lead === false
       ? sizeName ? `<span class="stack"><span class="size-tag floor-size">${sizeName}</span></span>` : ""
       : `<span class="stack">${
-          table.name
-            ? `<span class="guest-name">${esc(table.name)}</span><span class="num small">${table.label}</span>`
+          shownName
+            ? `<span class="guest-name">${esc(shownName)}</span><span class="num small">${table.label}</span>`
             : `<span class="num">${table.label}</span>`
         }<span class="size-tag floor-size">${floorTag}</span></span>`;
   btn.addEventListener("pointerdown", (event) => startDrag(event, { kind: "table", id: table.id }, btn));
@@ -2422,6 +2427,13 @@ function onMove(event) {
     );
   }
   if (drag.kind === "plate") showGapTarget(event.clientX, event.clientY);
+  if (drag.kind === "guest") {
+    const hit = guestDropTable(event.clientX, event.clientY);
+    document.querySelectorAll("#room .table.guest-target").forEach((n) => {
+      if (n.dataset.id !== hit?.id) n.classList.remove("guest-target");
+    });
+    if (hit) document.querySelector(`#room .table[data-id="${hit.id}"]`)?.classList.add("guest-target");
+  }
 }
 
 // While a plate is in the air, outline the gap it would drop into.
@@ -2486,6 +2498,17 @@ function finishDrag(clientX, clientY) {
       save();
       render();
     }
+    return;
+  }
+  if (current.kind === "guest") {
+    document.querySelectorAll(".guest-target").forEach((n) => n.classList.remove("guest-target"));
+    if (!current.moved) return;
+    const hit = guestDropTable(clientX, clientY);
+    if (hit) guests.placed[current.id] = hit.id;
+    else if (pointIn(document.getElementById("guest-rack"), clientX, clientY)) delete guests.placed[current.id];
+    else return;
+    saveGuests();
+    render();
     return;
   }
   if (current.kind === "plate") {
@@ -2795,7 +2818,7 @@ function renderList() {
           : copy.none;
         return `<tr>
             <td class="num-cell">${table.label}</td>
-            <td>${esc(table.name || "–")}</td>
+            <td>${esc(table.name || guestLabel(table) || "–")}</td>
             <td>${seatsOf(table).length}</td>
             <td>${sizeLabelCm(table)}</td>
             <td>${fmt(c.top)}</td>
@@ -2984,6 +3007,7 @@ function render() {
     renderDrawer();
     renderPaintingCard();
     renderBookings();
+    renderGuests();
   } catch (error) {
     console.error(error);
   }
@@ -3534,6 +3558,198 @@ document.getElementById("lunch-btn")?.addEventListener("click", (event) => {
   presetLayout("lunch");
 });
 
+// --- Dagens liste (guest list from ResDiary) --------------------------------
+// The CSV that the «Last ned liste» bookmark saves on the PC. Staff open it
+// here and drag each name onto a table themselves - nothing is auto-seated.
+// Guest names are NDA data: they live ONLY in this browser under their own
+// key, never in `state`, so they are never part of the shared plan.
+
+function loadGuests() {
+  try {
+    const g = JSON.parse(localStorage.getItem(GUESTS_KEY) || "null");
+    if (g && Array.isArray(g.list)) {
+      return { file: String(g.file || ""), list: g.list, placed: g.placed && typeof g.placed === "object" ? g.placed : {} };
+    }
+  } catch {}
+  return { file: "", list: [], placed: {} };
+}
+
+function saveGuests() {
+  try {
+    localStorage.setItem(GUESTS_KEY, JSON.stringify(guests));
+  } catch {}
+}
+
+function parseCsv(text) {
+  text = String(text || "").replace(/^﻿/, "");
+  const first = text.split(/\r?\n/, 1)[0] || "";
+  const sep = (first.match(/;/g) || []).length >= (first.match(/,/g) || []).length ? ";" : ",";
+  const rows = [];
+  let row = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"' && text[i + 1] === '"') {
+        cell += '"';
+        i += 1;
+      } else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"') quoted = true;
+    else if (ch === sep) {
+      row.push(cell);
+      cell = "";
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+    } else cell += ch;
+  }
+  if (cell || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows.map((r) => r.map((c) => c.replace(/\s+/g, " ").trim())).filter((r) => r.some(Boolean));
+}
+
+function guestsFromCsv(text) {
+  const rows = parseCsv(text);
+  const isHead = (r) => r.some((c) => /gjester|antall|pax/i.test(c)) && r.some((c) => /^tid|time/i.test(c));
+  const out = [];
+  let head = null;
+  for (const r of rows) {
+    if (isHead(r)) {
+      head = r;
+      continue;
+    }
+    if (!head) continue;
+    const col = (re, skip = []) => head.findIndex((c, i) => re.test(c) && !skip.includes(i));
+    const ti = col(/^tid|^time/i);
+    const gi = col(/gjester|antall|pax|covers|personer/i);
+    const bi = col(/^bord|^table/i);
+    const ci = col(/komment|merknad|notat|note|spesial|ønske/i);
+    let ni = col(/navn|name|kunde|gjest(?!er)/i, [ti, gi, bi, ci]);
+    if (ni < 0) ni = head.findIndex((_, i) => ![ti, gi, bi, ci].includes(i));
+    const time = (r[ti] || "").replace(".", ":");
+    const name = (r[ni] || "").slice(0, 40);
+    if (!name && !time) continue;
+    out.push({
+      id: `g${out.length}`,
+      time,
+      name,
+      pax: parseInt(r[gi], 10) || null,
+      rd: bi >= 0 ? r[bi] || "" : "",
+      note: ci >= 0 ? (r[ci] || "").slice(0, 120) : "",
+    });
+  }
+  return out.sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+}
+
+// A placed guest only counts while its table is on the floor.
+function guestTable(guest) {
+  const table = getTable(guests.placed[guest.id]);
+  return table && table.zone === "room" ? table : null;
+}
+
+function guestsOn(table) {
+  return guests.list.filter((g) => guests.placed[g.id] === table.id && table.zone === "room");
+}
+
+function guestLabel(table) {
+  return guestsOn(table)
+    .map((g) => `${g.time ? `${g.time} ` : ""}${g.name}`.trim())
+    .join(" / ");
+}
+
+// The table under the pointer; a langbord half hands over to the half that
+// carries the name.
+function guestDropTable(x, y) {
+  const node = document.elementsFromPoint(x, y).find((n) => n.classList?.contains("table") && n.closest("#room"));
+  let table = node ? getTable(node.dataset.id) : null;
+  if (table && table.lead === false && table.group) {
+    table = roomTables().find((item) => item.group === table.group && item.lead !== false) || table;
+  }
+  return table;
+}
+
+function renderGuests() {
+  const en = state.lang === "en";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set("guest-title", en ? "Today's list" : "Dagens liste");
+  set("guest-open", en ? "Open list from PC" : "Åpne liste fra PC");
+  set("guest-clear", en ? "Clear list" : "Tøm liste");
+  const clear = document.getElementById("guest-clear");
+  if (clear) clear.hidden = !guests.list.length;
+  const placed = guests.list.filter((g) => guestTable(g)).length;
+  set(
+    "guest-note",
+    guestMsg ||
+    (guests.list.length
+      ? en
+        ? `${guests.file} · ${guests.list.length} bookings, ${placed} seated. Drag a name onto a table; drag it back here to remove.`
+        : `${guests.file} · ${guests.list.length} bookinger, ${placed} plassert. Dra et navn til et bord. Dra det tilbake hit for å fjerne.`
+      : en
+        ? "Open the file from the «Last ned liste» bookmark. The names stay in this browser only."
+        : "Åpne fila fra bokmerket «Last ned liste». Navnene blir bare i denne nettleseren."),
+  );
+  const list = document.getElementById("guest-list");
+  if (!list) return;
+  list.innerHTML = "";
+  for (const g of guests.list) {
+    const table = guestTable(g);
+    const li = document.createElement("li");
+    li.className = `guest-item${table ? " placed" : ""}`;
+    li.dataset.id = g.id;
+    li.innerHTML = `<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${
+      g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""
+    }${table ? `<span class="g-table">→ ${esc(table.label)}</span><button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Remove from table" : "Fjern fra bordet"}">✕</button>` : ""}${
+      g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
+    }`;
+    li.addEventListener("pointerdown", (event) => {
+      if (event.target.closest(".g-x")) return;
+      startDrag(event, { kind: "guest", id: g.id }, li);
+    });
+    list.appendChild(li);
+  }
+}
+
+document.getElementById("guest-file")?.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  const list = guestsFromCsv(await file.text());
+  if (!list.length) {
+    guestMsg = state.lang === "en" ? "No bookings found in that file." : "Fant ingen bookinger i den fila.";
+    render();
+    return;
+  }
+  guestMsg = "";
+  guests = { file: file.name, list, placed: {} };
+  saveGuests();
+  render();
+});
+
+document.getElementById("guest-clear")?.addEventListener("click", (event) => {
+  if (!armed(event.currentTarget, state.lang === "en" ? "Sure?" : "Sikker?")) return;
+  guests = { file: "", list: [], placed: {} };
+  saveGuests();
+  render();
+});
+
+document.getElementById("guest-list")?.addEventListener("click", (event) => {
+  const id = event.target.closest(".g-x")?.dataset.unplace;
+  if (!id) return;
+  delete guests.placed[id];
+  saveGuests();
+  render();
+});
+
 // --- print in the hosted page -------------------------------------------------
 // The hosted frame blocks window.print and new tabs. There the button builds a
 // self-contained copy of print.html with the plan baked in and offers it as a
@@ -3552,7 +3768,11 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
     save();
     const html = await (await fetch("print.html")).text();
     const data = JSON.stringify(state).replace(/</g, "\\u003c");
-    const baked = html.replace("<script>", `<script>window.__NORSKEN_STATE__ = ${data};</script>\n    <script>`);
+    const guestData = JSON.stringify(guests).replace(/</g, "\\u003c");
+    const baked = html.replace(
+      "<script>",
+      `<script>window.__NORSKEN_STATE__ = ${data}; window.__NORSKEN_GUESTS__ = ${guestData};</script>\n    <script>`,
+    );
     const day = new Date().toISOString().slice(0, 10);
     await downloads.save({ filename: `norsken-oppsett-${day}.html`, data: baked });
   } catch (error) {

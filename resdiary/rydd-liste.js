@@ -1,6 +1,6 @@
 /* Norsken – «Rydd liste»: fjerner tomme rader + Telefon/E-post-kolonnene på ResDiary-utskriften. Bokmerke-versjon: se README.md */
 (function(){
-var DROP=["telefon","e-post","epost"];
+var DROP=["telefon","e-post","epost","booket","kundekod","forhånds","forhands"];
 document.querySelectorAll("tr.blank").forEach(function(r){r.remove();});
 document.querySelectorAll("tr").forEach(function(r){var c=Array.from(r.querySelectorAll("td"));if(c.length&&c.every(function(d){return !d.textContent.trim();}))r.remove();});
 document.querySelectorAll("table").forEach(function(t){

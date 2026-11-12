@@ -1242,3 +1242,85 @@ textarea {
   background: #ffe866;
   color: #1d1812;
 }
+
+/* --- Dagens liste: guest names from ResDiary, dragged onto tables -------- */
+.guest-rack {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(61, 48, 36, 0.18);
+}
+.guest-open {
+  cursor: pointer;
+}
+.guest-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.guest-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  background: white;
+  border: 1px solid #e0d3c3;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 0.86rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.guest-item:active {
+  cursor: grabbing;
+}
+.guest-item .g-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--pine);
+}
+.guest-item .g-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.guest-item .g-pax {
+  color: var(--muted);
+}
+.guest-item .g-note {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+.guest-item.placed {
+  background: var(--paper-2);
+  opacity: 0.75;
+}
+.guest-item .g-table {
+  font-weight: 700;
+  color: var(--pine);
+}
+.guest-item .g-x {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0 2px;
+}
+.drag-ghost.guest-item {
+  width: auto !important;
+  height: auto !important;
+  max-width: 240px;
+  opacity: 0.92;
+  box-shadow: var(--shadow);
+}
+#room .table.guest-target {
+  outline: 3px solid var(--pine);
+  outline-offset: 3px;
+}

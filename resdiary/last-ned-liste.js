@@ -1,6 +1,6 @@
 /* Norsken – «Last ned liste»: lagrer bookinglista fra ResDiary-utskriften som CSV på PC-en (Nedlastinger). Telefon/e-post tas ikke med. Filen blir bare på PC-en – aldri legg den i repoen. Bokmerke-versjon: se README.md */
 (function(){
-var DROP=["telefon","mobil","e-post","epost","email"];
+var DROP=["telefon","mobil","e-post","epost","email","booket","kundekod","forhånds","forhands"];
 var clean=function(s){return s.replace(/\s+/g," ").trim();};
 var esc=function(s){return /[";\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};
 var lines=[],count=0,lastHead="";
