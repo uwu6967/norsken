@@ -9,4 +9,5 @@
 - NDA: never commit guest names, phone numbers, emails, or any photos.
 - Edit `src/` or `resdiary/`, then ALWAYS run `python3 tools/build.py` and commit the output
   (`index.html`, `print.html`, `LES-MEG.txt`, bookmark codes in the READMEs). The user never builds: the repo must be download-and-use.
+  (built `index.html` + `print.html`; do not pass `capabilities`, so db/downloads/user stay).
 - Context: `docs/HANDOFF.md`. Keep replies short and just build.
