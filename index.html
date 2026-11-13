@@ -1344,47 +1344,490 @@ textarea {
   display: none !important;
 }
 
+
+/* =====================================================================
+   NEW LOOK (2026-11-13): big, calm, easy to hit – and a bit of show.
+   Everything below overrides the older rules above.
+   ===================================================================== */
+
+:root {
+  --glass: rgba(255, 250, 243, 0.08);
+  --glass-line: rgba(255, 250, 243, 0.18);
+  --glow: rgba(196, 165, 116, 0.55);
+  --burgundy: #7a2a35;
+}
+
+html {
+  font-size: 17px; /* bigger text everywhere */
+}
+
+body {
+  background:
+    radial-gradient(900px 520px at 12% -8%, rgba(196, 165, 116, 0.35), transparent 60%),
+    radial-gradient(800px 600px at 95% 10%, rgba(122, 42, 53, 0.45), transparent 60%),
+    radial-gradient(900px 700px at 50% 110%, rgba(47, 74, 60, 0.55), transparent 60%),
+    linear-gradient(180deg, #2a221b 0%, #15110d 100%);
+  background-attachment: fixed;
+  background-size: 140% 140%, 140% 140%, 140% 140%, 100% 100%;
+  animation: aurora 26s ease-in-out infinite alternate;
+}
+
+@keyframes aurora {
+  0% {
+    background-position: 0% 0%, 100% 0%, 50% 100%, 0 0;
+  }
+  100% {
+    background-position: 30% 20%, 70% 30%, 40% 70%, 0 0;
+  }
+}
+
+/* --- top bar: glass, sticky ------------------------------------------- */
+.topbar {
+  position: sticky;
+  top: 8px;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
+  padding: 14px 18px;
+  border-radius: 26px;
+  background: rgba(30, 24, 18, 0.62);
+  border: 1px solid var(--glass-line);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+.brand {
+  margin-right: auto;
+}
+
+.topbar .kicker {
+  font-size: 0.78rem;
+}
+
+h1 {
+  font-size: 2.4rem;
+  background: linear-gradient(100deg, #fffaf3 0%, #f1d9a8 30%, #c4a574 50%, #fffaf3 70%, #f1d9a8 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 7s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -250% 0;
+  }
+}
+
+/* --- room switch: one big segmented control --------------------------- */
+.room-switch {
+  display: inline-flex;
+  padding: 5px;
+  gap: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-line);
+}
+
+.room-tab {
+  min-height: 52px;
+  min-width: 130px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 250, 243, 0.8);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease, transform 0.15s ease;
+}
+
+.room-tab:hover {
+  color: #fffaf3;
+}
+
+.room-tab.on {
+  background: linear-gradient(135deg, #f1d9a8, #c4a574);
+  color: #1d1812;
+  box-shadow: 0 6px 22px var(--glow);
+}
+
+/* --- buttons: big and friendly ---------------------------------------- */
+.chip,
+.add-btn,
+.status-btn,
+.num-btn {
+  min-height: 48px;
+  padding: 10px 18px;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.chip.big {
+  min-height: 52px;
+  padding: 12px 22px;
+  font-size: 1.05rem;
+  border-radius: 999px;
+}
+
+.chip:hover,
+.add-btn:hover,
+.status-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.chip:active,
+.status-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.chip.primary {
+  background: linear-gradient(135deg, #3f6b55, #2f4a3c);
+  color: #fffaf3;
+  border-color: transparent;
+  box-shadow: 0 8px 22px rgba(47, 74, 60, 0.55);
+}
+
+.chip.gear {
+  background: linear-gradient(135deg, #f1d9a8, #c4a574);
+  color: #1d1812;
+  border-color: transparent;
+}
+
+.chip.gear span[aria-hidden] {
+  display: inline-block;
+  font-size: 1.25rem;
+  margin-right: 6px;
+  transition: transform 0.6s ease;
+}
+
+.chip.gear:hover span[aria-hidden] {
+  transform: rotate(120deg);
+}
+
+.status-btn.active {
+  background: linear-gradient(135deg, #3f6b55, #2f4a3c);
+}
+
+:focus-visible {
+  outline: 3px solid #f1d9a8;
+  outline-offset: 3px;
+}
+
+.hint {
+  font-size: 1rem;
+  color: rgba(255, 250, 243, 0.9);
+  margin: 16px 4px;
+}
+
+/* --- panels: warm paper with a soft gold edge ------------------------- */
+.stage,
+.tray,
+.drawer,
+.measure-list,
+.brush-panel {
+  border: 1px solid rgba(196, 165, 116, 0.35);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.kicker {
+  font-size: 0.78rem;
+}
+
+.brush {
+  min-height: 44px;
+  font-size: 0.95rem;
+}
+
+.booking-panel summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.booking-panel summary .kicker {
+  font-size: 0.95rem;
+}
+
+/* --- the settings panel ------------------------------------------------ */
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  background: rgba(10, 8, 6, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.settings-backdrop.open {
+  opacity: 1;
+}
+
+.settings {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  width: min(460px, 100vw);
+  overflow-y: auto;
+  padding: 22px 22px calc(28px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(500px 300px at 100% 0%, rgba(196, 165, 116, 0.25), transparent 70%),
+    var(--paper);
+  border-left: 1px solid rgba(196, 165, 116, 0.5);
+  box-shadow: -30px 0 80px rgba(0, 0, 0, 0.45);
+  transform: translateX(104%);
+  transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.settings.open {
+  transform: translateX(0);
+}
+
+.settings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.settings-head h2 {
+  margin: 0;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.8rem;
+}
+
+.settings-close {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--paper-2);
+  font-size: 1.3rem;
+}
+
+.set-group {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid #e0d3c3;
+}
+
+.set-group label {
+  font-weight: 600;
+}
+
+.set-group input {
+  font-size: 1.05rem;
+  min-height: 48px;
+}
+
+.set-title {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--window);
+}
+
+/* a toggle row: label on the left, a switch on the right */
+.settings .toggle-row {
+  justify-content: space-between;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  background: white;
+  color: var(--ink);
+  border: 1px solid #e0d3c3;
+  font-size: 1.05rem;
+}
+
+.settings .toggle-row::after {
+  content: "";
+  flex: 0 0 auto;
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 15px 50%, white 11px, transparent 12px),
+    #cfc3b4;
+  transition: background 0.25s ease;
+}
+
+.settings .toggle-row.on {
+  background: #f6efe3;
+  border-color: var(--pine);
+}
+
+.settings .toggle-row.on::after {
+  background:
+    radial-gradient(circle at 39px 50%, white 11px, transparent 12px),
+    linear-gradient(135deg, #3f6b55, #2f4a3c);
+}
+
+/* the language row is a choice, not on/off */
+.settings #lang-btn::after {
+  content: "⇄";
+  width: auto;
+  height: auto;
+  background: none;
+  font-size: 1.3rem;
+}
+
+.settings .measure-panel {
+  margin: 0;
+  padding: 12px 0 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.set-group.danger .danger-btn {
+  background: white;
+  color: var(--warn);
+  border: 2px solid var(--warn);
+}
+
+.set-group.danger .danger-btn.armed {
+  background: var(--warn);
+  color: white;
+}
+
+@media (max-width: 700px) {
+  .topbar {
+    position: static;
+  }
+  .brand {
+    width: 100%;
+  }
+  .room-switch {
+    width: 100%;
+  }
+  .room-tab {
+    flex: 1;
+    min-width: 0;
+  }
+  .topbar-actions {
+    width: 100%;
+  }
+  .topbar-actions .chip.big {
+    flex: 1 1 45%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body,
+  h1 {
+    animation: none;
+  }
+  .settings,
+  .settings-backdrop,
+  .chip,
+  .room-tab {
+    transition: none;
+  }
+}
+
+@media print {
+  .settings,
+  .settings-backdrop {
+    display: none !important;
+  }
+}
+
+/* a hidden button stays hidden whatever its display style */
+button[hidden],
+a[hidden] {
+  display: none !important;
+}
+
 </style>
   </head>
   <body>
     <div class="app">
       <header class="topbar">
-        <div>
+        <div class="brand">
           <p class="kicker" data-i18n="kicker">Spisestua · oppsett</p>
           <h1>Norsken</h1>
         </div>
+        <nav class="room-switch" aria-label="Rom">
+          <button type="button" class="room-tab" data-room="domino">Domino</button>
+          <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
+        </nav>
         <div class="topbar-actions">
-          <button type="button" class="chip" data-room="domino">Domino</button>
-          <button type="button" class="chip" data-room="spisestua">Spisestua</button>
-          <button type="button" class="chip" id="lang-btn">NO</button>
-          <button type="button" class="chip" id="measure-btn">Mål</button>
-          <button type="button" class="chip on" id="grid-btn">Rutenett</button>
-          <button type="button" class="chip on" id="chairs-btn">Med stoler</button>
-          <button type="button" class="chip on" id="paintings-btn">Malerier</button>
-          <a class="chip on" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
-          <button type="button" class="chip" id="preset-btn">Vanlig oppsett</button>
-          <button type="button" class="chip" id="lunch-btn">Lunsj-oppsett</button>
-          <button type="button" class="chip ghost" id="reset-btn">Tomt rom</button>
+          <button type="button" class="chip big" id="preset-btn">Vanlig oppsett</button>
+          <button type="button" class="chip big" id="lunch-btn">Lunsj-oppsett</button>
+          <a class="chip big primary" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
+          <button type="button" class="chip big gear" id="settings-btn" aria-haspopup="dialog" aria-controls="settings">
+            <span aria-hidden="true">⚙</span> <span id="settings-btn-text">Innstillinger</span>
+          </button>
           <span class="chip sync" id="sync-status" hidden></span>
         </div>
       </header>
 
-      <p class="hint" id="hint">Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.</p>
-
-      <section class="measure-panel" id="measure-panel" hidden>
-        <div class="measure-head">
-          <p class="kicker" id="measure-title">Mål i cm</p>
-          <p class="measure-note" id="measure-note"></p>
+      <!-- Alle innstillinger på ett sted -->
+      <div class="settings-backdrop" id="settings-backdrop" hidden></div>
+      <aside class="settings" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+        <div class="settings-head">
+          <h2 id="settings-title">Innstillinger</h2>
+          <button type="button" class="icon-btn settings-close" id="settings-close" aria-label="Lukk">✕</button>
         </div>
-        <div class="measure-fields" id="measure-fields"></div>
-      </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-lang-title">Språk</p>
+          <button type="button" class="chip toggle-row" id="lang-btn">NO</button>
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-view-title">Vis på kartet</p>
+          <button type="button" class="chip toggle-row on" id="grid-btn">Rutenett</button>
+          <button type="button" class="chip toggle-row on" id="chairs-btn">Med stoler</button>
+          <button type="button" class="chip toggle-row on" id="paintings-btn">Malerier</button>
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-book-title">Bordfordeling</p>
+          <label for="book-order" id="book-order-label">Prioritet</label>
+          <input id="book-order" type="text" autocomplete="off" />
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-measure-title">Mål</p>
+          <button type="button" class="chip toggle-row" id="measure-btn">Mål</button>
+          <section class="measure-panel" id="measure-panel" hidden>
+            <div class="measure-head">
+              <p class="kicker" id="measure-title">Mål i cm</p>
+              <p class="measure-note" id="measure-note"></p>
+            </div>
+            <div class="measure-fields" id="measure-fields"></div>
+          </section>
+        </section>
+
+        <section class="set-group danger">
+          <p class="set-title" id="set-room-title">Rommet</p>
+          <button type="button" class="chip big danger-btn" id="reset-btn">Tomt rom</button>
+        </section>
+      </aside>
+
+      <p class="hint" id="hint">Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.</p>
 
       <details class="brush-panel booking-panel" id="booking-panel">
         <summary><span class="kicker" id="book-title">Reservasjoner → bord</span></summary>
         <p class="brush-note" id="book-note"></p>
         <textarea id="book-text" rows="6" autocomplete="off" spellcheck="false"></textarea>
-        <label for="book-order" id="book-order-label">Prioritet</label>
-        <input id="book-order" type="text" autocomplete="off" />
         <div class="book-row">
           <button type="button" class="status-btn active" id="book-run">Fordel bord</button>
           <button type="button" class="status-btn" id="book-clear">Fjern navn fra bordene</button>
@@ -4332,6 +4775,18 @@ function renderChrome() {
   const kicker = document.querySelector(".topbar .kicker");
   if (kicker) kicker.textContent = `${roomName} · ${en ? "layout" : "oppsett"}`;
   document.title = `Norsken — ${roomName}`;
+  const setText = (id, text) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = text;
+  };
+  setText("settings-btn-text", en ? "Settings" : "Innstillinger");
+  setText("settings-title", en ? "Settings" : "Innstillinger");
+  setText("set-lang-title", en ? "Language" : "Språk");
+  setText("set-view-title", en ? "Show on the map" : "Vis på kartet");
+  setText("set-book-title", en ? "Assigning tables" : "Bordfordeling");
+  setText("set-measure-title", en ? "Measurements" : "Mål");
+  setText("set-room-title", en ? "The room" : "Rommet");
+  document.getElementById("lang-btn").textContent = en ? "Norsk / English: English" : "Norsk / English: Norsk";
   document.querySelectorAll("[data-room]").forEach((btn) => {
     btn.textContent = ROOMS[btn.dataset.room][en ? "en" : "no"];
     btn.classList.toggle("on", btn.dataset.room === ROOM_ID);
@@ -5524,6 +5979,39 @@ document.querySelectorAll("[data-room]").forEach((btn) =>
     location.reload();
   }),
 );
+
+// --- Innstillinger: every setting in one panel ------------------------------
+// Opened by the big ⚙ button; closed with ✕, a tap outside it, or Esc.
+(function settingsPanel() {
+  const panel = document.getElementById("settings");
+  const backdrop = document.getElementById("settings-backdrop");
+  const openBtn = document.getElementById("settings-btn");
+  if (!panel || !backdrop || !openBtn) return;
+  const open = () => {
+    panel.hidden = false;
+    backdrop.hidden = false;
+    requestAnimationFrame(() => {
+      panel.classList.add("open");
+      backdrop.classList.add("open");
+    });
+    document.getElementById("settings-close")?.focus();
+  };
+  const close = () => {
+    panel.classList.remove("open");
+    backdrop.classList.remove("open");
+    setTimeout(() => {
+      panel.hidden = true;
+      backdrop.hidden = true;
+    }, 220);
+    openBtn.focus();
+  };
+  openBtn.addEventListener("click", open);
+  document.getElementById("settings-close")?.addEventListener("click", close);
+  backdrop.addEventListener("click", close);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !panel.hidden) close();
+  });
+})();
 
 </script>
   </body>

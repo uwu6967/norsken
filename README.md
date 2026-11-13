@@ -65,6 +65,7 @@ javascript:(function(){var DROP=["telefon","mobil","e-post","epost","email","boo
 - **Dagens liste:** åpne lista fra bokmerket «Last ned liste» og dra hvert navn til et bord selv.
   Navnene blir bare i nettleseren på den PC-en (ikke i den felles planen), og kommer med på utskriften.
 - **Skriv ut / PDF** på A4.
+- **⚙ Innstillinger:** alle innstillinger på ett sted (språk, rutenett, stoler, malerier, prioritet for bordfordeling, mål, tomt rom).
 
 ## Mål som fortsatt er anslag
 
