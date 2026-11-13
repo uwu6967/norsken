@@ -2007,6 +2007,17 @@ a[hidden] {
   border-color: transparent;
 }
 
+/* chairs can be dragged around their table */
+.seat {
+  touch-action: none;
+  cursor: grab;
+}
+.seat.dragging {
+  cursor: grabbing;
+  z-index: 25;
+  box-shadow: 0 0 0 3px rgba(47, 74, 60, 0.45);
+}
+
 </style>
   </head>
   <body>
@@ -4275,7 +4286,48 @@ function seatCount(table) {
 }
 
 // Squares laid around the table, the way chairs actually stand.
+// A chair the waitress dragged keeps its own place around the table
+// (table.seatAngles[index] = degrees from the table centre). The rest stay as
+// laid out. «Jevn ut stolene» clears them.
 function seatPositions(table) {
+  const base = baseSeatPositions(table);
+  const own = table.seatAngles;
+  if (!own || !base.length) return base;
+  return base.map((pos, i) => (Number.isFinite(own[i]) ? placeAround(table, own[i]) : pos));
+}
+
+// Where a chair stands at `deg` around this table (or around the whole joined
+// langbord), with its back to the room.
+function seatRing(table) {
+  const chair = Math.max(20, state.dims.chairBig.d);
+  const off = chair * 0.62;
+  const lead = groupSeatLead(table);
+  if (lead === table) {
+    const run = groupRun(lead);
+    const mid = (run.start + run.end) / 2;
+    return run.axis === "y"
+      ? { c: { x: run.cross, y: mid }, hw: run.across / 2 + off, hh: run.length / 2 + off, round: false }
+      : { c: { x: mid, y: run.cross }, hw: run.length / 2 + off, hh: run.across / 2 + off, round: false };
+  }
+  const s = tableCm(table);
+  return { c: centerCm(table), hw: s.w / 2 + off, hh: s.h / 2 + off, round: table.kind === "round" };
+}
+
+function placeAround(table, deg) {
+  const ring = seatRing(table);
+  const rad = (deg * Math.PI) / 180;
+  const dx = Math.cos(rad);
+  const dy = Math.sin(rad);
+  if (ring.round) return { x: ring.c.x + dx * ring.hw, y: ring.c.y + dy * ring.hw, a: deg };
+  // a rectangle (also the oval and a langbord): slide along its edge
+  const tx = Math.abs(dx) > 1e-6 ? ring.hw / Math.abs(dx) : Infinity;
+  const ty = Math.abs(dy) > 1e-6 ? ring.hh / Math.abs(dy) : Infinity;
+  const t = Math.min(tx, ty);
+  const a = tx < ty ? (dx > 0 ? 0 : 180) : dy > 0 ? 90 : -90;
+  return { x: ring.c.x + dx * t, y: ring.c.y + dy * t, a };
+}
+
+function baseSeatPositions(table) {
   const lead = groupSeatLead(table);
   if (lead && lead !== table) return [];
   if (lead) {
@@ -4730,6 +4782,7 @@ function seatNodes() {
       el.style.transform = `translate(-50%, -50%) rotate(${turn}deg)`;
       el.dataset.tableId = table.id;
       el.dataset.seatIndex = seat.index;
+      el.addEventListener("pointerdown", (event) => startDrag(event, { kind: "seat", id: table.id, size: seat.index }, el));
       el.style.left = `${(seat.pos.x / r.w) * 100}%`;
       el.style.top = `${(seat.pos.y / r.h) * 100}%`;
       el.style.width = `${(chair / r.w) * 100}%`;
@@ -4924,6 +4977,23 @@ function onMove(event) {
   const dist = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
   if (!drag.moved && dist < 6) return;
   event.preventDefault();
+  if (drag.kind === "seat") {
+    // the chair itself follows the pointer around its table (no ghost)
+    drag.moved = true;
+    const table = getTable(drag.id);
+    if (!table) return;
+    const pct = dropPercent(event.clientX, event.clientY);
+    const r = room();
+    const c = seatRing(table).c;
+    const deg = (Math.atan2((pct.y / 100) * r.h - c.y, (pct.x / 100) * r.w - c.x) * 180) / Math.PI;
+    drag.angle = deg;
+    const pos = placeAround(table, deg);
+    drag.el.style.left = `${(pos.x / r.w) * 100}%`;
+    drag.el.style.top = `${(pos.y / r.h) * 100}%`;
+    drag.el.style.transform = `translate(-50%, -50%) rotate(${pos.a + 90}deg)`;
+    drag.el.classList.add("dragging");
+    return;
+  }
   if (!drag.moved) {
     drag.moved = true;
     const ghost = drag.el.cloneNode(true);
@@ -4986,10 +5056,25 @@ function showGapTarget(clientX, clientY) {
   return undefined;
 }
 
+let seatDragJustEnded = false;
 function finishDrag(clientX, clientY) {
   const current = drag;
   if (!current) return;
   current.ghost?.remove();
+  if (current.kind === "seat") {
+    cleanupDrag();
+    if (!current.moved || !Number.isFinite(current.angle)) return; // a plain click: marks / names
+    const table = getTable(current.id);
+    if (table) {
+      if (!table.seatAngles) table.seatAngles = {};
+      table.seatAngles[current.size] = Math.round(current.angle * 10) / 10;
+      save();
+    }
+    seatDragJustEnded = true; // the click that follows a drag must not mark the chair
+    setTimeout(() => (seatDragJustEnded = false), 0);
+    render();
+    return;
+  }
   cleanupDrag();
   if (current.kind === "painting") {
     if (current.moved) {
@@ -5489,6 +5574,10 @@ function renderDrawer() {
         <button type="button" class="nudge" data-turn="15" aria-label="+15°">⟳</button>
       </span>
     </label>` : ""}
+    ${Object.keys(seatOwner(table).seatAngles || {}).length ? `<label class="label-field ends-field">
+      <span>${state.lang === "en" ? "Chairs moved by hand" : "Flyttede stoler"}</span>
+      <button type="button" class="nudge wide" data-even="1">${state.lang === "en" ? "Even them out" : "Jevn ut stolene"}</button>
+    </label>` : ""}
     ${table.kind !== "round" ? `<label class="label-field ends-field">
       <span>${copy.endsLabel}</span>
       <span class="people-steps">
@@ -5931,6 +6020,7 @@ document.getElementById("brush-row").addEventListener("click", (event) => {
 document.getElementById("room").addEventListener("click", (event) => {
   const seat = event.target.closest(".seat");
   if (!seat) return;
+  if (seatDragJustEnded) return;
   const table = getTable(seat.dataset.tableId);
   if (!table) return;
   const index = Number(seat.dataset.seatIndex);
@@ -5996,11 +6086,20 @@ function setManualLabel(value) {
 
 // The people stepper now lives in the label row, next to the number.
 document.getElementById("label-row").addEventListener("click", (event) => {
+  if (event.target.closest?.("[data-even]")) {
+    const table = getTable(state.selected);
+    if (!table) return;
+    delete seatOwner(table).seatAngles;
+    save();
+    render();
+    return;
+  }
   const turnRaw = event.target.closest?.("[data-turn]")?.dataset.turn;
   if (turnRaw != null) {
     const table = getTable(state.selected);
     if (!table) return;
     table.seatTurn = ((((Number(table.seatTurn) || 0) + Number(turnRaw)) % 360) + 360) % 360;
+    delete table.seatAngles;
     save();
     render();
     return;
