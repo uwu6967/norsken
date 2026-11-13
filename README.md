@@ -6,7 +6,8 @@ regn ut hvilke bordplater langbordet trenger, merk allergier per plass og skriv 
 ## Bruk rett i nettleseren (enklest)
 
 Åpne **https://uwu6967.github.io/norsken/**. Ingenting å laste ned eller installere, og «Skriv ut / PDF» virker.
-Planen lagres i nettleseren på den PC-en (hver PC har sin egen plan). Siden oppdateres av seg selv.
+Planen lagres i nettleseren på den PC-en (hver PC har sin egen plan). Siden oppdateres av seg selv
+(GitHub Pages viser `index.html` fra `main`).
 
 ## Last ned
 
