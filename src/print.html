@@ -393,6 +393,7 @@
         small: { d: 130 },
         big: { d: 150 },
         oval: { w: 100, l: 180 },
+        rect: { w: 80, l: 120 },
         plateS: { w: 37, l: 90, n: 2 },
         plateM: { w: 49.5, l: 90, n: 4 },
         plateL: { w: 55.5, l: 90, n: 2 },
@@ -710,7 +711,7 @@
       for (const table of tables) {
         const el = document.createElement("div");
         const cm = tableCm(table);
-        el.className = `table ${isPlate(normSize(table)) ? "plate" : normSize(table) === "oval" ? "oval" : "round"}`;
+        el.className = `table ${isPlate(normSize(table)) ? "plate" : normSize(table) === "oval" ? "oval" : normSize(table) === "rect" ? "rect" : "round"}`;
         el.style.left = `${table.x}%`;
         el.style.top = `${table.y}%`;
         el.style.width = `${(cm.w / r.w) * 100}%`;
