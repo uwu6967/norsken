@@ -348,7 +348,6 @@
       <p id="meta"></p>
     </header>
     <div class="room" id="room"></div>
-    <p class="scale-note" id="scale-note"></p>
     <section class="list">
       <p class="kicker" id="list-title">Målliste</p>
       <div id="list-body"></div>
@@ -631,8 +630,7 @@
       document.getElementById("kicker").textContent = ROOM_NAMES[ROOM_ID][lang];
       document.getElementById("list-title").textContent = copy.listTitle;
       document.getElementById("meta").innerHTML =
-        `${new Date().toLocaleString(lang === "en" ? "en-GB" : "nb-NO")}<br />${fmt(r.w)} × ${fmt(r.h)}`;
-      document.getElementById("scale-note").textContent = `${copy.scale} · ${fmt(r.w)} × ${fmt(r.h)}`;
+        `${new Date().toLocaleString(lang === "en" ? "en-GB" : "nb-NO")}`;
       document.getElementById("print").textContent = lang === "en" ? "Print / save as PDF" : "Skriv ut / lagre som PDF";
 
       const room = document.getElementById("room");

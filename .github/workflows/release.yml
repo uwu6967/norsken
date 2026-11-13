@@ -30,6 +30,12 @@ jobs:
           cp index.html print.html LES-MEG.txt dist/Norsken/
           (cd dist && zip -qr Norsken.zip Norsken)
           cp LES-MEG.txt dist/LES-MEG.txt
+          # the Chrome / Edge extension, with this release's number as its version
+          mkdir -p dist/Norsken-utvidelse
+          cp -r extension/. dist/Norsken-utvidelse/
+          sed -i "s/\"version\": \"1.0.0\"/\"version\": \"1.0.${GITHUB_RUN_NUMBER}\"/" dist/Norsken-utvidelse/manifest.json
+          grep '"version"' dist/Norsken-utvidelse/manifest.json
+          (cd dist && zip -qr Norsken-utvidelse.zip Norsken-utvidelse)
 
       - name: Release notes (everything since the last release)
         run: |
@@ -37,6 +43,7 @@ jobs:
           RANGE=${PREV:+$PREV..}HEAD
           {
             echo "## Last ned"
+            echo "- **Norsken-utvidelse.zip**: Norsken som utvidelse i Chrome/Edge – se LES-MEG.txt for hvordan du installerer den."
             echo "- **Norsken.zip**: pakk ut, dobbeltklikk \`index.html\`."
             echo "- **LES-MEG.txt**: bruksanvisning + ResDiary-bokmerkene som tekst (kopier og lim inn)."
             echo
@@ -51,7 +58,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v$(date -u +%Y.%m.%d)-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" dist/Norsken.zip dist/LES-MEG.txt \
+          gh release create "$TAG" dist/Norsken-utvidelse.zip dist/Norsken.zip dist/LES-MEG.txt \
             --target "$GITHUB_SHA" \
             --title "Norsken $(date -u +%d.%m.%Y) (#${GITHUB_RUN_NUMBER})" \
             --notes-file notes.md --latest

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <title>Norsken — Spisestua</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 12mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: Outfit, system-ui, sans-serif;
+        color: #1d1812;
+        background: white;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        margin-bottom: 4px;
+      }
+      .kicker {
+        margin: 0;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-size: 11px;
+        color: #8a6238;
+      }
+      h1 {
+        margin: 0;
+        font-family: Fraunces, Georgia, serif;
+        font-size: 28px;
+      }
+      #meta {
+        margin: 0;
+        font-size: 11px;
+        color: #6d6258;
+        text-align: right;
+        line-height: 1.5;
+      }
+      .room {
+        position: relative;
+        height: 244mm;
+        width: auto;
+        max-width: 100%;
+        margin: 0 auto;
+        background: #fdfaf5;
+        border: 7px solid #cbb79a;
+        overflow: hidden;
+        break-inside: avoid;
+      }
+      .grid-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+      }
+      .ruler-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        font-size: 7px;
+        font-weight: 700;
+        color: #3f5c4d;
+      }
+      .ruler-layer span {
+        position: absolute;
+        line-height: 1;
+      }
+      .ruler-layer .top {
+        top: 2px;
+        transform: translateX(-50%);
+      }
+      .ruler-layer .left {
+        left: 2px;
+        transform: translateY(-50%);
+      }
+      .fixture {
+        position: absolute;
+        z-index: 2;
+      }
+      .window {
+        top: 0;
+        left: 24%;
+        width: 52%;
+        height: 1.6%;
+        background: #c9e7f4;
+        border-bottom: 3px solid #8a6238;
+      }
+      .door {
+        background: #f3d0cb;
+        border: 2px solid #b42318;
+      }
+      .door.left {
+        left: -1%;
+        width: 5.5%;
+        height: 8%;
+        transform: translateY(-50%);
+      }
+      .door.bottom {
+        bottom: -0.6%;
+        width: 24%;
+        height: 4%;
+        transform: translateX(-50%);
+      }
+      .corner {
+        top: 0;
+        right: 0;
+        width: 6%;
+        height: 3.4%;
+        background: #2b261f;
+      }
+      .table {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 1px solid #1d1812;
+        background: white;
+        display: grid;
+        place-items: center;
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 650;
+        font-size: 11px;
+        z-index: 6;
+      }
+      .round {
+        border-radius: 50%;
+      }
+      .oval {
+        border-radius: 999px;
+      }
+      .plate {
+        border-radius: 8px;
+      }
+      .seat {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 1px solid #b0a189;
+        border-radius: 2px;
+        background: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 5.5px;
+        font-weight: 700;
+        line-height: 1;
+        z-index: 4;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .legend {
+        margin-top: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        font-size: 10px;
+      }
+      .legend span.k {
+        display: inline-grid;
+        place-items: center;
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        font-size: 7px;
+        font-weight: 700;
+        margin-right: 4px;
+        vertical-align: middle;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .plate-insert {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 0.4pt solid #6d5636;
+        background: repeating-linear-gradient(90deg, #e6d3b3 0 3pt, #d3bb94 3pt 6pt);
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .table {
+        font-size: 15px;
+      }
+      .table.named {
+        font-size: 8.5pt;
+        font-weight: 700;
+        line-height: 1.1;
+        overflow-wrap: anywhere;
+        padding: 1mm;
+        text-align: center;
+      }
+      .table .sub {
+        display: block;
+        margin-top: 1mm;
+        font-family: Outfit, system-ui, sans-serif;
+        font-size: 7pt;
+        font-weight: 600;
+        color: #4a3f35;
+      }
+      .table .pax {
+        display: block;
+        font-family: Outfit, system-ui, sans-serif;
+        font-size: 7pt;
+        font-weight: 600;
+        color: #4a3f35;
+      }
+      table.arrivals {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      table.arrivals th {
+        text-align: left;
+        font-size: 9px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6d6258;
+        padding: 0 10px 5px 0;
+        border-bottom: 1.5px solid #1d1812;
+      }
+      table.arrivals td {
+        padding: 6px 10px 6px 0;
+        border-bottom: 1px solid #d9cbb8;
+      }
+      table.arrivals td.t,
+      table.arrivals td.b {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 650;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .free {
+        margin-top: 10px;
+        font-size: 11px;
+      }
+
+      .furniture {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        border: 2px solid #8a6238;
+        background: repeating-linear-gradient(45deg, #ded0b8 0 5px, #d2c1a4 5px 10px);
+        display: grid;
+        place-items: center;
+        font-size: 6px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-align: center;
+        z-index: 5;
+      }
+      .scale-note {
+        margin: 8px 0 0;
+        text-align: center;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #6d6258;
+      }
+      section.list {
+        margin-top: 14px;
+        break-inside: avoid;
+      }
+      @media print {
+        section.list {
+          break-before: page;
+          margin-top: 0;
+        }
+      }
+      table.measure {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 10.5px;
+        margin-top: 6px;
+      }
+      table.measure th {
+        text-align: left;
+        font-size: 8px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6d6258;
+        padding: 0 8px 4px 0;
+      }
+      table.measure td {
+        padding: 3.5px 8px 3.5px 0;
+        border-top: 1px solid #e3d6c5;
+      }
+      table.measure .n {
+        font-family: Fraunces, Georgia, serif;
+        font-weight: 650;
+        font-size: 12px;
+      }
+      .tight {
+        color: #b42318;
+        font-weight: 700;
+      }
+      .warnings {
+        margin-top: 8px;
+        font-size: 10.5px;
+      }
+      .warnings p {
+        margin: 0 0 3px;
+      }
+      .warnings .ok {
+        color: #2f4a3c;
+      }
+      .warnings .warn-title {
+        color: #b42318;
+        font-weight: 700;
+      }
+      .plates { margin-top: 8px; font-size: 10.5px; }
+      .plates ul { margin: 2px 0 0; padding-left: 16px; }
+      .warnings ul {
+        margin: 0;
+        padding-left: 16px;
+      }
+      .no-print {
+        margin-top: 12px;
+        text-align: center;
+      }
+      button {
+        font: inherit;
+        border: 0;
+        background: #2f4a3c;
+        color: white;
+        border-radius: 999px;
+        padding: 8px 14px;
+        cursor: pointer;
+      }
+      @media print {
+        .no-print {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="kicker" id="kicker">Spisestua</p>
+        <h1>Norsken</h1>
+      </div>
+      <p id="meta"></p>
+    </header>
+    <div class="room" id="room"></div>
+    <section class="list">
+      <p class="kicker" id="list-title">Målliste</p>
+      <div id="list-body"></div>
+      <div class="warnings" id="warnings"></div>
+    </section>
+    <p class="no-print"><button type="button" id="print">Skriv ut / lagre som PDF</button></p>
+    <script src="print.js"></script>
+  </body>
+</html>
