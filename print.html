@@ -910,8 +910,8 @@
       }
 
       const warnEl = document.getElementById("warnings");
-      if (!tables.length || arrivals.length) {
-        warnEl.innerHTML = "";
+      if (true) {
+        warnEl.innerHTML = ""; // the distance list is not printed any more
       } else if (!tight.length) {
         warnEl.innerHTML = `<p class="ok">✓ ${copy.warnOk} ${fmt(dims.aisle)}.</p>`;
       } else {
