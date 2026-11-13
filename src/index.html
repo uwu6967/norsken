@@ -15,6 +15,14 @@
   </head>
   <body>
     <div class="app">
+      <div class="update-bar" id="update-bar" role="status" hidden>
+        <p class="update-text" id="update-text"></p>
+        <div class="update-actions">
+          <a class="chip big primary" id="update-download" href="https://github.com/uwu6967/norsken/releases/latest" target="_blank" rel="noopener">Last ned</a>
+          <button type="button" class="chip big" id="update-reload">Oppdater nå</button>
+          <button type="button" class="chip big ghost" id="update-later">Senere</button>
+        </div>
+      </div>
       <header class="topbar">
         <div class="brand">
           <p class="kicker" data-i18n="kicker">Spisestua · oppsett</p>

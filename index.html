@@ -1976,10 +1976,49 @@ a[hidden] {
   }
 }
 
+/* --- «new version» bar (extension) -------------------------------------- */
+.update-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #f1d9a8, #c4a574);
+  color: #1d1812;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+.update-text {
+  flex: 1 1 420px;
+  min-width: 0;
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.45;
+}
+.update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.update-bar .chip:not(.primary) {
+  background: rgba(255, 250, 243, 0.85);
+  color: #1d1812;
+  border-color: transparent;
+}
+
 </style>
   </head>
   <body>
     <div class="app">
+      <div class="update-bar" id="update-bar" role="status" hidden>
+        <p class="update-text" id="update-text"></p>
+        <div class="update-actions">
+          <a class="chip big primary" id="update-download" href="https://github.com/uwu6967/norsken/releases/latest" target="_blank" rel="noopener">Last ned</a>
+          <button type="button" class="chip big" id="update-reload">Oppdater nå</button>
+          <button type="button" class="chip big ghost" id="update-later">Senere</button>
+        </div>
+      </div>
       <header class="topbar">
         <div class="brand">
           <p class="kicker" data-i18n="kicker">Spisestua · oppsett</p>
@@ -6606,6 +6645,89 @@ document.getElementById("sit-minutes")?.addEventListener("change", (event) => {
   save();
   render();
 });
+
+// --- update check (only in the Chrome/Edge extension) -------------------------
+// An unpacked extension cannot update itself. So it asks GitHub for the newest
+// release; if that is newer, a bar offers the new zip and, once the files are
+// replaced in the same folder, a button that reloads the extension.
+// The release number is the last part of the version (1.0.<n>) and of the tag (…-<n>).
+const RELEASES_API = "https://api.github.com/repos/uwu6967/norsken/releases/latest";
+const UPDATE_KEY = "norsken-update-check";
+
+function installedRelease() {
+  try {
+    const v = chrome?.runtime?.getManifest?.().version;
+    const n = Number(String(v || "").split(".").pop());
+    return Number.isFinite(n) && n > 0 ? n : 0; // 0 = not installed from a release
+  } catch {
+    return 0;
+  }
+}
+
+async function checkForUpdate(force = false) {
+  const mine = installedRelease();
+  if (!mine) return;
+  let memo = {};
+  try {
+    memo = JSON.parse(localStorage.getItem(UPDATE_KEY) || "{}");
+  } catch {}
+  const now = Date.now();
+  let latest = memo.latest || null;
+  if (force || !latest || now - (memo.at || 0) > 3 * 60 * 60 * 1000) {
+    try {
+      const res = await fetch(RELEASES_API, { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" });
+      if (!res.ok) return;
+      const rel = await res.json();
+      const n = Number((String(rel.tag_name || "").match(/-(\d+)$/) || [])[1]);
+      const zip = (rel.assets || []).find((a) => a.name === "Norsken.zip");
+      latest = Number.isFinite(n) ? { n, zip: zip?.browser_download_url || rel.html_url, page: rel.html_url, name: rel.name || rel.tag_name } : null;
+      memo = { ...memo, at: now, latest };
+      try {
+        localStorage.setItem(UPDATE_KEY, JSON.stringify(memo));
+      } catch {}
+    } catch {
+      return; // offline: try again next time
+    }
+  }
+  if (!latest || latest.n <= mine || memo.skip === latest.n) return;
+  showUpdateBar(latest, mine);
+}
+
+function showUpdateBar(latest, mine) {
+  const en = state.lang === "en";
+  const bar = document.getElementById("update-bar");
+  if (!bar) return;
+  document.getElementById("update-text").innerHTML = en
+    ? `<b>A new version of Norsken is ready</b> (no. ${latest.n}, you have no. ${mine}). 1) Press «Download». 2) Unzip it and copy the files into your Norsken folder (replace the old ones). 3) Press «Update now». Your plans stay.`
+    : `<b>Ny versjon av Norsken er klar</b> (nr. ${latest.n}, du har nr. ${mine}). 1) Trykk «Last ned». 2) Pakk ut og kopier filene inn i Norsken-mappa di (erstatt de gamle). 3) Trykk «Oppdater nå». Planene dine blir liggende.`;
+  const dl = document.getElementById("update-download");
+  dl.href = latest.zip;
+  dl.textContent = en ? "Download" : "Last ned";
+  document.getElementById("update-reload").textContent = en ? "Update now" : "Oppdater nå";
+  document.getElementById("update-later").textContent = en ? "Later" : "Senere";
+  bar.hidden = false;
+  bar.dataset.n = String(latest.n);
+}
+
+document.getElementById("update-reload")?.addEventListener("click", () => {
+  save();
+  try {
+    chrome.runtime.reload(); // picks up the new files from the folder
+  } catch {
+    location.reload();
+  }
+});
+document.getElementById("update-later")?.addEventListener("click", () => {
+  const bar = document.getElementById("update-bar");
+  bar.hidden = true;
+  try {
+    const memo = JSON.parse(localStorage.getItem(UPDATE_KEY) || "{}");
+    memo.skip = Number(bar.dataset.n); // ask again only when an even newer one comes
+    localStorage.setItem(UPDATE_KEY, JSON.stringify(memo));
+  } catch {}
+});
+checkForUpdate();
+setInterval(() => checkForUpdate(), 3 * 60 * 60 * 1000);
 
 </script>
   </body>
