@@ -72,6 +72,8 @@ const DEFAULT_DIMS = {
   // Table 16 is an OVAL table (user, 2026-11-11; also photo IMG_2538). Size is
   // a guess until someone tapes it - ANSLAG.
   oval: { w: 100, l: 180 },
+  // The metal rectangle tables (Danny 2026-11-13): seat 4, no plates. Guess.
+  rect: { w: 80, l: 120 },
   // Table length one guest needs along a langbord. Plate planning uses it.
   cover: { d: 60 },
   // Fixed furniture. The big old table in the bottom-left corner, against the
@@ -97,6 +99,7 @@ const DEFAULT_DIMS = {
     plateXL: false,
     long: true,
     sidebord: true,
+    rect: true,
     chairBig: false,
     chairSmall: true,
     cover: true,
@@ -105,13 +108,14 @@ const DEFAULT_DIMS = {
 };
 
 // Tables you can put on the floor, in tray and drawer order.
-const SIZES = ["small", "big", "oval", "long"];
+const SIZES = ["small", "big", "oval", "rect", "long"];
 // Plate INSERTS. Not tables — they live only in dims and fill gaps.
 const PLATES = ["plateS", "plateM", "plateL", "plateXL"];
 const SIZE_KINDS = {
   small: "round",
   big: "round",
   oval: "oval",
+  rect: "rect", // metal rectangle (sometimes table 2 or 4): 2 + 2, cannot take plates
   long: "plate", // "plate" here is the rectangle KIND, kept for the CSS class
   sidebord: "furniture",
 };
@@ -138,8 +142,11 @@ const i18n = {
     oval: "Ovalt",
     ovalW: "Ovalt bord · bredde",
     ovalL: "Ovalt bord · lengde",
-    add: { small: "+ lite", big: "+ stort", oval: "+ ovalt", long: "+ langbord" },
-    kinds: { small: "Lite bord", big: "Stort bord", oval: "Ovalt bord", long: "Langbord" },
+    add: { small: "+ lite", big: "+ stort", oval: "+ ovalt", rect: "+ metallbord", long: "+ langbord" },
+    kinds: { small: "Lite bord", big: "Stort bord", oval: "Ovalt bord", rect: "Metallbord (firkant)", long: "Langbord" },
+    rect: "Metall",
+    rectW: "Metallbord · bredde",
+    rectL: "Metallbord · lengde",
     panelTitle: "Mål i cm",
     panelNote: "Bordmålene er anslag til du måler dem. Skriv inn ekte cm, så tegnes kartet riktig.",
     roomW: "Rom · bredde (vindusvegg)",
@@ -278,8 +285,11 @@ const i18n = {
     oval: "Oval",
     ovalW: "Oval table · width",
     ovalL: "Oval table · length",
-    add: { small: "+ small", big: "+ large", oval: "+ oval", long: "+ long table" },
-    kinds: { small: "Small table", big: "Large table", oval: "Oval table", long: "Long table" },
+    add: { small: "+ small", big: "+ large", oval: "+ oval", rect: "+ metal table", long: "+ long table" },
+    kinds: { small: "Small table", big: "Large table", oval: "Oval table", rect: "Metal table (rectangle)", long: "Long table" },
+    rect: "Metal",
+    rectW: "Metal table · width",
+    rectL: "Metal table · length",
     panelTitle: "Measurements in cm",
     panelNote: "Table sizes are estimates until you measure them. Type the real cm and the map redraws to scale.",
     roomW: "Room · width (window wall)",
@@ -415,6 +425,8 @@ function starterTables() {
     ...Array.from({ length: 8 }, () => makeTable("small")),
     ...Array.from({ length: 6 }, () => makeTable("big")),
     makeTable("oval"),
+    makeTable("rect"),
+    makeTable("rect"),
     // four langbord halves = two langbord
     ...Array.from({ length: 4 }, () => makeTable("long")),
   ];
@@ -560,6 +572,7 @@ function mergeDims(saved) {
   take("small", dims.small, saved.small);
   take("big", dims.big, saved.big);
   take("oval", dims.oval, saved.oval);
+  take("rect", dims.rect, saved.rect);
   // v2 and earlier had a single `long`; it becomes the large plate.
   take("long", dims.long, saved.long);
   take("plateS", dims.plateS, saved.plateS);
@@ -1570,16 +1583,34 @@ function assignBookings() {
     }
   }
   for (const b of free) {
-    let list;
-    if (b.guests > 5 && !domino) {
-      const bigs = floor.filter((t) => t.size === "big").map((t) => String(t.label).toLowerCase());
-      list = ["16", ...bigs, ...order, ...side];
-    } else {
-      list = [...order, ...side];
+    if (domino) {
+      const pick = order.find((label) => !taken.has(label) && tableCapacity(labelMap.get(label)) >= b.guests);
+      if (pick) taken.add(pick);
+      rows.push({ ...b, table: pick ? labelMap.get(pick) : null });
+      continue;
     }
-    const pick = list.find((label) => labelMap.has(label) && !taken.has(label) && tableCapacity(labelMap.get(label)) >= b.guests);
-    if (pick) taken.add(pick);
-    rows.push({ ...b, table: pick ? labelMap.get(pick) : null });
+    const list = ruleOrder(b.guests, floor, order, side);
+    const fits = (label, cap) => labelMap.has(label) && !taken.has(label) && cap(labelMap.get(label)) >= b.guests;
+    // first where it is comfortable, then where it can squeeze in
+    let pick = list.find((label) => fits(label, softCap)) || list.find((label) => fits(label, hardCap));
+    if (pick) {
+      taken.add(pick);
+      rows.push({ ...b, table: labelMap.get(pick) });
+      continue;
+    }
+    // a big group: a middle langbord (or 16 as the wooden table) is pulled out
+    // with plates for this many people. 14 is the shared table: last.
+    const middle = ["16", "12", "15", "14"].find((label) => {
+      const t = labelMap.get(label);
+      return t && t.kind === "plate" && !taken.has(label);
+    });
+    if (middle) {
+      taken.add(middle);
+      planPlates(labelMap.get(middle), b.guests);
+      rows.push({ ...b, table: labelMap.get(middle) });
+      continue;
+    }
+    rows.push({ ...b, table: null });
   }
   for (const row of rows) {
     if (!row.table) continue;
@@ -1649,6 +1680,43 @@ function overflowToDomino(rows) {
   } catch {}
 }
 
+// Danny's table rules (2026-11-13), Spisestua only.
+//  soft = comfortable, hard = only when nothing comfortable is left.
+//  3: the big spot – 4+ people go here first, up to 6.
+//  4: 4 is comfortable, 6 if it must (a metal table: 4).
+//  5: awkward – 2, max 3; up to 6 only when everything else is full.
+//  2: round = 2; the metal rectangle = 4.
+//  1: up to 8, only when it is the big table.
+function softCap(table) {
+  const label = String(table.label);
+  if (table.kind === "plate") return 0; // langbord: pulled out for big groups instead
+  if (label === "2") return table.size === "rect" ? 4 : 2;
+  if (label === "5") return 3;
+  if (label === "3") return 6;
+  if (label === "1" && table.size === "big") return 8;
+  if (table.size === "rect") return 4;
+  return tableCapacity(table);
+}
+
+function hardCap(table) {
+  const label = String(table.label);
+  if (label === "4") return table.size === "rect" ? 4 : 6;
+  if (label === "5") return 6;
+  return softCap(table);
+}
+
+function ruleOrder(guests, floor, order, side) {
+  const base = [...order, ...side];
+  if (guests > 5) {
+    const big1 = floor.some((t) => String(t.label) === "1" && t.size === "big") ? ["1"] : [];
+    const bigs = floor.filter((t) => t.size === "big" && String(t.label) !== "1").map((t) => String(t.label).toLowerCase());
+    return [...new Set(["16", "3", ...big1, ...bigs, ...base])];
+  }
+  if (guests >= 4) return [...new Set(["3", ...base])];
+  // 2-3 people: keep the big spot (3) for bigger groups, 5 suits them well
+  return [...new Set([...base.filter((label) => label !== "3"), "3"])];
+}
+
 function renderBookings() {
   const copy = t();
   const set = (id, text) => {
@@ -1658,6 +1726,33 @@ function renderBookings() {
   set("book-title", copy.bookTitle);
   set("book-note", copy.bookNote);
   set("book-order-label", copy.bookOrder);
+  const rulesEl = document.getElementById("book-rules");
+  if (rulesEl) {
+    rulesEl.innerHTML = (state.lang === "en"
+      ? [
+          "<b>3</b>: the big spot – 4 or more first, up to 6",
+          "<b>4</b>: 4 is comfortable, 6 only if needed",
+          "<b>5</b>: 2, max 3 – more only when everything is full",
+          "<b>2</b>: round = 2, metal table = 4",
+          "<b>1</b>: up to 8 when it is the big table",
+          "<b>16</b>: oval or the wooden extendable table",
+          "<b>Middle (12, 15, 14)</b>: big groups – pulled out with plates. 14 last (shared table)",
+          "Still no room: <b>Domino</b>",
+        ]
+      : [
+          "<b>3</b>: den store plassen – 4 eller flere først, opptil 6",
+          "<b>4</b>: 4 er komfortabelt, 6 bare hvis det trengs",
+          "<b>5</b>: 2, maks 3 – flere bare når alt annet er fullt",
+          "<b>2</b>: rundt = 2, metallbord = 4",
+          "<b>1</b>: opptil 8 når det er det store bordet",
+          "<b>16</b>: ovalt eller trebordet som kan trekkes ut",
+          "<b>Midten (12, 15, 14)</b>: store selskap – trekkes ut med plater. 14 sist (felles bord)",
+          "Fortsatt ikke plass: <b>Domino</b>",
+        ]
+    )
+      .map((line) => `<li>${line}</li>`)
+      .join("");
+  }
   set("book-run", copy.bookRun);
   set("book-clear", copy.bookClear);
   const text = document.getElementById("book-text");
@@ -2120,13 +2215,16 @@ function relabelRoom() {
   // round can take it, but do not hand out numbers to the EXTRA plates yet --
   // they must not steal 1 or 2 from the bottom-left column. They get whatever
   // is left once every round table has its position-based number.
-  const plates = tables.filter((item) => item.kind === "plate").sort((a, b) => a.y - b.y);
-  const rounds = tables.filter((item) => item.kind === "round" || item.kind === "oval");
-  if (plates.some((item) => !item.manual)) used.add("14");
+  let plates = tables.filter((item) => item.kind === "plate").sort((a, b) => a.y - b.y);
+  const rounds = tables.filter((item) => item.kind === "round" || item.kind === "oval" || item.kind === "rect");
 
-  const sixteen = rounds
+  // 16 is the top-middle table: the oval, or sometimes the extendable wooden
+  // table (a langbord) – Danny 2026-11-13.
+  const sixteen = [...rounds, ...plates.filter((item) => !item.manual)]
     .filter((item) => item.y <= TOP_MAX && item.x >= 38 && item.x <= 62)
     .sort((a, b) => Math.abs(a.x - 50) + a.y * 0.35 - (Math.abs(b.x - 50) + b.y * 0.35))[0];
+  if (sixteen) plates = plates.filter((item) => item !== sixteen);
+  if (plates.some((item) => !item.manual)) used.add("14");
   if (sixteen) assign(sixteen, "16");
 
   const rest = rounds.filter((item) => item !== sixteen);
@@ -2904,6 +3002,8 @@ const FIELDS = [
   { key: "bigD", path: ["big", "d"], min: 30, max: 400, est: "big" },
   { key: "ovalW", path: ["oval", "w"], min: 30, max: 400, est: "oval" },
   { key: "ovalL", path: ["oval", "l"], min: 30, max: 600, est: "oval" },
+  { key: "rectW", path: ["rect", "w"], min: 30, max: 300, est: "rect" },
+  { key: "rectL", path: ["rect", "l"], min: 30, max: 400, est: "rect" },
   { key: "plateSW", path: ["plateS", "w"], min: 10, max: 400, est: "plateS" },
   { key: "plateSN", path: ["plateS", "n"], min: 0, max: 12 },
   { key: "plateMW", path: ["plateM", "w"], min: 10, max: 400, est: "plateM" },
@@ -3758,9 +3858,9 @@ function presetLayout(kind = "usual") {
     langbord(r.h / 2 + 40 - L); // 14, closed - set people to get plates
   }
   // whatever is left of the normal stock goes back in the tray
-  const used = { small: 0, big: 0, oval: 0, long: 0 };
+  const used = { small: 0, big: 0, oval: 0, rect: 0, long: 0 };
   for (const table of placed) used[table.size] += 1;
-  const stock = { small: 8, big: 6, oval: 1, long: 4 };
+  const stock = { small: 8, big: 6, oval: 1, rect: 2, long: 4 };
   const tray = [];
   for (const size of SIZES) {
     for (let i = used[size]; i < stock[size]; i += 1) tray.push(makeTable(size));

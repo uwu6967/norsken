@@ -1739,3 +1739,24 @@ button[hidden],
 a[hidden] {
   display: none !important;
 }
+
+/* table rules list in the settings */
+.book-rules {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.book-rules b {
+  color: var(--ink);
+}
+/* the metal rectangle table */
+.table.rect {
+  border-radius: 3px;
+}
+.tray .table.rect {
+  width: 44px;
+  height: 66px;
+}
