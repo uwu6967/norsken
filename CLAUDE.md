@@ -9,6 +9,8 @@
 - NDA: never commit guest names, phone numbers, emails, or any photos.
 - Edit `src/` or `resdiary/`, then ALWAYS run `python3 tools/build.py` and commit the output
   (`index.html`, `print.html`, `LES-MEG.txt`, bookmark codes in the READMEs). The user never builds: the repo must be download-and-use.
+- `tools/build.py` also writes `extension/` (Chrome/Edge MV3 extension: no inline scripts allowed,
+  so it uses the src files + `print.js`). Each release ships it as `Norsken-utvidelse.zip`.
 - After every push, also republish the live artifact https://claude.ai/artifact/RBdn3W3FKaBSeTCLVNaimr
   (built `index.html` + `print.html`; do not pass `capabilities`, so db/downloads/user stay).
 - Context: `docs/HANDOFF.md`. Keep replies short and just build.

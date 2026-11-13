@@ -8,6 +8,19 @@ regn ut hvilke bordplater langbordet trenger, merk allergier per plass og skriv 
 `index.html` her er hele appen i én fil. Åpner du den rett fra disk eller på GitHub Pages,
 lagres planen bare i den nettleseren (ikke den felles planen).
 
+## Norsken som utvidelse i Chrome / Edge (anbefalt)
+
+Bordplanen åpner som en egen side når du klikker Norsken-ikonet, og «Skriv ut / PDF» virker.
+Planer og gjestenavn blir bare i nettleseren på den PC-en.
+
+1. Last ned **Norsken-utvidelse.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest) og pakk den ut.
+2. Skriv `chrome://extensions` i adressefeltet (Edge: `edge://extensions`).
+3. Slå på **Utviklermodus** (Developer mode).
+4. Trykk **Last inn upakket** (Load unpacked) og velg mappa `Norsken-utvidelse`.
+5. Klikk puslespillbrikken øverst til høyre og fest Norsken (nåla). Klikk Norsken-ikonet for å åpne bordplanen.
+
+Ny versjon: pakk ut den nye zip-fila over den gamle mappa og trykk ↻ på Norsken i `chrome://extensions`. Planene dine blir liggende.
+
 ## Last ned og bruk (ingen installering)
 
 1. Last ned **Norsken.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest) og pakk den ut.
@@ -83,6 +96,7 @@ Merket «ANSLAG» i appen til noen måler dem (endres under **Mål**):
 
 | | |
 |---|---|
+| `extension/` | **Norsken-utvidelsen** (Chrome/Edge), lages av `tools/build.py` |
 | `index.html` | **ferdig app** i én fil, bare åpne den |
 | `print.html` | utskriftssiden (åpnes fra «Skriv ut / PDF») |
 | `LES-MEG.txt` | kort bruksanvisning + bokmerkekodene |

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#2a241c" />
+    <title>Norsken — Spisestua</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=23" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <p class="kicker" data-i18n="kicker">Spisestua · oppsett</p>
+          <h1>Norsken</h1>
+        </div>
+        <nav class="room-switch" aria-label="Rom">
+          <button type="button" class="room-tab" data-room="domino">Domino</button>
+          <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
+        </nav>
+        <div class="topbar-actions">
+          <button type="button" class="chip big" id="preset-btn">Vanlig oppsett</button>
+          <button type="button" class="chip big" id="lunch-btn">Lunsj-oppsett</button>
+          <a class="chip big primary" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
+          <button type="button" class="chip big gear" id="settings-btn" aria-haspopup="dialog" aria-controls="settings">
+            <span aria-hidden="true">⚙</span> <span id="settings-btn-text">Innstillinger</span>
+          </button>
+          <span class="chip sync" id="sync-status" hidden></span>
+        </div>
+      </header>
+
+      <!-- Alle innstillinger på ett sted -->
+      <div class="settings-backdrop" id="settings-backdrop" hidden></div>
+      <aside class="settings" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+        <div class="settings-head">
+          <h2 id="settings-title">Innstillinger</h2>
+          <button type="button" class="icon-btn settings-close" id="settings-close" aria-label="Lukk">✕</button>
+        </div>
+
+        <section class="set-group">
+          <p class="set-title" id="set-lang-title">Språk</p>
+          <button type="button" class="chip toggle-row" id="lang-btn">NO</button>
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-view-title">Vis på kartet</p>
+          <button type="button" class="chip toggle-row on" id="grid-btn">Rutenett</button>
+          <button type="button" class="chip toggle-row on" id="chairs-btn">Med stoler</button>
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-book-title">Bordfordeling</p>
+          <label for="book-order" id="book-order-label">Prioritet</label>
+          <input id="book-order" type="text" autocomplete="off" />
+          <p class="set-sub" id="overflow-title">Når Spisestua er full</p>
+          <div class="set-pair">
+            <button type="button" class="chip toggle-row" id="overflow-redeck">Dekk om et bord (↻)</button>
+            <button type="button" class="chip toggle-row" id="overflow-domino">Bruk Domino</button>
+          </div>
+          <label for="sit-minutes" id="sit-label">Minutter før et bord kan dekkes om</label>
+          <input id="sit-minutes" type="number" inputmode="numeric" min="15" max="300" step="5" />
+          <ul class="book-rules" id="book-rules"></ul>
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-measure-title">Mål</p>
+          <button type="button" class="chip toggle-row" id="measure-btn">Mål</button>
+          <section class="measure-panel" id="measure-panel" hidden>
+            <div class="measure-head">
+              <p class="kicker" id="measure-title">Mål i cm</p>
+              <p class="measure-note" id="measure-note"></p>
+            </div>
+            <div class="measure-fields" id="measure-fields"></div>
+          </section>
+        </section>
+
+        <section class="set-group danger">
+          <p class="set-title" id="set-room-title">Rommet</p>
+          <button type="button" class="chip big danger-btn" id="reset-btn">Tomt rom</button>
+        </section>
+      </aside>
+
+      <p class="hint" id="hint">Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.</p>
+
+      <details class="brush-panel booking-panel" id="booking-panel">
+        <summary><span class="kicker" id="book-title">Reservasjoner → bord</span></summary>
+        <p class="brush-note" id="book-note"></p>
+        <textarea id="book-text" rows="6" autocomplete="off" spellcheck="false"></textarea>
+        <div class="book-row">
+          <button type="button" class="status-btn active" id="book-run">Fordel bord</button>
+          <button type="button" class="status-btn" id="book-clear">Fjern navn fra bordene</button>
+        </div>
+        <div id="book-result"></div>
+      </details>
+
+      <section class="brush-panel">
+        <p class="kicker" id="brush-title">Merking av plasser</p>
+        <p class="brush-note" id="brush-note"></p>
+        <div class="brush-row" id="brush-row"></div>
+      </section>
+
+      <div class="board">
+        <main class="stage">
+          <div class="room-wrap">
+            <div class="room" id="room" role="application" aria-label="Spisestua"></div>
+          </div>
+        </main>
+
+        <aside class="tray" id="tray">
+          <div class="guest-rack" id="guest-rack">
+            <p class="kicker" id="guest-title">Dagens liste</p>
+            <p class="plate-note" id="guest-note"></p>
+            <div class="add-row">
+              <label class="add-btn guest-open">
+                <input type="file" id="guest-file" accept=".csv,text/csv" hidden />
+                <span id="guest-open">Åpne liste fra PC</span>
+              </label>
+              <button type="button" class="add-btn" id="guest-clear" hidden>Tøm liste</button>
+            </div>
+            <ul class="guest-list" id="guest-list"></ul>
+          </div>
+          <div class="tray-head">
+            <p class="kicker" id="tray-title">Lager / ikke i bruk</p>
+            <div class="add-row" id="add-row"></div>
+          </div>
+          <div class="tray-stack" id="tray-stack"></div>
+          <div class="plate-rack">
+            <p class="kicker" id="plate-title">Bordplater</p>
+            <p class="plate-note" id="plate-note"></p>
+            <div class="plate-stack" id="plate-stack"></div>
+          </div>
+        </aside>
+      </div>
+
+      <aside class="drawer" id="drawer" hidden>
+        <div class="drawer-handle"></div>
+        <div class="drawer-head">
+          <div>
+            <p class="kicker" id="drawer-kicker"></p>
+            <h2 id="drawer-title"></h2>
+          </div>
+          <button type="button" class="icon-btn" id="close-drawer" aria-label="Close">✕</button>
+        </div>
+        <div class="drawer-actions" id="size-row"></div>
+        <div class="drawer-actions">
+          <button type="button" class="status-btn" id="rotate-btn">Roter</button>
+          <button type="button" class="status-btn" id="to-tray-btn">Til lager</button>
+        </div>
+        <div class="label-row" id="label-row"></div>
+        <div class="group-row" id="group-row"></div>
+        <div class="drawer-measure" id="drawer-measure"></div>
+      </aside>
+
+      <p class="toast" id="toast" role="status" hidden></p>
+
+      <aside class="painting-card seat-editor" id="seat-editor" hidden>
+        <div class="painting-card-head">
+          <h3 id="seat-editor-title">Navn på stol</h3>
+          <button type="button" class="icon-btn" id="seat-editor-close" aria-label="Lukk">✕</button>
+        </div>
+        <input id="seat-editor-input" type="text" maxlength="60" autocomplete="off" />
+        <div class="book-row">
+          <button type="button" class="status-btn active" id="seat-editor-save">Lagre</button>
+          <button type="button" class="status-btn" id="seat-editor-clear">Fjern</button>
+        </div>
+      </aside>
+
+      <aside class="painting-card" id="painting-card" hidden>
+        <div class="painting-card-head">
+          <div>
+            <p class="kicker" id="painting-kicker">Maleri</p>
+            <h3 id="painting-desc"></h3>
+          </div>
+          <button type="button" class="icon-btn" id="close-painting" aria-label="Lukk">✕</button>
+        </div>
+        <label for="painting-name" id="painting-name-label">Navn</label>
+        <input id="painting-name" type="text" maxlength="60" autocomplete="off" />
+        <p class="painting-hint" id="painting-hint"></p>
+      </aside>
+
+      <section class="measure-list">
+        <p class="kicker" id="list-title">Målliste</p>
+        <div id="list-body"></div>
+        <div class="seat-summary" id="seat-summary"></div>
+        <div class="warnings" id="warnings"></div>
+      </section>
+    </div>
+    <script src="app.js?v=24"></script>
+  </body>
+</html>

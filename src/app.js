@@ -3161,7 +3161,6 @@ function seatSummary() {
 function renderList() {
   const copy = t();
   document.getElementById("list-title").textContent = copy.listTitle;
-  document.getElementById("scale-note").textContent = `${copy.scale} · ${fmt(room().w)} × ${fmt(room().h)}`;
   const body = document.getElementById("list-body");
   const tables = sortedRoomTables();
   if (!tables.length) {
@@ -4321,16 +4320,39 @@ function guestSeats(table) {
 // The hosted frame blocks window.print and new tabs. There the button builds a
 // self-contained copy of print.html with the plan baked in and offers it as a
 // download; opening that file prints it. As a local file the link works as before.
+// A short message at the bottom of the screen (prompt()/alert() do not work on claude.ai).
+let toastTimer = null;
+function showToast(text, ms = 9000) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.hidden = true;
+  }, ms);
+}
+
 document.getElementById("print-btn")?.addEventListener("click", async (event) => {
+  // In the extension, the downloaded zip or as a plain file the link just opens
+  // print.html in a new tab, which prints straight away.
   if (!window.claude?.use) return;
+  event.preventDefault(); // claude.ai blocks new tabs and the print window
+  const en = state.lang === "en";
   let downloads = null;
   try {
     downloads = await window.claude.use("downloads");
   } catch {
     downloads = null;
   }
-  if (!downloads) return;
-  event.preventDefault();
+  if (!downloads) {
+    showToast(
+      en
+        ? "Printing does not work inside claude.ai. Use the Norsken extension (or the downloaded version) and press «Print» there."
+        : "Utskrift virker ikke inne i claude.ai. Bruk Norsken-utvidelsen (eller versjonen du lastet ned) og trykk «Skriv ut» der.",
+    );
+    return;
+  }
   try {
     save();
     const html = await (await fetch("print.html")).text();
@@ -4342,6 +4364,11 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
     );
     const day = new Date().toISOString().slice(0, 10);
     await downloads.save({ filename: `norsken-oppsett-${day}.html`, data: baked });
+    showToast(
+      en
+        ? `The printout was downloaded (norsken-oppsett-${day}.html). Open that file – the print window comes up by itself.`
+        : `Utskriften er lastet ned (norsken-oppsett-${day}.html). Åpne fila – da kommer utskriften opp av seg selv.`,
+    );
   } catch (error) {
     if (error?.code !== "declined") console.error(error);
   }

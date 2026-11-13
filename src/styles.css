@@ -1874,3 +1874,21 @@ a[hidden] {
 [hidden] {
   display: none !important;
 }
+
+/* a short message at the bottom of the screen */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  z-index: 120;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 32px));
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: #1d1812;
+  color: #fffaf3;
+  font-size: 1rem;
+  line-height: 1.4;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
+}
