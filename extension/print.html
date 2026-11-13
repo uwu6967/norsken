@@ -363,6 +363,48 @@
           display: none;
         }
       }
+
+      /* one sheet: Spisestua, and Domino beside it when it is in use */
+      .sheet {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 5mm;
+      }
+      .sheet .room {
+        margin: 0;
+      }
+      .side[hidden] {
+        display: none;
+      }
+      .side-title {
+        margin: 0 0 1.5mm;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6d6258;
+      }
+      .side iframe {
+        display: block;
+        border: 0;
+      }
+      section.list {
+        display: none !important; /* no second page (Danny 2026-11-13) */
+      }
+      html.embed body {
+        padding: 0;
+      }
+      html.embed header,
+      html.embed .no-print,
+      html.embed .side {
+        display: none !important;
+      }
+      html.embed .room {
+        height: 100vh;
+        border-width: 3px;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
@@ -373,7 +415,13 @@
       </div>
       <p id="meta"></p>
     </header>
-    <div class="room" id="room"></div>
+    <div class="sheet" id="sheet">
+      <div class="room" id="room"></div>
+      <div class="side" id="side" hidden>
+        <p class="side-title">Domino</p>
+        <iframe id="domino-frame" title="Domino"></iframe>
+      </div>
+    </div>
     <section class="list">
       <p class="kicker" id="list-title">Målliste</p>
       <div id="list-body"></div>

@@ -363,6 +363,48 @@
           display: none;
         }
       }
+
+      /* one sheet: Spisestua, and Domino beside it when it is in use */
+      .sheet {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        gap: 5mm;
+      }
+      .sheet .room {
+        margin: 0;
+      }
+      .side[hidden] {
+        display: none;
+      }
+      .side-title {
+        margin: 0 0 1.5mm;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #6d6258;
+      }
+      .side iframe {
+        display: block;
+        border: 0;
+      }
+      section.list {
+        display: none !important; /* no second page (Danny 2026-11-13) */
+      }
+      html.embed body {
+        padding: 0;
+      }
+      html.embed header,
+      html.embed .no-print,
+      html.embed .side {
+        display: none !important;
+      }
+      html.embed .room {
+        height: 100vh;
+        border-width: 3px;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
@@ -373,7 +415,13 @@
       </div>
       <p id="meta"></p>
     </header>
-    <div class="room" id="room"></div>
+    <div class="sheet" id="sheet">
+      <div class="room" id="room"></div>
+      <div class="side" id="side" hidden>
+        <p class="side-title">Domino</p>
+        <iframe id="domino-frame" title="Domino"></iframe>
+      </div>
+    </div>
     <section class="list">
       <p class="kicker" id="list-title">Målliste</p>
       <div id="list-body"></div>
@@ -382,13 +430,12 @@
     <p class="no-print"><button type="button" id="print">Skriv ut / lagre som PDF</button></p>
     <script>
       const ROOM_NAMES = { spisestua: { no: "Spisestua", en: "Dining room" }, domino: { no: "Domino", en: "Domino" } };
-      let ROOM_ID = window.__NORSKEN_ROOM__ || "spisestua";
-      if (!window.__NORSKEN_ROOM__) {
-        try {
-          const v = localStorage.getItem("norsken-room");
-          if (ROOM_NAMES[v]) ROOM_ID = v;
-        } catch {}
-      }
+      // The sheet is always Spisestua (Domino goes beside it when it is in use).
+      // print.html?room=domino&embed=1 draws just the Domino map, for that corner.
+      const PARAMS = new URLSearchParams(location.search);
+      const EMBED = PARAMS.get("embed") === "1";
+      let ROOM_ID = window.__NORSKEN_ROOM__ || (ROOM_NAMES[PARAMS.get("room")] ? PARAMS.get("room") : "spisestua");
+      if (EMBED) document.documentElement.classList.add("embed");
       const STORAGE_KEY = ROOM_ID === "domino" ? "norsken-layout-domino-v1" : "norsken-layout-v3";
       const SEAT_MARKS = [
         { key: "gluten", color: "#2a78d6", code: "G", no: "Gluten", en: "Gluten" },
@@ -980,7 +1027,40 @@
       }
 
       document.getElementById("print").addEventListener("click", () => window.print());
-      window.addEventListener("load", () => setTimeout(() => window.print(), 300));
+      // Domino on the same sheet, small, when it is in use (bookings, names or chairs)
+      function dominoInUse() {
+        let plan = null;
+        let g = null;
+        try {
+          plan = JSON.parse(localStorage.getItem("norsken-layout-domino-v1") || "null");
+          g = JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
+        } catch {}
+        if (!plan || !Array.isArray(plan.tables)) return null;
+        const floor = plan.tables.filter((t) => t.zone === "room" && t.lead !== false);
+        const guestThere = Boolean(g && g.placed && g.room && Object.keys(g.placed).some((id) => g.room[id] === "domino"));
+        const used = guestThere || floor.some((t) => t.name || t.redeck || Number(t.seatCount) > 0 || (t.seatsRender && t.seatsRender.length));
+        return used && floor.length ? plan : null;
+      }
+      if (!EMBED && ROOM_ID === "spisestua" && !window.__NORSKEN_STATE__) {
+        const plan = dominoInUse();
+        if (plan) {
+          const dr = (plan.dims && plan.dims.room) || { w: 500, h: 650 };
+          const mainH = 252; // mm: Spisestua a bit shorter so Domino gets a column
+          const border = 3.7; // mm, the 7px frame on both sides
+          const mainW = (mainH * r.w) / r.h + border;
+          const sideW = Math.max(40, 194 - mainW - 5);
+          const sideH = ((sideW - 1.6) * dr.h) / dr.w + 1.6;
+          document.getElementById("sheet").classList.add("two");
+          room.style.height = mainH + "mm";
+          const frame = document.getElementById("domino-frame");
+          frame.style.width = sideW + "mm";
+          frame.style.height = sideH + "mm";
+          frame.src = "print.html?room=domino&embed=1";
+          document.getElementById("side").hidden = false;
+        }
+      }
+
+      if (!EMBED) window.addEventListener("load", () => setTimeout(() => window.print(), 300));
     </script>
   </body>
 </html>
