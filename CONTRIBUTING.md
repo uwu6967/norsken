@@ -1,16 +1,13 @@
-# Norsken — rules
+# Regler for endringer
 
-- Push finished work straight to `main` (fast-forward). No PRs, no side branches left behind.
-- Every push to `main` makes a GitHub Release (`.github/workflows/release.yml`) with
-  `Norsken.zip` (= `extension/`) + `LES-MEG.txt`. Release notes = commit messages, so write them for Danny:
-  plain subject saying what changed, short body listing what was done.
-- Every commit: author AND committer `uwu6967 <22033341+uwu6967@users.noreply.github.com>`.
-  No co-author lines. Check: `git log --format='%an <%ae> | %cn <%ce>'`.
-- NDA: never commit guest names, phone numbers, emails, or any photos.
-- Edit `src/` or `resdiary/`, then ALWAYS run `python3 tools/build.py` and commit the output
-  (`index.html`, `print.html`, `LES-MEG.txt`, bookmark codes in the READMEs). The user never builds: the repo must be download-and-use.
-- `tools/build.py` also writes `extension/` (Chrome/Edge MV3 extension: no inline scripts allowed,
-  so it uses the src files + `print.js`). Each release ships ONE `Norsken.zip` = the extension folder (files at the zip root; also works by
-  double-clicking its index.html) + `LES-MEG.txt`.
-  (built `index.html` + `print.html`; do not pass `capabilities`, so db/downloads/user stay).
-- Context: `docs/HANDOFF.md`. Keep replies short and just build.
+- Ferdige endringer går rett til `main`. Ingen andre grener.
+- Hver push til `main` lager en ny release (`.github/workflows/release.yml`) med
+  `Norsken.zip` (= mappa `extension/`) og `LES-MEG.txt`. Release-notatene er commit-meldingene,
+  så skriv dem enkelt: hva som er endret, og en kort liste.
+- Forfatter og committer på hver commit: `uwu6967 <22033341+uwu6967@users.noreply.github.com>`.
+- Taushetsplikt: aldri gjestenavn, telefonnumre, e-poster eller bilder i repoen.
+- Endrer du noe i `src/` eller `resdiary/`, kjør `python3 tools/build.py` og ta med alt den lager
+  (`index.html`, `print.html`, `extension/`, `LES-MEG.txt`, bokmerkekodene i README-ene).
+  Den som bruker appen skal aldri trenge å bygge noe.
+- `extension/` er Chrome/Edge-utvidelsen (Manifest V3: ingen skript inne i HTML-en, derfor egne
+  `app.js` og `print.js`). Zip-fila har filene rett i roten og virker også ved å dobbeltklikke `index.html`.

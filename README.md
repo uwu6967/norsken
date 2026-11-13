@@ -3,10 +3,6 @@
 Bordplan for Spisestua på Norske Selskab: legg ut bordene, se klaring for servitørene,
 regn ut hvilke bordplater langbordet trenger, merk allergier per plass og skriv ut på A4.
 
-
-`index.html` her er hele appen i én fil. Åpner du den rett fra disk eller på GitHub Pages,
-lagres planen bare i den nettleseren (ikke den felles planen).
-
 ## Last ned
 
 Én fil: **Norsken.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest). Den kan brukes på to måter.
