@@ -1369,8 +1369,7 @@ body {
 
 /* --- top bar: glass, sticky ------------------------------------------- */
 .topbar {
-  position: sticky;
-  top: 8px;
+  position: relative;
   z-index: 40;
   display: flex;
   flex-wrap: wrap;
@@ -1759,4 +1758,119 @@ a[hidden] {
 .tray .table.rect {
   width: 44px;
   height: 66px;
+}
+
+/* --- names beside the map (callouts) ----------------------------------- */
+.room-wrap {
+  position: relative;
+}
+.callouts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+.callout-lines {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.callout-line {
+  stroke: var(--pine);
+  stroke-width: 1.6;
+  fill: none;
+  opacity: 0.75;
+}
+.callout-line.is-seat {
+  stroke: var(--burgundy);
+  stroke-dasharray: 4 3;
+}
+.callout-dot {
+  fill: var(--pine);
+}
+.callout-dot.is-seat {
+  fill: var(--burgundy);
+}
+.callout {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid rgba(47, 74, 60, 0.35);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(40, 28, 16, 0.12);
+}
+.callout.left {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.callout.is-seat {
+  border-color: rgba(122, 42, 53, 0.45);
+  border-style: dashed;
+  font-weight: 500;
+}
+.callout-num {
+  flex: 0 0 auto;
+  min-width: 1.8em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pine);
+  color: white;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 0.85rem;
+  text-align: center;
+}
+.callout.is-seat .callout-num {
+  background: var(--burgundy);
+}
+.callout-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.callout:hover {
+  border-color: var(--pine);
+}
+.redeck-tag {
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff1d6;
+  color: #7a4a10;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.brush .name-dot {
+  background: var(--burgundy);
+  color: white;
+}
+.set-sub {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+.set-pair {
+  display: grid;
+  gap: 8px;
+}
+.seat-editor {
+  display: grid;
+  gap: 10px;
+}
+.seat-editor input {
+  font-size: 1.05rem;
+  min-height: 48px;
+}
+
+/* anything marked hidden stays hidden, whatever its display style */
+[hidden] {
+  display: none !important;
 }
