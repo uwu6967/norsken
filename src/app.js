@@ -2857,6 +2857,18 @@ function renderChrome() {
   const kicker = document.querySelector(".topbar .kicker");
   if (kicker) kicker.textContent = `${roomName} · ${en ? "layout" : "oppsett"}`;
   document.title = `Norsken — ${roomName}`;
+  const setText = (id, text) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = text;
+  };
+  setText("settings-btn-text", en ? "Settings" : "Innstillinger");
+  setText("settings-title", en ? "Settings" : "Innstillinger");
+  setText("set-lang-title", en ? "Language" : "Språk");
+  setText("set-view-title", en ? "Show on the map" : "Vis på kartet");
+  setText("set-book-title", en ? "Assigning tables" : "Bordfordeling");
+  setText("set-measure-title", en ? "Measurements" : "Mål");
+  setText("set-room-title", en ? "The room" : "Rommet");
+  document.getElementById("lang-btn").textContent = en ? "Norsk / English: English" : "Norsk / English: Norsk";
   document.querySelectorAll("[data-room]").forEach((btn) => {
     btn.textContent = ROOMS[btn.dataset.room][en ? "en" : "no"];
     btn.classList.toggle("on", btn.dataset.room === ROOM_ID);
@@ -4049,3 +4061,36 @@ document.querySelectorAll("[data-room]").forEach((btn) =>
     location.reload();
   }),
 );
+
+// --- Innstillinger: every setting in one panel ------------------------------
+// Opened by the big ⚙ button; closed with ✕, a tap outside it, or Esc.
+(function settingsPanel() {
+  const panel = document.getElementById("settings");
+  const backdrop = document.getElementById("settings-backdrop");
+  const openBtn = document.getElementById("settings-btn");
+  if (!panel || !backdrop || !openBtn) return;
+  const open = () => {
+    panel.hidden = false;
+    backdrop.hidden = false;
+    requestAnimationFrame(() => {
+      panel.classList.add("open");
+      backdrop.classList.add("open");
+    });
+    document.getElementById("settings-close")?.focus();
+  };
+  const close = () => {
+    panel.classList.remove("open");
+    backdrop.classList.remove("open");
+    setTimeout(() => {
+      panel.hidden = true;
+      backdrop.hidden = true;
+    }, 220);
+    openBtn.focus();
+  };
+  openBtn.addEventListener("click", open);
+  document.getElementById("settings-close")?.addEventListener("click", close);
+  backdrop.addEventListener("click", close);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !panel.hidden) close();
+  });
+})();

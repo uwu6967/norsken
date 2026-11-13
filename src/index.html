@@ -16,42 +16,75 @@
   <body>
     <div class="app">
       <header class="topbar">
-        <div>
+        <div class="brand">
           <p class="kicker" data-i18n="kicker">Spisestua · oppsett</p>
           <h1>Norsken</h1>
         </div>
+        <nav class="room-switch" aria-label="Rom">
+          <button type="button" class="room-tab" data-room="domino">Domino</button>
+          <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
+        </nav>
         <div class="topbar-actions">
-          <button type="button" class="chip" data-room="domino">Domino</button>
-          <button type="button" class="chip" data-room="spisestua">Spisestua</button>
-          <button type="button" class="chip" id="lang-btn">NO</button>
-          <button type="button" class="chip" id="measure-btn">Mål</button>
-          <button type="button" class="chip on" id="grid-btn">Rutenett</button>
-          <button type="button" class="chip on" id="chairs-btn">Med stoler</button>
-          <button type="button" class="chip on" id="paintings-btn">Malerier</button>
-          <a class="chip on" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
-          <button type="button" class="chip" id="preset-btn">Vanlig oppsett</button>
-          <button type="button" class="chip" id="lunch-btn">Lunsj-oppsett</button>
-          <button type="button" class="chip ghost" id="reset-btn">Tomt rom</button>
+          <button type="button" class="chip big" id="preset-btn">Vanlig oppsett</button>
+          <button type="button" class="chip big" id="lunch-btn">Lunsj-oppsett</button>
+          <a class="chip big primary" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
+          <button type="button" class="chip big gear" id="settings-btn" aria-haspopup="dialog" aria-controls="settings">
+            <span aria-hidden="true">⚙</span> <span id="settings-btn-text">Innstillinger</span>
+          </button>
           <span class="chip sync" id="sync-status" hidden></span>
         </div>
       </header>
 
-      <p class="hint" id="hint">Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.</p>
-
-      <section class="measure-panel" id="measure-panel" hidden>
-        <div class="measure-head">
-          <p class="kicker" id="measure-title">Mål i cm</p>
-          <p class="measure-note" id="measure-note"></p>
+      <!-- Alle innstillinger på ett sted -->
+      <div class="settings-backdrop" id="settings-backdrop" hidden></div>
+      <aside class="settings" id="settings" role="dialog" aria-modal="true" aria-labelledby="settings-title" hidden>
+        <div class="settings-head">
+          <h2 id="settings-title">Innstillinger</h2>
+          <button type="button" class="icon-btn settings-close" id="settings-close" aria-label="Lukk">✕</button>
         </div>
-        <div class="measure-fields" id="measure-fields"></div>
-      </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-lang-title">Språk</p>
+          <button type="button" class="chip toggle-row" id="lang-btn">NO</button>
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-view-title">Vis på kartet</p>
+          <button type="button" class="chip toggle-row on" id="grid-btn">Rutenett</button>
+          <button type="button" class="chip toggle-row on" id="chairs-btn">Med stoler</button>
+          <button type="button" class="chip toggle-row on" id="paintings-btn">Malerier</button>
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-book-title">Bordfordeling</p>
+          <label for="book-order" id="book-order-label">Prioritet</label>
+          <input id="book-order" type="text" autocomplete="off" />
+        </section>
+
+        <section class="set-group">
+          <p class="set-title" id="set-measure-title">Mål</p>
+          <button type="button" class="chip toggle-row" id="measure-btn">Mål</button>
+          <section class="measure-panel" id="measure-panel" hidden>
+            <div class="measure-head">
+              <p class="kicker" id="measure-title">Mål i cm</p>
+              <p class="measure-note" id="measure-note"></p>
+            </div>
+            <div class="measure-fields" id="measure-fields"></div>
+          </section>
+        </section>
+
+        <section class="set-group danger">
+          <p class="set-title" id="set-room-title">Rommet</p>
+          <button type="button" class="chip big danger-btn" id="reset-btn">Tomt rom</button>
+        </section>
+      </aside>
+
+      <p class="hint" id="hint">Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.</p>
 
       <details class="brush-panel booking-panel" id="booking-panel">
         <summary><span class="kicker" id="book-title">Reservasjoner → bord</span></summary>
         <p class="brush-note" id="book-note"></p>
         <textarea id="book-text" rows="6" autocomplete="off" spellcheck="false"></textarea>
-        <label for="book-order" id="book-order-label">Prioritet</label>
-        <input id="book-order" type="text" autocomplete="off" />
         <div class="book-row">
           <button type="button" class="status-btn active" id="book-run">Fordel bord</button>
           <button type="button" class="status-btn" id="book-clear">Fjern navn fra bordene</button>
