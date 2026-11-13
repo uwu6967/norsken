@@ -307,7 +307,7 @@
         el.textContent = m;
         rulers.appendChild(el);
       }
-      room.appendChild(rulers);
+      // no metre numbers along the edges on paper (Danny 2026-11-13)
 
       const fixtures = state.fixtures || [
         { id: "double-1", wall: "left", along: 24 },
