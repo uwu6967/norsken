@@ -2447,10 +2447,10 @@ const i18n = {
     lunch: "Lunsj-oppsett",
     nameLabel: "Navn",
     nameHint: "f.eks. Hansen",
-    join: "Koble sammen",
-    unjoin: "Koble fra",
-    groupTitle: "Bordgruppe",
-    groupOf: "bord koblet sammen",
+    join: "Sett sammen til langbord",
+    unjoin: "Del langbordet i to",
+    groupTitle: "Langbord",
+    groupOf: "halvdeler",
     gapLabel: "Mellomrom",
     plateFits: "passer",
     plateClose: "nærmeste",
@@ -2462,7 +2462,7 @@ const i18n = {
     plateFills: "fyller",
     plateLeft: "igjen",
     plateNoneLeft: "Alle platene er i bruk.",
-    plateNeedsTwo: "Sett ned to bord først — en plate går imellom dem.",
+    plateNeedsTwo: "Plater passer bare i langbordet: slipp platen mellom to langbord-halvdeler.",
     plateRemoveHint: "Klikk for å ta bort",
     gapEmpty: "ingen plate lagt inn",
     gapSuggest: "forslag",
@@ -2590,10 +2590,10 @@ const i18n = {
     lunch: "Lunch setup",
     nameLabel: "Name",
     nameHint: "e.g. Hansen",
-    join: "Join together",
-    unjoin: "Separate",
-    groupTitle: "Table group",
-    groupOf: "tables joined",
+    join: "Make a langbord",
+    unjoin: "Split the langbord",
+    groupTitle: "Langbord",
+    groupOf: "halves",
     gapLabel: "Gap",
     plateFits: "fits",
     plateClose: "closest",
@@ -2605,7 +2605,7 @@ const i18n = {
     plateFills: "fills",
     plateLeft: "left",
     plateNoneLeft: "Every plate is in use.",
-    plateNeedsTwo: "Put two tables down first — a plate goes between them.",
+    plateNeedsTwo: "Plates only fit the langbord: drop the plate between two langbord halves.",
     plateRemoveHint: "Click to remove",
     gapEmpty: "no plate inserted",
     gapSuggest: "suggestion",
@@ -3518,6 +3518,8 @@ function gapCandidates() {
     for (let j = i + 1; j < tables.length; j += 1) {
       const a = tables[i];
       const b = tables[j];
+      // plates only fit the normal langbord: both sides must be langbord halves
+      if (a.size !== "long" || b.size !== "long") continue;
       if (a.group && a.group === b.group) {
         const sorted = orderGroup(groupMembers(a));
         if (Math.abs(sorted.indexOf(a) - sorted.indexOf(b)) !== 1) continue;
@@ -5631,17 +5633,19 @@ function renderDrawer() {
       <p class="group-head">${copyG.groupTitle} · ${members.length} ${copyG.groupOf}</p>
       ${gaps
         .map((entry) => {
+          if (!entry.plates?.length && entry.gap < 5) {
+            // pushed together: nothing to put in
+            return `<p class="gap-line">${state.lang === "en" ? "Closed – no plate" : "Lukket – ingen plate"}</p>`;
+          }
           const ok = entry.plates?.length ? true : entry.plate?.fits;
           return `<p class="gap-line${ok ? "" : " tight"}">${copyG.gapLabel} <strong>${cmNum(entry.gap)} cm</strong> → ${plateText(entry)}</p>`;
         })
         .join("")}
       <button type="button" class="status-btn" id="unjoin-btn">${copyG.unjoin}</button>`;
   } else {
-    const near = nearest(table);
-    const target = near && near.table.kind !== "furniture" ? near.table : null;
-    groupRow.innerHTML = target
-      ? `<button type="button" class="status-btn" id="join-btn">${copyG.join} → ${copyG.colTable} ${esc(target.label)}</button>`
-      : "";
+    // only a loose langbord half can be made into a langbord (round, oval and
+    // metal tables are never joined)
+    groupRow.innerHTML = table.size === "long" ? `<button type="button" class="status-btn" id="join-btn">${copyG.join}</button>` : "";
   }
 
   const c = clearances(table);
@@ -6081,13 +6085,10 @@ document.getElementById("group-row").addEventListener("click", (event) => {
     return;
   }
   if (event.target.id !== "join-btn") return;
-  const near = nearest(table);
-  if (!near || near.table.kind === "furniture") return;
-  const other = near.table;
-  const groupId = table.group || other.group || `g-${uid()}`;
-  for (const item of [table, other]) {
-    const existing = item.group ? groupMembers(item) : [item];
-    for (const member of existing) member.group = groupId;
+  if (table.size !== "long" || table.group) return;
+  // the nearest free half (or one from storage) is put end to end with this one
+  if (!pairUp(table)) {
+    trayHint = state.lang === "en" ? "No free langbord half to join with." : "Ingen ledig langbord-halvdel å sette sammen med.";
   }
   relabelRoom();
   save();
