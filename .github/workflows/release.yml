@@ -35,7 +35,7 @@ jobs:
           cp -r extension/. dist/Norsken-utvidelse/
           sed -i "s/\"version\": \"1.0.0\"/\"version\": \"1.0.${GITHUB_RUN_NUMBER}\"/" dist/Norsken-utvidelse/manifest.json
           grep '"version"' dist/Norsken-utvidelse/manifest.json
-          (cd dist && zip -qr Norsken-utvidelse.zip Norsken-utvidelse)
+          (cd dist/Norsken-utvidelse && zip -qr ../Norsken-utvidelse.zip .)
 
       - name: Release notes (everything since the last release)
         run: |

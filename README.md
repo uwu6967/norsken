@@ -13,13 +13,14 @@ lagres planen bare i den nettleseren (ikke den felles planen).
 Bordplanen åpner som en egen side når du klikker Norsken-ikonet, og «Skriv ut / PDF» virker.
 Planer og gjestenavn blir bare i nettleseren på den PC-en.
 
-1. Last ned **Norsken-utvidelse.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest) og pakk den ut.
-2. Skriv `chrome://extensions` i adressefeltet (Edge: `edge://extensions`).
-3. Slå på **Utviklermodus** (Developer mode).
-4. Trykk **Last inn upakket** (Load unpacked) og velg mappa `Norsken-utvidelse`.
-5. Klikk puslespillbrikken øverst til høyre og fest Norsken (nåla). Klikk Norsken-ikonet for å åpne bordplanen.
+1. Last ned **Norsken-utvidelse.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest).
+2. Høyreklikk zip-fila → **Pakk ut alle**, og legg mappa et fast sted, f.eks. `Dokumenter\Norsken-utvidelse` (ikke i Nedlastinger).
+3. Skriv `chrome://extensions` i adressefeltet (Edge: `edge://extensions`).
+4. Slå på **Utviklermodus** (Developer mode).
+5. Trykk **Last inn upakket** (Load unpacked) og velg mappa der `manifest.json` ligger.
+6. Chrome: klikk puslespillbrikken øverst til høyre og fest Norsken (nåla). Edge: puslespillbrikken → øyet (Vis på verktøylinjen). Klikk Norsken-ikonet for å åpne bordplanen.
 
-Ny versjon: pakk ut den nye zip-fila over den gamle mappa og trykk ↻ på Norsken i `chrome://extensions`. Planene dine blir liggende.
+**Ny versjon:** pakk ut den nye zip-fila og legg filene inn i den samme mappa (erstatt de gamle), og trykk ↻ på Norsken i `chrome://extensions`. Planene dine blir liggende. Ikke trykk **Fjern** – da slettes planene.
 
 ## Last ned og bruk (ingen installering)
 

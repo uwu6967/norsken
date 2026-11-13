@@ -947,6 +947,7 @@ function save() {
             y: (seat.pos.y / r.h) * 100,
             mark: seat.mark || null,
             note: table.seatNotes?.[seat.index] || null,
+            name: table.seatNames?.[seat.index] || null,
             a: Number.isFinite(seat.pos.a) ? Math.round(seat.pos.a) : 0,
           }))
         : null;

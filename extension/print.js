@@ -400,6 +400,7 @@
       };
       const usedMarks = new Set();
       const notes = [];
+      const seatNameList = [];
       let markedCount = 0;
       for (const table of tables) {
         for (const seat of table.seatsRender || []) {
@@ -428,7 +429,28 @@
             notes.push({ label: table.label, note: seat.note });
           }
           room.appendChild(el);
+          if (seat.name) {
+            // a guest's name on one chair: a small label just outside the chair
+            const rad = ((Number.isFinite(seat.a) ? seat.a : -90) * Math.PI) / 180;
+            const chairCm = dims.chairBig ? dims.chairBig.d : 54;
+            const tag = document.createElement("div");
+            tag.className = "seat-name";
+            tag.textContent = seat.name;
+            tag.style.left = seat.x + ((Math.cos(rad) * chairCm * 1.15) / r.w) * 100 + "%";
+            tag.style.top = seat.y + ((Math.sin(rad) * chairCm * 1.15) / r.h) * 100 + "%";
+            room.appendChild(tag);
+            seatNameList.push({ label: table.label, name: seat.name });
+          }
         }
+      }
+      if (seatNameList.length) {
+        const sn = document.createElement("div");
+        sn.className = "plates";
+        const escN = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+        sn.innerHTML = `<p class="kicker">${lang === "en" ? "Names on chairs" : "Navn på stol"}</p><ul>${seatNameList
+          .map((n) => `<li>${lang === "en" ? "Table" : "Bord"} ${escN(n.label)}: ${escN(n.name)}</li>`)
+          .join("")}</ul>`;
+        document.querySelector("section.list").appendChild(sn);
       }
 
       const sorted = leads.slice().sort((a, b) => {
