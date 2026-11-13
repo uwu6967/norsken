@@ -3027,6 +3027,8 @@ function renderChrome() {
     if (node) node.textContent = text;
   };
   setText("settings-btn-text", en ? "Settings" : "Innstillinger");
+  setText("drawer-empty-title", en ? "Table" : "Bord");
+  setText("drawer-empty-text", en ? "Click a table to change it." : "Klikk på et bord for å endre det.");
   setText("settings-title", en ? "Settings" : "Innstillinger");
   setText("set-lang-title", en ? "Language" : "Språk");
   setText("set-view-title", en ? "Show on the map" : "Vis på kartet");
