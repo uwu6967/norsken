@@ -8,28 +8,26 @@ regn ut hvilke bordplater langbordet trenger, merk allergier per plass og skriv 
 `index.html` her er hele appen i én fil. Åpner du den rett fra disk eller på GitHub Pages,
 lagres planen bare i den nettleseren (ikke den felles planen).
 
-## Norsken som utvidelse i Chrome / Edge (anbefalt)
+## Last ned
+
+Én fil: **Norsken.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest). Den kan brukes på to måter.
+
+### Som utvidelse i Chrome / Edge (anbefalt)
 
 Bordplanen åpner som en egen side når du klikker Norsken-ikonet, og «Skriv ut / PDF» virker.
 Planer og gjestenavn blir bare i nettleseren på den PC-en.
 
-1. Last ned **Norsken-utvidelse.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest).
-2. Høyreklikk zip-fila → **Pakk ut alle**, og legg mappa et fast sted, f.eks. `Dokumenter\Norsken-utvidelse` (ikke i Nedlastinger).
-3. Skriv `chrome://extensions` i adressefeltet (Edge: `edge://extensions`).
-4. Slå på **Utviklermodus** (Developer mode).
-5. Trykk **Last inn upakket** (Load unpacked) og velg mappa der `manifest.json` ligger.
-6. Chrome: klikk puslespillbrikken øverst til høyre og fest Norsken (nåla). Edge: puslespillbrikken → øyet (Vis på verktøylinjen). Klikk Norsken-ikonet for å åpne bordplanen.
+1. Høyreklikk Norsken.zip → **Pakk ut alle**, og legg mappa et fast sted, f.eks. `Dokumenter\Norsken` (ikke i Nedlastinger).
+2. Skriv `chrome://extensions` i adressefeltet (Edge: `edge://extensions`).
+3. Slå på **Utviklermodus** (Developer mode).
+4. Trykk **Last inn upakket** (Load unpacked) og velg mappa der `manifest.json` ligger.
+5. Chrome: klikk puslespillbrikken øverst til høyre og fest Norsken (nåla). Edge: puslespillbrikken → øyet (Vis på verktøylinjen). Klikk Norsken-ikonet for å åpne bordplanen.
 
 **Ny versjon:** pakk ut den nye zip-fila og legg filene inn i den samme mappa (erstatt de gamle), og trykk ↻ på Norsken i `chrome://extensions`. Planene dine blir liggende. Ikke trykk **Fjern** – da slettes planene.
 
-## Last ned og bruk (ingen installering)
+### Uten installering
 
-1. Last ned **Norsken.zip** fra [siste release](https://github.com/uwu6967/norsken/releases/latest) og pakk den ut.
-   (Hver oppdatering blir en ny release, med liste over hva som er endret.)
-2. Dobbeltklikk **`index.html`**: bordplanen åpner i nettleseren. Den lagres i den nettleseren.
-3. ResDiary-bokmerkene: kopier kodene under (står også i `LES-MEG.txt` i zip-en).
-
-Det er alt. Resten av filene trenger du ikke røre.
+Pakk ut Norsken.zip og dobbeltklikk **`index.html`**. Bordplanen åpner i nettleseren og lagres der.
 
 ## ResDiary-bokmerker
 
@@ -97,7 +95,7 @@ Merket «ANSLAG» i appen til noen måler dem (endres under **Mål**):
 
 | | |
 |---|---|
-| `extension/` | **Norsken-utvidelsen** (Chrome/Edge), lages av `tools/build.py` |
+| `extension/` | det som ligger i **Norsken.zip**: utvidelsen (Chrome/Edge), virker også ved å dobbeltklikke `index.html` |
 | `index.html` | **ferdig app** i én fil, bare åpne den |
 | `print.html` | utskriftssiden (åpnes fra «Skriv ut / PDF») |
 | `LES-MEG.txt` | kort bruksanvisning + bokmerkekodene |

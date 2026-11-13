@@ -42,15 +42,16 @@ def put(path):
     open(full, 'w', encoding='utf-8').write(new)
 put('README.md'); put(os.path.join('resdiary', 'README.md'))
 txt = ['Norsken - bordplan for Spisestua', '',
-       'Enklest: bruk Norsken-utvidelsen i Chrome/Edge (se nederst).',
-       'Uten installering: dobbeltklikk index.html (se under).',
+       'Norsken.zip kan brukes på to måter:',
+       ' - som utvidelse i Chrome/Edge (se nederst), eller',
+       ' - uten installering: dobbeltklikk index.html.',
        '',
        '1. Dobbeltklikk index.html: bordplanen åpner i nettleseren.',
        '2. ResDiary-bokmerker: ' + how, '']
 for f, t, d in items:
     txt += ['--- ' + t + ' ---', d, '', bm(f), '']
 txt += ['index.html trenger ingen installering. Alt blir i nettleseren din.', '']
-txt += ['Slik installerer du Norsken-utvidelsen (Chrome eller Edge):', '  1. Last ned Norsken-utvidelse.zip fra siste release.', '  2. Høyreklikk zip-fila -> «Pakk ut alle» og legg mappa et fast sted,', '     f.eks. Dokumenter\\Norsken-utvidelse (ikke i Nedlastinger).', '  3. Skriv chrome://extensions i adressefeltet (Edge: edge://extensions).', '  4. Slå på «Utviklermodus» (Developer mode).', '  5. Trykk «Last inn upakket» (Load unpacked) og velg mappa der manifest.json ligger.', '  6. Chrome: klikk puslespillbrikken øverst til høyre og fest Norsken (nåla).', '     Edge: klikk puslespillbrikken og så øyet (Vis på verktøylinjen).', '     Klikk Norsken-ikonet for å åpne bordplanen.', '  Ny versjon: pakk ut den nye zip-fila og legg filene inn i den samme mappa', '  (erstatt de gamle), og trykk ↻ på Norsken i chrome://extensions.', '  Planene dine blir liggende. Ikke trykk «Fjern» – da slettes planene.', '']
+txt += ['Som utvidelse i Chrome eller Edge (anbefalt – da virker «Skriv ut» best):', '  1. Last ned Norsken.zip fra siste release.', '  2. Høyreklikk zip-fila -> «Pakk ut alle» og legg mappa et fast sted,', '     f.eks. Dokumenter\\Norsken (ikke i Nedlastinger).', '  3. Skriv chrome://extensions i adressefeltet (Edge: edge://extensions).', '  4. Slå på «Utviklermodus» (Developer mode).', '  5. Trykk «Last inn upakket» (Load unpacked) og velg mappa der manifest.json ligger.', '  6. Chrome: klikk puslespillbrikken øverst til høyre og fest Norsken (nåla).', '     Edge: klikk puslespillbrikken og så øyet (Vis på verktøylinjen).', '     Klikk Norsken-ikonet for å åpne bordplanen.', '  Ny versjon: pakk ut den nye zip-fila og legg filene inn i den samme mappa', '  (erstatt de gamle), og trykk ↻ på Norsken i chrome://extensions.', '  Planene dine blir liggende. Ikke trykk «Fjern» – da slettes planene.', '']
 
 open(os.path.join(root, 'LES-MEG.txt'), 'w', encoding='utf-8', newline='\r\n').write('\n'.join(txt))
 print('wrote bookmarks into README.md, resdiary/README.md, LES-MEG.txt')
