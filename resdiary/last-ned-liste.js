@@ -10,11 +10,13 @@ if(!head)return;
 var keep=[];
 Array.from(head.cells).forEach(function(c,i){var s=c.textContent.toLowerCase().replace(/\s+/g,"");if(!DROP.some(function(w){return s.indexOf(w)>=0;}))keep.push(i);});
 var ti=Array.from(head.cells).findIndex(function(c){return /^\s*tid/i.test(c.textContent);});
+var ni=Array.from(head.cells).findIndex(function(c){return /navn|kunde(?!kod)|^\s*gjest\s*$/i.test(c.textContent);});
 var h=keep.map(function(i){return esc(clean(head.cells[i].textContent));}).join(";");
 if(h!==lastHead){lines.push(h);lastHead=h;}
 rows.forEach(function(r){
 if(r===head||r.cells.length!==head.cells.length)return;
 if(ti>=0&&!/^\d{1,2}[:.]\d{2}$/.test(r.cells[ti].textContent.replace(/\s+/g,"")))return;
+if(ni>=0&&!r.cells[ni].textContent.trim())return;
 var v=keep.map(function(i){return esc(clean(r.cells[i].textContent));});
 if(!v.join("").trim())return;
 lines.push(v.join(";"));count++;

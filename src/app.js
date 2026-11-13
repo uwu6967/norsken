@@ -1502,7 +1502,20 @@ function parseBookings(text) {
       }
       out.push({ index, time, name: rest.replace(/\s+/g, " ").trim(), guests, forced });
     });
-  return out;
+  return dropSubtotals(out, (b) => b.name, (b) => b.guests);
+}
+
+// ResDiary prints a subtotal per time slot: the time and the covers, no name
+// (e.g. «12:00 11» after five bookings at 12:00). That is not a booking. A
+// nameless line whose number equals the sum of the named bookings at the same
+// time is dropped; any other nameless line is kept.
+function dropSubtotals(list, nameOf, paxOf) {
+  const sums = new Map();
+  for (const b of list) {
+    if (!nameOf(b)) continue;
+    sums.set(b.time, (sums.get(b.time) || 0) + (Number(paxOf(b)) || 0));
+  }
+  return list.filter((b) => nameOf(b) || !sums.has(b.time) || sums.get(b.time) !== Number(paxOf(b)));
 }
 
 function tableCapacity(table) {
@@ -1525,6 +1538,10 @@ function assignBookings() {
   const bookings = parseBookings(state.bookingsText);
   clearBookedNames();
   const floor = roomTables().filter((t) => t.lead !== false && t.label);
+  if (!floor.length) {
+    bookingResult = { rows: [], spare: [], shared: false, noTables: true };
+    return;
+  }
   const labelMap = new Map(floor.map((t) => [String(t.label).toLowerCase(), t]));
   const domino = ROOM_ID === "domino";
   const order = domino
@@ -1654,6 +1671,14 @@ function renderBookings() {
   if (!out) return;
   if (!bookingResult) {
     out.innerHTML = "";
+    return;
+  }
+  if (bookingResult.noTables) {
+    out.innerHTML = `<p class="brush-note tight">${
+      state.lang === "en"
+        ? "No tables on the floor in this room yet. Press «Usual setup» (or drag tables out) first, then «Assign tables»."
+        : "Ingen bord ute i dette rommet ennå. Trykk «Vanlig oppsett» (eller dra ut bord) først, og så «Fordel bord»."
+    }</p>`;
     return;
   }
   if (!bookingResult.rows.length) {
@@ -3850,7 +3875,7 @@ function guestsFromCsv(text) {
       note: ci >= 0 ? (r[ci] || "").slice(0, 120) : "",
     });
   }
-  return out.sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+  return dropSubtotals(out, (g) => g.name, (g) => g.pax).sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
 }
 
 // A placed guest only counts while its table is on the floor.
