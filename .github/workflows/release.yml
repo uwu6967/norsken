@@ -26,16 +26,15 @@ jobs:
 
       - name: Package Norsken.zip
         run: |
+          # ONE download. The files sit straight in the zip (no folder inside a folder):
+          # load the unpacked folder as a Chrome/Edge extension, or just double-click index.html.
           mkdir -p dist/Norsken
-          cp index.html print.html LES-MEG.txt dist/Norsken/
-          (cd dist && zip -qr Norsken.zip Norsken)
+          cp -r extension/. dist/Norsken/
+          cp LES-MEG.txt dist/Norsken/
+          sed -i "s/\"version\": \"1.0.0\"/\"version\": \"1.0.${GITHUB_RUN_NUMBER}\"/" dist/Norsken/manifest.json
+          grep '"version"' dist/Norsken/manifest.json
+          (cd dist/Norsken && zip -qr ../Norsken.zip .)
           cp LES-MEG.txt dist/LES-MEG.txt
-          # the Chrome / Edge extension, with this release's number as its version
-          mkdir -p dist/Norsken-utvidelse
-          cp -r extension/. dist/Norsken-utvidelse/
-          sed -i "s/\"version\": \"1.0.0\"/\"version\": \"1.0.${GITHUB_RUN_NUMBER}\"/" dist/Norsken-utvidelse/manifest.json
-          grep '"version"' dist/Norsken-utvidelse/manifest.json
-          (cd dist/Norsken-utvidelse && zip -qr ../Norsken-utvidelse.zip .)
 
       - name: Release notes (everything since the last release)
         run: |
@@ -43,8 +42,7 @@ jobs:
           RANGE=${PREV:+$PREV..}HEAD
           {
             echo "## Last ned"
-            echo "- **Norsken-utvidelse.zip**: Norsken som utvidelse i Chrome/Edge – se LES-MEG.txt for hvordan du installerer den."
-            echo "- **Norsken.zip**: pakk ut, dobbeltklikk \`index.html\`."
+            echo "- **Norsken.zip**: alt i én fil. Legg den inn som utvidelse i Chrome/Edge, eller dobbeltklikk \`index.html\`. Se LES-MEG.txt."
             echo "- **LES-MEG.txt**: bruksanvisning + ResDiary-bokmerkene som tekst (kopier og lim inn)."
             echo
             echo "## Endringer"
@@ -58,7 +56,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v$(date -u +%Y.%m.%d)-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" dist/Norsken-utvidelse.zip dist/Norsken.zip dist/LES-MEG.txt \
+          gh release create "$TAG" dist/Norsken.zip dist/LES-MEG.txt \
             --target "$GITHUB_SHA" \
             --title "Norsken $(date -u +%d.%m.%Y) (#${GITHUB_RUN_NUMBER})" \
             --notes-file notes.md --latest
