@@ -1992,3 +1992,14 @@ a[hidden] {
   color: #1d1812;
   border-color: transparent;
 }
+
+/* chairs can be dragged around their table */
+.seat {
+  touch-action: none;
+  cursor: grab;
+}
+.seat.dragging {
+  cursor: grabbing;
+  z-index: 25;
+  box-shadow: 0 0 0 3px rgba(47, 74, 60, 0.45);
+}
