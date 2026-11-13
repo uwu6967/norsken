@@ -46,8 +46,7 @@ jobs:
             echo "- **LES-MEG.txt**: bruksanvisning + ResDiary-bokmerkene som tekst (kopier og lim inn)."
             echo
             echo "## Endringer"
-            git log --no-merges --reverse --format='- **%s**%n%n%w(0,2,2)%b' $RANGE \
-              | grep -v -E '^\s*(Co-Authored-By|Claude-Session):' | cat -s
+            git log --no-merges --reverse --format='- **%s**%n%n%w(0,2,2)%b' $RANGE | cat -s
           } > notes.md
           cat notes.md
 

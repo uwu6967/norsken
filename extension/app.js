@@ -961,8 +961,8 @@ function save() {
 }
 
 // --- shared plan -----------------------------------------------------------
-// When the board runs as a hosted Claude artifact, the layout lives in the
-// artifact's db so the boss and every waitress see the SAME plan. Only the
+// When the board runs on the hosted web version, the layout lives in the
+// host's shared store so the boss and every waitress see the SAME plan. Only the
 // floor plan is shared; language, grid/chair toggles and the selection stay
 // per person. Opened as a plain local file, none of this runs and the board
 // keeps using localStorage only.
@@ -2029,6 +2029,30 @@ const OVAL_DEFAULT_SEATS = 0;
 // Chairs at the short ends of a rectangle (2026-11-11, lunch photos IMG_2839-2842:
 // the langbord by the window has a chair at its window end). 0, 1 or 2.
 // 1 = the end nearest the window (top), or the left end if the table lies across.
+// The «Kortende» buttons: none, one end (top/left or bottom/right), both.
+function endChoices(table) {
+  const en = state.lang === "en";
+  const lead = groupSeatLead(table);
+  const vertical = lead === table ? groupRun(lead).axis === "y" : tableCm(table).h >= tableCm(table).w;
+  const n = endSeatsOf(table);
+  const side = table.endSide === "end" ? "end" : "start";
+  return [
+    { ends: 0, side: "", label: en ? "None" : "Ingen", on: n === 0 },
+    { ends: 1, side: "start", label: vertical ? (en ? "Top" : "Øverst") : en ? "Left" : "Venstre", on: n === 1 && side === "start" },
+    { ends: 1, side: "end", label: vertical ? (en ? "Bottom" : "Nederst") : en ? "Right" : "Høyre", on: n === 1 && side === "end" },
+    { ends: 2, side: "", label: en ? "Both" : "Begge", on: n === 2 },
+  ];
+}
+
+// Which ends get a chair: -1 = top / left end, 1 = bottom / right end.
+// ends 1 + endSide "end" = only the bottom/right end (Danny 2026-11-13).
+function endSides(table) {
+  const n = endSeatsOf(table);
+  if (n === 2) return [-1, 1];
+  if (n === 1) return [table.endSide === "end" ? 1 : -1];
+  return [];
+}
+
 function endSeatsOf(table) {
   if (table.kind === "round") return 0;
   const n = Number(table.ends);
@@ -2134,7 +2158,7 @@ function baseSeatPositions(table) {
         out.push(at(run.start + ((i + 0.5) / perSide) * run.length, side ? offset : -offset));
       }
     }
-    for (let e = 0; e < ends; e += 1) out.push(at(e === 0 ? run.start - chair * 0.62 : run.end + chair * 0.62, 0, e === 0 ? -1 : 1));
+    for (const dir of endSides(lead).slice(0, ends)) out.push(at(dir < 0 ? run.start - chair * 0.62 : run.end + chair * 0.62, 0, dir));
     return out;
   }
   const s = tableCm(table);
@@ -2191,8 +2215,7 @@ function baseSeatPositions(table) {
   }
   // end chairs go last so marks already on the side chairs keep their seat
   const endOffset = along / 2 + chair * 0.62;
-  for (let e = 0; e < ends; e += 1) {
-    const sign = e === 0 ? -1 : 1;
+  for (const sign of endSides(table).slice(0, ends)) {
     if (vertical) out.push({ x: c.x, y: c.y + sign * endOffset, a: sign < 0 ? -90 : 90 });
     else out.push({ x: c.x + sign * endOffset, y: c.y, a: sign < 0 ? 180 : 0 });
   }
@@ -3367,7 +3390,12 @@ function renderDrawer() {
     ${table.kind !== "round" ? `<label class="label-field ends-field">
       <span>${copy.endsLabel}</span>
       <span class="people-steps">
-        ${[0, 1, 2].map((n) => `<button type="button" class="nudge${endSeatsOf(seatOwner(table)) === n ? " active" : ""}" data-ends="${n}">${n}</button>`).join("")}
+        ${endChoices(seatOwner(table))
+          .map(
+            (o) =>
+              `<button type="button" class="nudge wide${o.on ? " active" : ""}" data-ends="${o.ends}" data-endside="${o.side}">${o.label}</button>`,
+          )
+          .join("")}
       </span>
     </label>` : ""}
     ${table.size === "long" ? `<div class="plate-plan">
@@ -3407,19 +3435,6 @@ function renderDrawer() {
   const near = nearest(table);
   const step = state.dims.snap && state.dims.snap >= 1 ? state.dims.snap : 10;
   document.getElementById("drawer-measure").innerHTML = `
-    <p class="m-size">${sizeLabelCm(table)}</p>
-    <dl class="m-grid">
-      <div><dt>${copy.position}</dt><dd>${copy.walls.top} ${fmt(centre.y)} · ${copy.walls.left} ${fmt(centre.x)}</dd></div>
-      <div><dt>${copy.clearance}</dt><dd>${copy.walls.top} ${fmt(c.top)} · ${copy.walls.bottom} ${fmt(c.bottom)}<br />${copy.walls.left} ${fmt(c.left)} · ${copy.walls.right} ${fmt(c.right)}</dd></div>
-      <div><dt>${copy.nearest}</dt><dd>${
-        near
-          ? `<span class="${near.gap < state.dims.aisle ? "tight" : ""}">${obstacleName(near.table)} · ${fmt(near.gap)}</span>`
-          : copy.none
-      }</dd></div>
-    </dl>
-    <div class="nudge-row">
-      <span class="nudge-label">${copy.seats} ${seatsOf(table).length}</span>
-    </div>
     <div class="nudge-row">
       <span class="nudge-label">${copy.nudge} ${step} cm</span>
       <button type="button" class="nudge" data-nudge="left">←</button>
@@ -3579,6 +3594,11 @@ function render() {
     renderRoom();
     renderTray();
     renderList();
+    // the bottom card only shows when it has something: seat marks or a doubled number
+    const listCard = document.getElementById("measure-list");
+    if (listCard) {
+      listCard.hidden = !document.getElementById("seat-summary")?.textContent.trim() && !document.getElementById("warnings")?.textContent.trim();
+    }
     renderDrawer();
     renderPaintingCard();
     renderBookings();
@@ -3905,6 +3925,7 @@ document.getElementById("label-row").addEventListener("click", (event) => {
     if (!table) return;
     const before = endSeatsOf(table);
     table.ends = Number(endsRaw);
+    if (event.target.dataset.endside) table.endSide = event.target.dataset.endside;
     // a hand-set cover count keeps its side chairs; the end chairs add on
     if (Number.isFinite(table.seatCount)) {
       table.seatCount = Math.max(1, Math.min(24, table.seatCount + endSeatsOf(table) - before));
@@ -4411,7 +4432,7 @@ function guestSeats(table) {
 // The hosted frame blocks window.print and new tabs. There the button builds a
 // self-contained copy of print.html with the plan baked in and offers it as a
 // download; opening that file prints it. As a local file the link works as before.
-// A short message at the bottom of the screen (prompt()/alert() do not work on claude.ai).
+// A short message at the bottom of the screen (prompt()/alert() do not work in the hosted page).
 let toastTimer = null;
 function showToast(text, ms = 9000) {
   const el = document.getElementById("toast");
@@ -4428,7 +4449,7 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
   // In the extension, the downloaded zip or as a plain file the link just opens
   // print.html in a new tab, which prints straight away.
   if (!window.claude?.use) return;
-  event.preventDefault(); // claude.ai blocks new tabs and the print window
+  event.preventDefault(); // the hosted page blocks new tabs and the print window
   const en = state.lang === "en";
   let downloads = null;
   try {
@@ -4439,8 +4460,8 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
   if (!downloads) {
     showToast(
       en
-        ? "Printing does not work inside claude.ai. Use the Norsken extension (or the downloaded version) and press «Print» there."
-        : "Utskrift virker ikke inne i claude.ai. Bruk Norsken-utvidelsen (eller versjonen du lastet ned) og trykk «Skriv ut» der.",
+        ? "Printing does not work on this web page. Use the Norsken extension (or the downloaded version) and press «Print» there."
+        : "Utskrift virker ikke på denne nettsiden. Bruk Norsken-utvidelsen (eller versjonen du lastet ned) og trykk «Skriv ut» der.",
     );
     return;
   }
