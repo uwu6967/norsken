@@ -3054,17 +3054,12 @@ function renderList() {
           .map(([p, q]) => `<li>${esc(p)} ↔ ${esc(q)}</li>`)
           .join("")}</ul>`
       : "");
-  if (!tables.length) {
-    warnEl.innerHTML = "";
-  } else if (!tight.length) {
-    warnEl.innerHTML =
-      dupHtml +
-      `<p class="ok">✓ ${copy.warnOk} ${fmt(state.dims.aisle)} <span class="basis">(${state.withChairs ? copy.chairNote : copy.topNote})</span>.</p>`;
-  } else {
-    warnEl.innerHTML = dupHtml + `<p class="warn-title">⚠ ${copy.warnTitle} (&lt; ${fmt(state.dims.aisle)}, ${state.withChairs ? copy.chairNote : copy.topNote})</p><ul>${tight
-      .map((pair) => `<li>${obstacleName(pair.a)} ↔ ${obstacleName(pair.b)}: <strong>${fmt(pair.gap)}</strong></li>`)
-      .join("")}</ul>`;
-  }
+  // The distance list («For trangt for servitør») and the chair-clash list are
+  // gone (Danny 2026-11-13: "idk what this is for"). Only a doubled table
+  // number is still worth a warning.
+  void tight;
+  void clashes;
+  warnEl.innerHTML = tables.length && dups.length ? `<p class="warn-title">⚠ ${copy.dupTitle}: <strong>${dups.map(esc).join(", ")}</strong></p>` : "";
 }
 
 function renderDrawer() {
