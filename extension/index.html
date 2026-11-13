@@ -106,6 +106,28 @@
       </section>
 
       <div class="board">
+        <aside class="drawer" id="drawer" hidden>
+          <div class="drawer-handle"></div>
+          <div class="drawer-head">
+            <div>
+              <p class="kicker" id="drawer-kicker"></p>
+              <h2 id="drawer-title"></h2>
+            </div>
+            <button type="button" class="icon-btn" id="close-drawer" aria-label="Close">✕</button>
+          </div>
+          <div class="drawer-actions" id="size-row"></div>
+          <div class="drawer-actions">
+            <button type="button" class="status-btn" id="rotate-btn">Roter</button>
+            <button type="button" class="status-btn" id="to-tray-btn">Til lager</button>
+          </div>
+          <div class="label-row" id="label-row"></div>
+          <div class="group-row" id="group-row"></div>
+          <div class="drawer-measure" id="drawer-measure"></div>
+        </aside>
+          <aside class="drawer-empty" id="drawer-empty">
+            <p class="kicker" id="drawer-empty-title">Bord</p>
+            <p id="drawer-empty-text">Klikk på et bord for å endre det.</p>
+          </aside>
         <main class="stage">
           <div class="room-wrap">
             <div class="room" id="room" role="application" aria-label="Spisestua"></div>
@@ -138,24 +160,6 @@
         </aside>
       </div>
 
-      <aside class="drawer" id="drawer" hidden>
-        <div class="drawer-handle"></div>
-        <div class="drawer-head">
-          <div>
-            <p class="kicker" id="drawer-kicker"></p>
-            <h2 id="drawer-title"></h2>
-          </div>
-          <button type="button" class="icon-btn" id="close-drawer" aria-label="Close">✕</button>
-        </div>
-        <div class="drawer-actions" id="size-row"></div>
-        <div class="drawer-actions">
-          <button type="button" class="status-btn" id="rotate-btn">Roter</button>
-          <button type="button" class="status-btn" id="to-tray-btn">Til lager</button>
-        </div>
-        <div class="label-row" id="label-row"></div>
-        <div class="group-row" id="group-row"></div>
-        <div class="drawer-measure" id="drawer-measure"></div>
-      </aside>
 
       <p class="toast" id="toast" role="status" hidden></p>
 
