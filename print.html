@@ -390,9 +390,9 @@
       }
       const DEFAULT_DIMS = {
         room: { w: 700, h: 1360 },
-        small: { d: 130 },
-        big: { d: 150 },
-        oval: { w: 100, l: 180 },
+        small: { d: 115 },
+        big: { d: 135 },
+        oval: { w: 90, l: 165 },
         rect: { w: 80, l: 120 },
         plateS: { w: 37, l: 90, n: 2 },
         plateM: { w: 49.5, l: 90, n: 4 },
@@ -421,7 +421,12 @@
         return m ? { time: `${m[1].padStart(2, "0")}:${m[2]}`, name: m[3] } : { time: "", name: String(text || "") };
       };
       for (const table of state.tables || []) {
-        if (table.zone !== "room" || table.lead === false || !table.name) continue;
+        if (table.zone !== "room" || table.lead === false) continue;
+        if (table.redeck) {
+          const again = timeOf(table.redeck);
+          arrivals.push({ time: again.time, name: again.name, pax: table.redeckPax || table.guests, table, room: ROOM_ID, redeck: true });
+        }
+        if (!table.name) continue;
         const parts = timeOf(table.name);
         arrivals.push({ time: parts.time, name: parts.name, pax: table.guests, table, room: ROOM_ID });
       }
@@ -663,7 +668,7 @@
       }
       room.appendChild(rulers);
 
-      const fixtures = [] || [
+      const fixtures = state.fixtures || [
         { id: "double-1", wall: "left", along: 24 },
         { id: "double-2", wall: "left", along: 68 },
         { id: "waitress", wall: "bottom", along: 50 },
@@ -726,6 +731,12 @@
           sub.className = "sub";
           sub.textContent = `${copy.colTable} ${table.label} · ${table.guests} ${paxWord}`;
           el.append(name, sub);
+          if (table.redeck) {
+            const again = document.createElement("span");
+            again.className = "sub";
+            again.textContent = `↻ ${table.redeck}`;
+            el.appendChild(again);
+          }
         } else {
           el.textContent = text;
           if (text && table.lead !== false && table.guests) {
@@ -799,7 +810,7 @@
         const rows = arrivals
           .map(
             (a) =>
-              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${escHtml(ROOM_NAMES[a.room || ROOM_ID][en ? "en" : "no"])}</td><td class="b">${escHtml(a.table.label)}</td></tr>`,
+              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${escHtml(ROOM_NAMES[a.room || ROOM_ID][en ? "en" : "no"])}</td><td class="b">${escHtml(a.table.label)}${a.redeck ? ` <small>↻ ${en ? "re-set" : "dekk om"}</small>` : ""}</td></tr>`,
           )
           .join("");
         const taken = new Set(arrivals.map((a) => a.table.id));

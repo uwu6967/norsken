@@ -64,6 +64,9 @@ javascript:(function(){var DROP=["telefon","mobil","e-post","epost","email","boo
   husets vane: sidebordene 3, 6, 5, 8, 10, 9, 11, 7, 2, 4 først, aldri midten, over 5 personer → 16.
 - **Dagens liste:** åpne lista fra bokmerket «Last ned liste» og dra hvert navn til et bord selv.
   Navnene blir bare i nettleseren på den PC-en (ikke i den felles planen), og kommer med på utskriften.
+- **Dekk om (↻):** når Spisestua er full, får sene bookinger et bord igjen etter at de første gjestene har sittet en stund (60 min, kan endres). Eller velg «Bruk Domino» i innstillingene.
+- **Navn ved siden av kartet:** på stor skjerm står navnene i margen med en strek til bordet – eller til stolen, med «Navn på stol».
+- **Ingen stoler** før dere legger til personer (+ / −, «Fordel bord» eller Dagens liste).
 - **Skriv ut / PDF** på A4.
 - **⚙ Innstillinger:** alle innstillinger på ett sted (språk, rutenett, stoler, malerier, prioritet for bordfordeling, mål, tomt rom).
 

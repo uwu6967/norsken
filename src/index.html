@@ -52,13 +52,19 @@
           <p class="set-title" id="set-view-title">Vis på kartet</p>
           <button type="button" class="chip toggle-row on" id="grid-btn">Rutenett</button>
           <button type="button" class="chip toggle-row on" id="chairs-btn">Med stoler</button>
-          <button type="button" class="chip toggle-row on" id="paintings-btn">Malerier</button>
         </section>
 
         <section class="set-group">
           <p class="set-title" id="set-book-title">Bordfordeling</p>
           <label for="book-order" id="book-order-label">Prioritet</label>
           <input id="book-order" type="text" autocomplete="off" />
+          <p class="set-sub" id="overflow-title">Når Spisestua er full</p>
+          <div class="set-pair">
+            <button type="button" class="chip toggle-row" id="overflow-redeck">Dekk om et bord (↻)</button>
+            <button type="button" class="chip toggle-row" id="overflow-domino">Bruk Domino</button>
+          </div>
+          <label for="sit-minutes" id="sit-label">Minutter før et bord kan dekkes om</label>
+          <input id="sit-minutes" type="number" inputmode="numeric" min="15" max="300" step="5" />
           <ul class="book-rules" id="book-rules"></ul>
         </section>
 
@@ -150,6 +156,18 @@
         <div class="label-row" id="label-row"></div>
         <div class="group-row" id="group-row"></div>
         <div class="drawer-measure" id="drawer-measure"></div>
+      </aside>
+
+      <aside class="painting-card seat-editor" id="seat-editor" hidden>
+        <div class="painting-card-head">
+          <h3 id="seat-editor-title">Navn på stol</h3>
+          <button type="button" class="icon-btn" id="seat-editor-close" aria-label="Lukk">✕</button>
+        </div>
+        <input id="seat-editor-input" type="text" maxlength="60" autocomplete="off" />
+        <div class="book-row">
+          <button type="button" class="status-btn active" id="seat-editor-save">Lagre</button>
+          <button type="button" class="status-btn" id="seat-editor-clear">Fjern</button>
+        </div>
       </aside>
 
       <aside class="painting-card" id="painting-card" hidden>

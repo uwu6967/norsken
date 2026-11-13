@@ -39,13 +39,13 @@ const LABELS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "
 // Bump DIMS_VERSION whenever a placeholder changes, so an existing browser
 // picks it up without clobbering a size the user really measured.
 // ---------------------------------------------------------------------------
-const DIMS_VERSION = 10;
+const DIMS_VERSION = 11;
 const DEFAULT_DIMS = {
   v: DIMS_VERSION,
   room: { w: 700, h: 1360 },
   // 2026-11-11: user measured lite 130 (was 132 from IMG_2482) and stort 150.
-  small: { d: 130 },
-  big: { d: 150 },
+  small: { d: 115 },
+  big: { d: 135 },
   // Bordplater — tabletop panels fetched from storage and set on bases to
   // build a long table. Three sizes. All still PLACEHOLDERS.
   // A plate fills part of the GAP between two tables. `w` is how much gap it
@@ -71,7 +71,7 @@ const DEFAULT_DIMS = {
   long: { w: 90, l: 105 },
   // Table 16 is an OVAL table (user, 2026-11-11; also photo IMG_2538). Size is
   // a guess until someone tapes it - ANSLAG.
-  oval: { w: 100, l: 180 },
+  oval: { w: 90, l: 165 },
   // The metal rectangle tables (Danny 2026-11-13): seat 4, no plates. Guess.
   rect: { w: 80, l: 120 },
   // Table length one guest needs along a langbord. Plate planning uses it.
@@ -485,6 +485,7 @@ function obstacles() {
 }
 
 function defaultFixtures() {
+  if (ROOM_ID === "domino") return [];
   return [
     { id: "double-1", wall: "left", along: 24 },
     { id: "double-2", wall: "left", along: 68 },
@@ -551,6 +552,8 @@ function defaultState() {
     selectedPainting: null,
     bookingsText: "",
     bookingOrder: DEFAULT_BOOKING_ORDER,
+    overflow: "redeck", // when Spisestua is full: "redeck" (dekk om) or "domino"
+    sitMinutes: 60, // how long a table is taken before it can be laid again
   };
 }
 
@@ -590,6 +593,13 @@ function mergeDims(saved) {
     if (saved.small?.d === 132) dims.small.d = 130;
     if (saved.plateM?.n === 2) dims.plateM.n = 4;
   }
+  // v11 (2026-11-13): Danny wants the tables drawn smaller with more room
+  // between them; exact sizes do not matter to him. Move the old numbers only.
+  if (stale && (Number(saved.v) || 0) < 11) {
+    if (saved.small?.d === 130) dims.small.d = 115;
+    if (saved.big?.d === 150) dims.big.d = 135;
+    if (saved.oval?.w === 100 && saved.oval?.l === 180) dims.oval = { w: 90, l: 165 };
+  }
   if (Number.isFinite(saved.aisle)) dims.aisle = saved.aisle;
   if (Number.isFinite(saved.snap)) dims.snap = saved.snap;
   if (saved.est) {
@@ -618,7 +628,7 @@ function normalizeState(parsed) {
   try {
     if (!parsed?.tables?.length) return defaultState();
     const next = { ...defaultState(), ...parsed };
-    if (!next.fixtures?.length) next.fixtures = defaultFixtures();
+    if (!next.fixtures?.length || ROOM_ID === "domino") next.fixtures = defaultFixtures();
     next.paintings = normalizePaintings(parsed.paintings);
     next.showPaintings = parsed.showPaintings === true;
     if (!next.furniture?.length) next.furniture = defaultFurniture();
@@ -1540,6 +1550,8 @@ function tableCapacity(table) {
 
 function clearBookedNames() {
   for (const table of state.tables) {
+    delete table.redeck;
+    delete table.redeckPax;
     if (!table.booked) continue;
     table.name = null;
     delete table.seatCount;
@@ -1570,6 +1582,9 @@ function assignBookings() {
         .sort(byLabel)
         .map((t) => String(t.label).toLowerCase());
   const taken = new Set();
+  const redecked = new Set();
+  const firstTime = new Map(); // table label -> minutes of its first booking
+  const sitMin = Math.max(15, Number(state.sitMinutes) || 60);
   const rows = [];
   const sorted = bookings.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   // locked ones first so nobody else takes their table
@@ -1579,6 +1594,7 @@ function assignBookings() {
     if (taken.has(b.forced)) rows.push({ ...b, table: null });
     else {
       taken.add(b.forced);
+      firstTime.set(b.forced, minutesOf(b.time));
       rows.push({ ...b, table: labelMap.get(b.forced) });
     }
   }
@@ -1595,34 +1611,63 @@ function assignBookings() {
     let pick = list.find((label) => fits(label, softCap)) || list.find((label) => fits(label, hardCap));
     if (pick) {
       taken.add(pick);
+      firstTime.set(pick, minutesOf(b.time));
       rows.push({ ...b, table: labelMap.get(pick) });
       continue;
     }
     // a big group: a middle langbord (or 16 as the wooden table) is pulled out
     // with plates for this many people. 14 is the shared table: last.
-    const middle = ["16", "12", "15", "14"].find((label) => {
+    // only for groups bigger than any side table (7+); small groups are re-set instead
+    const middle = b.guests > 6 && ["16", "12", "15", "14"].find((label) => {
       const t = labelMap.get(label);
       return t && t.kind === "plate" && !taken.has(label);
     });
     if (middle) {
       taken.add(middle);
+      firstTime.set(middle, minutesOf(b.time));
       planPlates(labelMap.get(middle), b.guests);
       rows.push({ ...b, table: labelMap.get(middle) });
       continue;
+    }
+    // full: lay a table again once its first guests have had their time
+    if (state.overflow !== "domino") {
+      const at = minutesOf(b.time);
+      // the table whose first guests came earliest is free first
+      const want = (cap) =>
+        floor
+          .filter((t) => {
+            const label = String(t.label).toLowerCase();
+            const first = firstTime.get(label);
+            return taken.has(label) && !redecked.has(label) && first != null && at != null && at - first >= sitMin && cap(t) >= b.guests;
+          })
+          .sort((p, q) => firstTime.get(String(p.label).toLowerCase()) - firstTime.get(String(q.label).toLowerCase()))[0];
+      const again = want(softCap) || want(hardCap);
+      if (again) {
+        redecked.add(String(again.label).toLowerCase());
+        rows.push({ ...b, table: again, redeck: true });
+        continue;
+      }
     }
     rows.push({ ...b, table: null });
   }
   for (const row of rows) {
     if (!row.table) continue;
+    if (row.redeck) {
+      row.table.redeck = `${row.time ? `${row.time} ` : ""}${row.name}`.trim().slice(0, 28);
+      row.table.redeckPax = row.guests;
+      row.table.seatCount = Math.max(Number(row.table.seatCount) || 0, row.guests);
+      continue;
+    }
     row.table.name = `${row.time ? `${row.time} ` : ""}${row.name}`.trim().slice(0, 28) || null;
     row.table.seatCount = row.guests;
     row.table.booked = true;
   }
-  if (!domino) overflowToDomino(rows.filter((row) => !row.table));
+  if (!domino) overflowToDomino(rows.filter((row) => !row.table)); // «Bruk Domino», or the last fallback
   rows.sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   const spare = order.filter((label) => !taken.has(label));
   const shared = floor.some((t) => String(t.label) === "14");
   bookingResult = { rows, spare, shared };
+  relabelRoom();
 }
 
 // Domino is the last resort (Danny 2026-11-12): bookings that do not fit in
@@ -1680,6 +1725,11 @@ function overflowToDomino(rows) {
   } catch {}
 }
 
+function minutesOf(time) {
+  const m = String(time || "").match(/^(\d{1,2}):(\d{2})$/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
 // Danny's table rules (2026-11-13), Spisestua only.
 //  soft = comfortable, hard = only when nothing comfortable is left.
 //  3: the big spot – 4+ people go here first, up to 6.
@@ -1726,6 +1776,15 @@ function renderBookings() {
   set("book-title", copy.bookTitle);
   set("book-note", copy.bookNote);
   set("book-order-label", copy.bookOrder);
+  const en0 = state.lang === "en";
+  set("overflow-title", en0 ? "When Spisestua is full" : "Når Spisestua er full");
+  set("overflow-redeck", en0 ? "Re-set a table (↻)" : "Dekk om et bord (↻)");
+  set("overflow-domino", en0 ? "Use Domino" : "Bruk Domino");
+  set("sit-label", en0 ? "Minutes before a table can be re-set" : "Minutter før et bord kan dekkes om");
+  document.getElementById("overflow-redeck")?.classList.toggle("on", state.overflow !== "domino");
+  document.getElementById("overflow-domino")?.classList.toggle("on", state.overflow === "domino");
+  const sit = document.getElementById("sit-minutes");
+  if (sit && document.activeElement !== sit) sit.value = String(Number(state.sitMinutes) || 60);
   const rulesEl = document.getElementById("book-rules");
   if (rulesEl) {
     rulesEl.innerHTML = (state.lang === "en"
@@ -1737,7 +1796,7 @@ function renderBookings() {
           "<b>1</b>: up to 8 when it is the big table",
           "<b>16</b>: oval or the wooden extendable table",
           "<b>Middle (12, 15, 14)</b>: big groups – pulled out with plates. 14 last (shared table)",
-          "Still no room: <b>Domino</b>",
+          "Still no room: a table is <b>re-set ↻</b> after its first guests (or Domino – your choice above)",
         ]
       : [
           "<b>3</b>: den store plassen – 4 eller flere først, opptil 6",
@@ -1747,7 +1806,7 @@ function renderBookings() {
           "<b>1</b>: opptil 8 når det er det store bordet",
           "<b>16</b>: ovalt eller trebordet som kan trekkes ut",
           "<b>Midten (12, 15, 14)</b>: store selskap – trekkes ut med plater. 14 sist (felles bord)",
-          "Fortsatt ikke plass: <b>Domino</b>",
+          "Fortsatt ikke plass: et bord <b>dekkes om ↻</b> etter de første gjestene (eller Domino – velg over)",
         ]
     )
       .map((line) => `<li>${line}</li>`)
@@ -1785,7 +1844,11 @@ function renderBookings() {
     .map(
       (r) =>
         `<tr><td>${esc(r.time || "–")}</td><td>${esc(r.name || "–")}</td><td>${r.guests}</td><td>${
-          r.table ? `<strong>${esc(r.room ? `${ROOMS[r.room].no} ${r.table.label}` : r.table.label)}</strong>` : `<span class="tight">${copy.bookNone}</span>`
+          r.table
+            ? `<strong>${esc(r.room ? `${ROOMS[r.room].no} ${r.table.label}` : r.table.label)}</strong>${
+                r.redeck ? ` <span class="redeck-tag">↻ ${state.lang === "en" ? "re-set" : "dekk om"}</span>` : ""
+              }`
+            : `<span class="tight">${copy.bookNone}</span>`
         }</td></tr>`,
     )
     .join("")}</tbody></table></div>${extra.length ? `<p class="book-extra"><strong>${copy.bookExtra}:</strong> ${esc(extra.join(", "))}</p>` : ""}`;
@@ -1959,8 +2022,8 @@ function gapBand(a, b) {
 // Default covers per table. A round table is laid for FOUR unless the user
 // says otherwise (user, 2026-09-22) — the old perimeter sum said 7, which is
 // what fits, not what is laid. Rectangles still derive from their length.
-const ROUND_DEFAULT_SEATS = 4;
-const OVAL_DEFAULT_SEATS = 6;
+const ROUND_DEFAULT_SEATS = 0; // no chairs until people are added (Danny 2026-11-13)
+const OVAL_DEFAULT_SEATS = 0;
 
 // Chairs at the short ends of a rectangle (2026-11-11, lunch photos IMG_2839-2842:
 // the langbord by the window has a chair at its window end). 0, 1 or 2.
@@ -2001,16 +2064,10 @@ function seatCount(table) {
   const lead = groupSeatLead(table);
   if (lead && lead !== table) return 0;
   if (Number.isFinite(table.seatCount) && table.seatCount > 0) return Math.min(40, table.seatCount);
-  if (lead) {
-    const chair = Math.max(20, state.dims.chairBig.d);
-    return Math.max(2, 2 * Math.max(1, Math.floor(groupRun(lead).length / chair))) + endSeatsOf(lead);
-  }
-  const s = tableCm(table);
-  const chair = Math.max(20, state.dims.chairBig.d);
+  // No chairs until somebody adds people (+ / −, «Fordel bord», Dagens liste).
   if (table.kind === "round") return ROUND_DEFAULT_SEATS;
   if (table.kind === "oval") return OVAL_DEFAULT_SEATS;
-  const long = Math.max(s.w, s.h);
-  return Math.max(2, 2 * Math.max(1, Math.floor(long / chair))) + endSeatsOf(table);
+  return 0;
 }
 
 // Squares laid around the table, the way chairs actually stand.
@@ -2057,6 +2114,7 @@ function seatPositions(table) {
     // 2026-11-12): 2 = both wall-side diagonals, 3 = those two plus one on
     // the open side ("just pick a side"), 4+ = the normal even split.
     // ⟲ ⟳ still turn it: seatTurn counts from the default 45.
+    if (count <= 0) return [];
     if (count <= 3) {
       const cl = clearances(table);
       const walls = [
@@ -2604,8 +2662,11 @@ function tableButton(table, inTray) {
   // The shape already says langbord, so no word on it (user, 2026-11-11);
   // only a per-table custom size is shown.
   const sizeName = own ? `${cmNum(own.w)}×${cmNum(own.l)}` : table.size === "long" || table.size === "oval" ? "" : copy[table.size];
-  const floorTag = [sizeName, `${seatsOf(table).length}p`].filter(Boolean).join(" · ");
-  const shownName = table.name || guestLabel(table);
+  const seatN = seatsOf(table).length;
+  const floorTag = [sizeName, seatN ? `${seatN}p` : ""].filter(Boolean).join(" · ");
+  // Wide screen: names sit beside the map with a line to the table
+  // (renderCallouts), so the table itself only shows its number.
+  const shownName = calloutMode() ? "" : [table.name || guestLabel(table), table.redeck ? `↻ ${table.redeck}` : ""].filter(Boolean).join(" · ");
   if (inTray) btn.title = sizeLabelCm(table);
   btn.innerHTML = inTray
     ? sizeName ? `<span class="size-tag">${sizeName}</span>` : ""
@@ -2867,14 +2928,19 @@ function renderRoom() {
   el.classList.toggle("no-grid", !state.showGrid);
   const rr = room();
   el.style.aspectRatio = `${rr.w} / ${rr.h}`;
-  el.style.width = `min(100%, calc(72vh * ${rr.w} / ${rr.h}), ${Math.round((460 * (rr.w / rr.h)) / (700 / 1360))}px)`;
+  el.style.width = calloutMode()
+    ? `min(calc(100% - 340px), calc(88vh * ${rr.w} / ${rr.h}), ${Math.round((680 * (rr.w / rr.h)) / (700 / 1360))}px)`
+    : `min(100%, calc(84vh * ${rr.w} / ${rr.h}), ${Math.round((620 * (rr.w / rr.h)) / (700 / 1360))}px)`;
+  // the entrance doors are back on the map (Danny 2026-11-13); window,
+  // old table and paintings stay off
+  for (const fixture of state.fixtures) el.appendChild(doorButton(fixture));
   if (state.showGrid) {
     el.appendChild(gridLayer());
     el.appendChild(rulerLayer());
   }
   for (const node of plateInserts()) el.appendChild(node);
   for (const node of seatNodes()) el.appendChild(node);
-  if (state.showPaintings) for (const painting of state.paintings) el.appendChild(paintingButton(painting));
+
   for (const table of roomTables()) el.appendChild(tableButton(table, false));
 }
 
@@ -3067,7 +3133,10 @@ function renderSeatPalette() {
            <span class="dot" style="background:${mark.color};color:${inkOn(mark.color)}">${mark.code}</span>${markName(mark)}
          </button>`,
     ).join("") +
-    `<button type="button" class="brush${state.brush === "note" ? " active" : ""}" data-brush="note"><span class="dot note-dot">✎</span>${copy.markNote}</button>`;
+    `<button type="button" class="brush${state.brush === "note" ? " active" : ""}" data-brush="note"><span class="dot note-dot">✎</span>${copy.markNote}</button>` +
+    `<button type="button" class="brush${state.brush === "seatname" ? " active" : ""}" data-brush="seatname"><span class="dot name-dot">Aa</span>${
+      state.lang === "en" ? "Name on chair" : "Navn på stol"
+    }</button>`;
 }
 
 function seatSummary() {
@@ -3280,6 +3349,148 @@ function renderDrawer() {
     </div>`;
 }
 
+// --- seat editor (note or name on one chair) --------------------------------
+let seatEdit = null;
+function openSeatEditor(table, index, field) {
+  seatEdit = { id: table.id, index, field };
+  const en = state.lang === "en";
+  const box = document.getElementById("seat-editor");
+  const input = document.getElementById("seat-editor-input");
+  document.getElementById("seat-editor-title").textContent =
+    field === "seatNames" ? (en ? `Name on a chair · table ${table.label}` : `Navn på stol · bord ${table.label}`) : en ? `Note on a chair · table ${table.label}` : `Notat på stol · bord ${table.label}`;
+  document.getElementById("seat-editor-save").textContent = en ? "Save" : "Lagre";
+  document.getElementById("seat-editor-clear").textContent = en ? "Remove" : "Fjern";
+  input.value = table[field]?.[index] || "";
+  box.hidden = false;
+  input.focus();
+}
+function closeSeatEditor() {
+  seatEdit = null;
+  document.getElementById("seat-editor").hidden = true;
+}
+function saveSeatEditor(clear) {
+  if (!seatEdit) return;
+  const table = getTable(seatEdit.id);
+  if (table) {
+    const text = clear ? "" : document.getElementById("seat-editor-input").value.trim().slice(0, 60);
+    if (!table[seatEdit.field]) table[seatEdit.field] = {};
+    if (text) table[seatEdit.field][seatEdit.index] = text;
+    else delete table[seatEdit.field][seatEdit.index];
+    save();
+  }
+  closeSeatEditor();
+  render();
+}
+document.getElementById("seat-editor-save")?.addEventListener("click", () => saveSeatEditor(false));
+document.getElementById("seat-editor-clear")?.addEventListener("click", () => saveSeatEditor(true));
+document.getElementById("seat-editor-close")?.addEventListener("click", closeSeatEditor);
+document.getElementById("seat-editor-input")?.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") saveSeatEditor(false);
+  if (event.key === "Escape") closeSeatEditor();
+});
+
+// --- names beside the map ------------------------------------------------------
+// On a wide screen the names do not have to fit in the circle: each one sits
+// in the margin beside the map with a line to its table, or to its chair
+// when a guest's name is set on one chair.
+function calloutMode() {
+  const wrap = document.querySelector(".room-wrap");
+  return Boolean(wrap && wrap.clientWidth >= 620);
+}
+
+function renderCallouts() {
+  const wrap = document.querySelector(".room-wrap");
+  const roomEl = document.getElementById("room");
+  if (!wrap || !roomEl) return;
+  let layer = document.getElementById("callouts");
+  if (!layer) {
+    layer = document.createElement("div");
+    layer.id = "callouts";
+    layer.className = "callouts";
+    wrap.appendChild(layer);
+  }
+  layer.innerHTML = "";
+  if (!calloutMode()) return;
+  const r = room();
+  const wr = wrap.getBoundingClientRect();
+  const rr = roomEl.getBoundingClientRect();
+  const chair = Math.max(20, state.dims.chairBig.d);
+  const items = [];
+  for (const table of roomTables()) {
+    if (table.lead === false) continue;
+    const lines = [];
+    const main = table.name || guestLabel(table);
+    if (main) lines.push(main);
+    if (table.redeck) lines.push(`↻ ${table.redeck}`);
+    const c = centerCm(table);
+    const s = tableCm(table);
+    if (lines.length) items.push({ id: table.id, label: table.label, lines, x: c.x, y: c.y, rx: s.w / 2, ry: s.h / 2, kind: "table" });
+    const names = table.seatNames || {};
+    for (const seat of seatsOf(table)) {
+      const nm = names[seat.index];
+      if (nm) items.push({ id: table.id, label: table.label, lines: [nm], x: seat.pos.x, y: seat.pos.y, rx: chair / 2, ry: chair / 2, kind: "seat" });
+    }
+  }
+  if (!items.length) return;
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "callout-lines");
+  svg.setAttribute("width", String(wr.width));
+  svg.setAttribute("height", String(wr.height));
+  layer.appendChild(svg);
+  const roomLeft = rr.left - wr.left;
+  const roomRight = rr.right - wr.left;
+  const roomTop = rr.top - wr.top;
+  const gutter = Math.min(220, roomLeft - 18);
+  const toPx = (x, y) => ({ x: roomLeft + (x / r.w) * rr.width, y: roomTop + (y / r.h) * rr.height });
+  const sides = { left: [], right: [] };
+  for (const it of items) {
+    it.p = toPx(it.x, it.y);
+    sides[it.x < r.w / 2 ? "left" : "right"].push(it);
+  }
+  for (const side of ["left", "right"]) {
+    let lastBottom = -Infinity;
+    for (const it of sides[side].sort((a, b) => a.p.y - b.p.y)) {
+      const el = document.createElement("button");
+      el.type = "button";
+      el.className = `callout ${side} is-${it.kind}`;
+      el.style.width = `${gutter}px`;
+      el.innerHTML = `<span class="callout-num">${esc(it.label)}</span><span class="callout-text">${it.lines.map(esc).join("<br>")}</span>`;
+      el.addEventListener("click", () => selectTable(it.id));
+      layer.appendChild(el);
+      const h = el.offsetHeight;
+      const top = Math.max(it.p.y - h / 2, lastBottom + 6, 0);
+      el.style.top = `${top}px`;
+      el.style.left = side === "left" ? `${roomLeft - 14 - gutter}px` : `${roomRight + 14}px`;
+      lastBottom = top + h;
+      // line from the label to the edge of the table (or chair), with a dot
+      const from = { x: side === "left" ? roomLeft - 14 : roomRight + 14, y: top + h / 2 };
+      const dx = from.x - it.p.x;
+      const dy = from.y - it.p.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const rxp = (it.rx / r.w) * rr.width;
+      const ryp = (it.ry / r.h) * rr.height;
+      const k = 1 / Math.sqrt((dx / len / rxp) ** 2 + (dy / len / ryp) ** 2);
+      const to = { x: it.p.x + (dx / len) * k, y: it.p.y + (dy / len) * k };
+      const line = document.createElementNS(ns, "path");
+      line.setAttribute("d", `M ${from.x} ${from.y} L ${to.x} ${to.y}`);
+      line.setAttribute("class", `callout-line is-${it.kind}`);
+      svg.appendChild(line);
+      const dot = document.createElementNS(ns, "circle");
+      dot.setAttribute("cx", String(to.x));
+      dot.setAttribute("cy", String(to.y));
+      dot.setAttribute("r", it.kind === "seat" ? "3" : "4");
+      dot.setAttribute("class", `callout-dot is-${it.kind}`);
+      svg.appendChild(dot);
+    }
+  }
+}
+let calloutTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(calloutTimer);
+  calloutTimer = setTimeout(render, 120);
+});
+
 function render() {
   try {
     renderChrome();
@@ -3292,6 +3503,7 @@ function render() {
     renderPaintingCard();
     renderBookings();
     renderGuests();
+    requestAnimationFrame(renderCallouts);
   } catch (error) {
     console.error(error);
   }
@@ -3517,17 +3729,10 @@ document.getElementById("room").addEventListener("click", (event) => {
   const table = getTable(seat.dataset.tableId);
   if (!table) return;
   const index = Number(seat.dataset.seatIndex);
-  if (state.brush === "note") {
-    // free text on one seat, like "ikke blåmugg" on the paper plan
-    const current = table.seatNotes?.[index] || "";
-    const value = window.prompt(t().notePrompt, current);
-    if (value === null) return;
-    const text = value.trim().slice(0, 60);
-    if (!table.seatNotes) table.seatNotes = {};
-    if (text) table.seatNotes[index] = text;
-    else delete table.seatNotes[index];
-    save();
-    render();
+  if (state.brush === "note" || state.brush === "seatname") {
+    // free text on one seat (a note like "ikke blåmugg", or a guest's name).
+    // An editor on the page: the hosted page cannot show prompt().
+    openSeatEditor(table, index, state.brush === "seatname" ? "seatNames" : "seatNotes");
     return;
   }
   if (!table.seatMarks) table.seatMarks = {};
@@ -4189,3 +4394,21 @@ document.querySelectorAll("[data-room]").forEach((btn) =>
     if (event.key === "Escape" && !panel.hidden) close();
   });
 })();
+
+// overflow choice + sitting time (⚙ Innstillinger → Bordfordeling)
+document.getElementById("overflow-redeck")?.addEventListener("click", () => {
+  state.overflow = "redeck";
+  save();
+  render();
+});
+document.getElementById("overflow-domino")?.addEventListener("click", () => {
+  state.overflow = "domino";
+  save();
+  render();
+});
+document.getElementById("sit-minutes")?.addEventListener("change", (event) => {
+  const v = Math.round(Number(event.target.value));
+  state.sitMinutes = Number.isFinite(v) ? Math.min(300, Math.max(15, v)) : 60;
+  save();
+  render();
+});
