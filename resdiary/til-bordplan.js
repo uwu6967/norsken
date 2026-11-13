@@ -9,6 +9,7 @@ var idx=function(re){return Array.from(head.cells).findIndex(function(c){return 
 var ti=idx(/^\s*tid/i),gi=idx(/gjester/i),ni=idx(/navn|kunde(?!kod)|^\s*gjest\s*$/i);
 rows.forEach(function(r){if(r===head||r.cells.length!==head.cells.length)return;
 var tm=r.cells[ti].textContent.replace(/\s+/g,"");if(!/^\d{1,2}[:.]\d{2}$/.test(tm))return;
+if(ni>=0&&!r.cells[ni].textContent.trim())return;
 var g=parseInt(r.cells[gi].textContent,10)||2;
 var n=ni>=0?last(r.cells[ni].textContent).replace(/\d+/g,"").trim():"";
 out.push((tm+" "+g+" "+n).trim());});
