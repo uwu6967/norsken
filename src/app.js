@@ -3085,7 +3085,11 @@ function renderRoom() {
     const stage = el.closest(".stage");
     const cs = getComputedStyle(stage);
     const availH = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    const availW = el.parentElement.clientWidth - (calloutMode() ? 340 : 0);
+    // keep room beside the map for names only when there are names to show
+    const anyCallouts = roomTables().some(
+      (t) => t.lead !== false && (t.name || t.redeck || guestLabel(t) || Object.keys(t.seatNames || {}).length),
+    );
+    const availW = el.parentElement.clientWidth - (calloutMode() && anyCallouts ? 340 : 0);
     el.style.width = `${Math.max(160, Math.floor(Math.min(availW, (availH * rr.w) / rr.h)))}px`;
   } else {
     el.style.width = calloutMode()

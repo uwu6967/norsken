@@ -2365,3 +2365,117 @@ a[hidden] {
   height: auto;
   min-height: 46px;
 }
+
+/* --- fixes after the one-screen check (2026-11-14) ------------------------ */
+@media (min-width: 1100px) and (min-height: 620px) {
+  .board > .leftcol {
+    align-self: stretch;
+    height: 100%;
+    overflow: hidden; /* the tab pane inside scrolls */
+  }
+  .tray .tray-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+@media (min-width: 1100px) and (max-width: 1299px) and (min-height: 620px) {
+  .board {
+    grid-template-columns: minmax(270px, 300px) minmax(0, 1fr) minmax(230px, 260px);
+  }
+  .board > .stage {
+    padding: 8px;
+  }
+}
+@media (min-width: 1600px) and (min-height: 620px) {
+  .board {
+    grid-template-columns: minmax(340px, 400px) minmax(0, 1fr) minmax(300px, 400px);
+  }
+}
+/* the tabs fit in a narrow column too */
+.tab {
+  min-width: 0;
+  padding: 0 6px;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+/* a dropped table both lands and glows (they animate different things) */
+#room .table.selected.landed {
+  animation: land 0.32s cubic-bezier(0.2, 0.8, 0.2, 1), glow 1.8s ease-in-out 0.32s infinite;
+}
+/* a «tap again» button glows instead of growing, so it stays still under the finger */
+@keyframes armed-pulse {
+  from {
+    box-shadow: 0 0 0 0 rgba(180, 35, 24, 0.35);
+  }
+  to {
+    box-shadow: 0 0 0 7px rgba(180, 35, 24, 0.12);
+  }
+}
+/* bigger targets in the table panel */
+.leftcol .drawer .icon-btn {
+  min-width: 46px;
+  min-height: 46px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 1.2rem;
+  border-radius: 999px;
+  background: var(--paper-2);
+}
+.leftcol .drawer .nudge {
+  min-width: 46px;
+  min-height: 46px;
+  font-size: 1.1rem;
+}
+.leftcol .drawer #label-input {
+  min-height: 46px;
+  font-size: 1.1rem;
+}
+/* plates are dragged: make them easy to grab */
+.plate-chip {
+  height: 44px;
+  font-size: 0.85rem;
+}
+.plate-chip.plateS {
+  width: 40px;
+}
+.plate-chip.plateM {
+  width: 50px;
+}
+.plate-chip.plateL {
+  width: 56px;
+}
+.plate-chip.plateXL {
+  width: 64px;
+}
+/* readable headings and help text */
+.leftcol .drawer-empty .kicker,
+.leftcol .brush-panel .kicker,
+.leftcol .drawer .kicker {
+  color: var(--window);
+}
+.plate-note {
+  font-size: 0.95rem;
+}
+.tray .table .size-tag {
+  font-size: 0.72rem;
+  letter-spacing: 0;
+}
+.tray .table.rect {
+  min-width: 56px;
+}
+/* an empty name field must not look filled in */
+.name-field input::placeholder {
+  font-weight: 400;
+  font-style: italic;
+  color: #a39686;
+}
+/* each tab as wide as its word, so «Reservasjoner» fits */
+.tab {
+  flex: 1 1 auto;
+}
+@media (max-width: 1299px) {
+  .tab {
+    font-size: 0.88rem;
+    padding: 0 4px;
+  }
+}
