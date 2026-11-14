@@ -130,24 +130,16 @@
 
       <p class="hint" id="hint" hidden>Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.</p>
 
-      <details class="brush-panel booking-panel" id="booking-panel">
-        <summary><span class="kicker" id="book-title">Reservasjoner → bord</span></summary>
-        <p class="brush-note" id="book-note"></p>
-        <textarea id="book-text" rows="6" autocomplete="off" spellcheck="false"></textarea>
-        <div class="book-row">
-          <button type="button" class="status-btn active" id="book-run">Fordel bord</button>
-          <button type="button" class="status-btn" id="book-clear">Fjern navn fra bordene</button>
-        </div>
-        <div id="book-result"></div>
-      </details>
 
-      <section class="brush-panel">
-        <p class="kicker" id="brush-title">Merking av plasser</p>
-        <p class="brush-note" id="brush-note"></p>
-        <div class="brush-row" id="brush-row"></div>
-      </section>
 
       <div class="board">
+        <aside class="leftcol" id="leftcol">
+          <div class="tabs" role="tablist" aria-label="Verktøy">
+            <button type="button" role="tab" class="tab on" data-tab="table" id="tab-table">Bord</button>
+            <button type="button" role="tab" class="tab" data-tab="book" id="tab-book">Reservasjoner</button>
+            <button type="button" role="tab" class="tab" data-tab="marks" id="tab-marks">Merking</button>
+          </div>
+          <div class="tab-pane" data-pane="table">
         <aside class="drawer" id="drawer" hidden>
           <div class="drawer-handle"></div>
           <div class="drawer-head">
@@ -170,6 +162,33 @@
             <p class="kicker" id="drawer-empty-title">Bord</p>
             <p id="drawer-empty-text">Klikk på et bord for å endre det.</p>
           </aside>
+          </div>
+          <div class="tab-pane" data-pane="book" hidden>
+      <section class="brush-panel booking-panel" id="booking-panel">
+        <p class="kicker" id="book-title">Reservasjoner → bord</p>
+        <p class="brush-note" id="book-note"></p>
+        <textarea id="book-text" rows="6" autocomplete="off" spellcheck="false"></textarea>
+        <div class="book-row">
+          <button type="button" class="status-btn active" id="book-run">Fordel bord</button>
+          <button type="button" class="status-btn" id="book-clear">Fjern navn fra bordene</button>
+        </div>
+        <div id="book-result"></div>
+      </section>
+          </div>
+          <div class="tab-pane" data-pane="marks" hidden>
+      <section class="brush-panel">
+        <p class="kicker" id="brush-title">Merking av plasser</p>
+        <p class="brush-note" id="brush-note"></p>
+        <div class="brush-row" id="brush-row"></div>
+      </section>
+      <section class="measure-list" id="measure-list">
+        <p class="kicker" id="list-title" hidden>Målliste</p>
+        <div id="list-body" hidden></div>
+        <div class="seat-summary" id="seat-summary"></div>
+        <div class="warnings" id="warnings"></div>
+      </section>
+          </div>
+        </aside>
         <main class="stage">
           <div class="room-wrap">
             <div class="room" id="room" role="application" aria-label="Spisestua"></div>
@@ -233,12 +252,6 @@
         <p class="painting-hint" id="painting-hint"></p>
       </aside>
 
-      <section class="measure-list" id="measure-list">
-        <p class="kicker" id="list-title" hidden>Målliste</p>
-        <div id="list-body" hidden></div>
-        <div class="seat-summary" id="seat-summary"></div>
-        <div class="warnings" id="warnings"></div>
-      </section>
     </div>
     <script src="app.js?v=24"></script>
   </body>

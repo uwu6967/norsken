@@ -711,6 +711,14 @@ function normalizeState(parsed) {
 }
 
 let state = loadState();
+let landedId = null; // the table that was just put down «lands»
+let activeTab = (() => {
+  try {
+    return localStorage.getItem("norsken-tab") || "table";
+  } catch {
+    return "table";
+  }
+})();
 // Dagens liste: guest names, local to this browser only (see renderGuests).
 const GUESTS_KEY = "norsken-guests-v1";
 let guests = loadGuests();
@@ -1504,7 +1512,8 @@ function parseBookings(text) {
   const out = [];
   String(text || "")
     .split(/\n+/)
-    .map((line) => line.trim())
+    // accept «12:00, 2, Hansen», «kl. 12.00 – 2 pers» and the like
+    .map((line) => line.replace(/[,;|\t]+/g, " ").replace(/\bkl\.?\s*/gi, "").replace(/\s[–-]\s/g, " ").replace(/\s+/g, " ").trim())
     .filter(Boolean)
     .forEach((line, index) => {
       let rest = line;
@@ -2754,7 +2763,7 @@ function tableButton(table, inTray) {
   const dims = tableDims(table);
   const copy = t();
   btn.type = "button";
-  btn.className = `table ${table.kind} ${table.size}${state.selected === table.id ? " selected" : ""}${
+  btn.className = `table ${table.kind} ${table.size}${state.selected === table.id ? " selected" : ""}${!inTray && landedId === table.id ? " landed" : ""}${
     inTray || !table.label ? " blank" : ""
   }`;
   btn.dataset.id = table.id;
@@ -3004,6 +3013,10 @@ function finishDrag(clientX, clientY) {
     return;
   }
   placeTable(table, clientX, clientY);
+  landedId = table.id;
+  setTimeout(() => {
+    if (landedId === table.id) landedId = null;
+  }, 450);
   state.selected = table.id;
   save();
   render();
@@ -3067,9 +3080,18 @@ function renderRoom() {
   el.classList.toggle("no-grid", !state.showGrid);
   const rr = room();
   el.style.aspectRatio = `${rr.w} / ${rr.h}`;
-  el.style.width = calloutMode()
-    ? `min(calc(100% - 340px), calc(88vh * ${rr.w} / ${rr.h}), ${Math.round((680 * (rr.w / rr.h)) / (700 / 1360))}px)`
-    : `min(100%, calc(84vh * ${rr.w} / ${rr.h}), ${Math.round((620 * (rr.w / rr.h)) / (700 / 1360))}px)`;
+  if (oneScreen()) {
+    // everything on one screen: the map takes the full height of its column
+    const stage = el.closest(".stage");
+    const cs = getComputedStyle(stage);
+    const availH = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    const availW = el.parentElement.clientWidth - (calloutMode() ? 340 : 0);
+    el.style.width = `${Math.max(160, Math.floor(Math.min(availW, (availH * rr.w) / rr.h)))}px`;
+  } else {
+    el.style.width = calloutMode()
+      ? `min(calc(100% - 340px), calc(88vh * ${rr.w} / ${rr.h}), ${Math.round((680 * (rr.w / rr.h)) / (700 / 1360))}px)`
+      : `min(100%, calc(84vh * ${rr.w} / ${rr.h}), ${Math.round((620 * (rr.w / rr.h)) / (700 / 1360))}px)`;
+  }
   // the entrance doors are back on the map (Danny 2026-11-13); window,
   // old table and paintings stay off
   for (const fixture of state.fixtures) el.appendChild(doorButton(fixture));
@@ -3651,6 +3673,7 @@ function render() {
     renderPaintingCard();
     renderBookings();
     renderGuests();
+    renderTabs();
     requestAnimationFrame(renderCallouts);
   } catch (error) {
     console.error(error);
@@ -3660,6 +3683,7 @@ function render() {
 function selectTable(id) {
   if (id !== state.selected) planNote = "";
   state.selected = id;
+  if (id) activeTab = "table";
   if (id) state.selectedPainting = null;
   save();
   render();
@@ -4986,3 +5010,33 @@ document.getElementById("toast-undo")?.addEventListener("click", () => {
   undoFloor();
 });
 refreshUndo();
+
+// --- One screen + tabs --------------------------------------------------------
+// On a PC screen everything fits without scrolling: tools on the left (tabs),
+// the map in the middle, Dagens liste and storage on the right. Long lists
+// scroll inside their own box. Phones keep the normal scrolling page.
+function oneScreen() {
+  return window.matchMedia("(min-width: 1100px) and (min-height: 620px)").matches;
+}
+function renderTabs() {
+  const en = state.lang === "en";
+  const names = { table: en ? "Table" : "Bord", book: en ? "Bookings" : "Reservasjoner", marks: en ? "Marks" : "Merking" };
+  document.querySelectorAll(".tabs .tab").forEach((tab) => {
+    const on = tab.dataset.tab === activeTab;
+    tab.classList.toggle("on", on);
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+    tab.textContent = names[tab.dataset.tab];
+  });
+  document.querySelectorAll(".tab-pane").forEach((pane) => {
+    pane.hidden = pane.dataset.pane !== activeTab;
+  });
+}
+document.querySelector(".tabs")?.addEventListener("click", (event) => {
+  const tab = event.target.closest(".tab");
+  if (!tab) return;
+  activeTab = tab.dataset.tab;
+  try {
+    localStorage.setItem("norsken-tab", activeTab);
+  } catch {}
+  renderTabs();
+});

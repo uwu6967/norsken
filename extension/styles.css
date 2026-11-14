@@ -2106,3 +2106,262 @@ a[hidden] {
   white-space: normal;
   text-align: left;
 }
+
+/* =====================================================================
+   ONE SCREEN (2026-11-14) + motion that gives feedback
+   ===================================================================== */
+.leftcol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-line);
+}
+.tab {
+  flex: 1 1 0;
+  min-height: 48px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: rgba(255, 250, 243, 0.82);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.tab:hover {
+  color: #fffaf3;
+}
+.tab.on {
+  background: linear-gradient(135deg, #f1d9a8, #c4a574);
+  color: #1d1812;
+  box-shadow: 0 6px 18px rgba(196, 165, 116, 0.45);
+}
+.tab-pane {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
+  animation: pane-in 0.18s ease-out;
+}
+.tab-pane > * {
+  margin: 0 !important;
+}
+.leftcol .drawer-empty {
+  display: block;
+  padding: 18px;
+  border-radius: 22px;
+  background: var(--paper);
+  border: 1px dashed rgba(196, 165, 116, 0.6);
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+.leftcol .drawer {
+  padding: 14px 16px 16px;
+  border-radius: 22px;
+}
+.leftcol .drawer .label-row {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.leftcol .drawer .label-row > .name-field {
+  align-self: stretch;
+}
+.leftcol .drawer .name-field input {
+  width: 100%;
+}
+.leftcol .drawer:not([hidden]) + .drawer-empty {
+  display: none;
+}
+.booking-panel textarea {
+  min-height: 9em;
+}
+
+/* mobile and small screens: map, then tools, then storage */
+.board > .stage {
+  order: 1;
+}
+.board > .leftcol {
+  order: 2;
+}
+.board > .tray {
+  order: 3;
+}
+
+@media (min-width: 1100px) and (min-height: 620px) {
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+  .app {
+    max-width: none;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 14px;
+  }
+  .app > .topbar {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    gap: 10px 16px;
+  }
+  .app > .update-bar {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+  .topbar h1 {
+    font-size: 1.7rem;
+  }
+  .topbar .kicker {
+    font-size: 0.7rem;
+  }
+  .topbar .room-tab {
+    min-height: 46px;
+  }
+  .topbar .chip.big {
+    min-height: 46px;
+    padding: 8px 18px;
+  }
+  .board {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(250px, 300px);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .board > .leftcol {
+    grid-column: 1;
+    grid-row: 1;
+    order: 0;
+    min-height: 0;
+  }
+  .board > .stage {
+    grid-column: 2;
+    grid-row: 1;
+    order: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .board > .tray {
+    grid-column: 3;
+    grid-row: 1;
+    order: 0;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+  }
+  .leftcol .tab-pane {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+  .leftcol .drawer {
+    position: static;
+    max-height: none;
+  }
+  .guest-list {
+    max-height: none;
+  }
+}
+
+/* --- motion: feedback, anticipation, follow-through --------------------- */
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes land {
+  0% {
+    transform: translate(-50%, -50%) scale(1.14, 0.88);
+  }
+  45% {
+    transform: translate(-50%, -50%) scale(0.95, 1.06);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(47, 74, 60, 0.45), 0 8px 18px rgba(60, 40, 20, 0.16);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(47, 74, 60, 0), 0 8px 18px rgba(60, 40, 20, 0.16);
+  }
+}
+@keyframes armed-pulse {
+  to {
+    transform: scale(1.04);
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 18px);
+  }
+}
+#room .table {
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+#room .table:hover {
+  transform: translate(-50%, -50%) scale(1.04);
+  box-shadow: 0 12px 26px rgba(60, 40, 20, 0.28);
+}
+#room .table.landed {
+  animation: land 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+#room .table.selected {
+  animation: glow 1.8s ease-in-out infinite;
+}
+.chip.armed,
+.preset-row.armed {
+  animation: armed-pulse 0.5s ease-in-out infinite alternate;
+}
+.toast:not([hidden]) {
+  animation: toast-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.chip:active,
+.tab:active,
+.status-btn:active,
+.nudge:active {
+  transform: scale(0.96);
+}
+@media (prefers-reduced-motion: reduce) {
+  #room .table,
+  #room .table.landed,
+  #room .table.selected,
+  .chip.armed,
+  .preset-row.armed,
+  .toast:not([hidden]),
+  .tab-pane {
+    animation: none;
+    transition: none;
+  }
+}
+/* in the narrow left column the name field must not grow tall */
+.leftcol .drawer .label-row > .name-field {
+  flex: 0 0 auto;
+}
+.leftcol .drawer .name-field input {
+  height: auto;
+  min-height: 46px;
+}
