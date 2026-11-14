@@ -4270,6 +4270,7 @@ document.getElementById("preset-btn")?.addEventListener("click", (event) => {
   if (!armed(button, state.lang === "en" ? "Replace the floor? Tap again" : "Bytte ut gulvet? Trykk igjen")) return;
   button.classList.remove("armed");
   presetLayout();
+  closeMine();
 });
 
 document.getElementById("lunch-btn")?.addEventListener("click", (event) => {
@@ -4277,6 +4278,7 @@ document.getElementById("lunch-btn")?.addEventListener("click", (event) => {
   if (!armed(button, state.lang === "en" ? "Replace the floor? Tap again" : "Bytte ut gulvet? Trykk igjen")) return;
   button.classList.remove("armed");
   presetLayout("lunch");
+  closeMine();
 });
 
 // --- Dagens liste (guest list from ResDiary) --------------------------------
@@ -4718,6 +4720,7 @@ document.getElementById("jul-btn")?.addEventListener("click", (event) => {
   if (!armed(button, state.lang === "en" ? "Replace the floor? Tap again" : "Bytte ut gulvet? Trykk igjen")) return;
   button.classList.remove("armed");
   presetLayout("jul");
+  closeMine();
 });
 
 // --- Mine oppsett: saved table layouts ----------------------------------------
@@ -4762,8 +4765,9 @@ function renderMine(msg) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
   };
-  set("mine-btn-text", en ? "My setups" : "Mine oppsett");
-  set("mine-title", en ? "My setups" : "Mine oppsett");
+  set("mine-btn-text", en ? "Setups" : "Oppsett");
+  set("ready-title", en ? "Ready-made setups" : "Ferdige oppsett");
+  set("mine-title", en ? "Setups" : "Oppsett");
   set("mine-note", en ? "Save the tables as they stand now and bring them back with one tap. Names and marks are not saved." : "Lagre bordene slik de står nå, og hent dem fram igjen med ett trykk. Navn og merking blir ikke lagret.");
   set("mine-name-label", en ? "Name of the setup" : "Navn på oppsettet");
   set("mine-save", en ? "Save what is on the floor now" : "Lagre det som står nå");

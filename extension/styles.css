@@ -2056,3 +2056,20 @@ a[hidden] {
 #mine-import-label {
   cursor: pointer;
 }
+
+/* ready-made setups inside the «Oppsett» panel */
+.settings .preset-row {
+  justify-content: flex-start;
+  width: 100%;
+  background: white;
+  color: var(--ink);
+  border: 1px solid #e0d3c3;
+}
+.settings .preset-row:hover {
+  border-color: var(--pine);
+}
+.settings .preset-row.armed {
+  background: var(--warn);
+  color: white;
+  border-color: var(--warn);
+}

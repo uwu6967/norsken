@@ -33,10 +33,7 @@
           <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
         </nav>
         <div class="topbar-actions">
-          <button type="button" class="chip big" id="preset-btn">Vanlig oppsett</button>
-          <button type="button" class="chip big" id="lunch-btn">Lunsj-oppsett</button>
-          <button type="button" class="chip big" id="jul-btn">Jul-oppsett</button>
-          <button type="button" class="chip big" id="mine-btn" aria-haspopup="dialog" aria-controls="mine-panel">★ <span id="mine-btn-text">Mine oppsett</span></button>
+          <button type="button" class="chip big" id="mine-btn" aria-haspopup="dialog" aria-controls="mine-panel">★ <span id="mine-btn-text">Oppsett</span></button>
           <a class="chip big primary" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
           <button type="button" class="chip big gear" id="settings-btn" aria-haspopup="dialog" aria-controls="settings">
             <span aria-hidden="true">⚙</span> <span id="settings-btn-text">Innstillinger</span>
@@ -49,9 +46,15 @@
       <div class="settings-backdrop" id="mine-backdrop" hidden></div>
       <aside class="settings" id="mine-panel" role="dialog" aria-modal="true" aria-labelledby="mine-title" hidden>
         <div class="settings-head">
-          <h2 id="mine-title">Mine oppsett</h2>
+          <h2 id="mine-title">Oppsett</h2>
           <button type="button" class="icon-btn settings-close" id="mine-close" aria-label="Lukk">✕</button>
         </div>
+        <section class="set-group">
+          <p class="set-title" id="ready-title">Ferdige oppsett</p>
+          <button type="button" class="chip big preset-row" id="preset-btn">Vanlig oppsett</button>
+          <button type="button" class="chip big preset-row" id="lunch-btn">Lunsj-oppsett</button>
+          <button type="button" class="chip big preset-row" id="jul-btn">Jul-oppsett</button>
+        </section>
         <p class="set-note" id="mine-note">Lagre bordene slik de står nå, og hent dem fram igjen med ett trykk. Navn og merking blir ikke lagret.</p>
         <section class="set-group">
           <label for="mine-name" id="mine-name-label">Navn på oppsettet</label>
@@ -67,8 +70,8 @@
           <p class="set-title" id="mine-move-title">Til en annen PC</p>
           <p class="set-note" id="mine-move-note">Last ned oppsettene som en fil, og åpne fila på den andre PC-en (nettsiden, utvidelsen eller jobb-PC-en).</p>
           <div class="set-pair">
-            <button type="button" class="chip toggle-row" id="mine-export">Last ned som fil</button>
-            <label class="chip toggle-row" id="mine-import-label">
+            <button type="button" class="chip big preset-row" id="mine-export">Last ned som fil</button>
+            <label class="chip big preset-row" id="mine-import-label">
               <input type="file" id="mine-import" accept=".json,application/json" hidden />
               <span id="mine-import-text">Åpne oppsett-fil</span>
             </label>
