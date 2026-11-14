@@ -66,7 +66,8 @@ javascript:(function(){var DROP=["telefon","mobil","e-post","epost","email","boo
 - **To rom:** Spisestua og Domino (rommet ved siden av). Domino er siste utvei: «Fordel bord» fyller Spisestua først og sender bare det som ikke får plass til Domino. Bytt rom med knappene øverst.
 - **Rutenett** per meter.
 - **Bord:** lite (Ø130), stort (Ø150), ovalt (16), metallbord (firkant, 4 personer, uten plater), langbord (to halvdeler som trekkes fra hverandre).
-- **Vanlig oppsett** og **Lunsj-oppsett** med ett trykk.
+- **Vanlig oppsett**, **Lunsj-oppsett** og **Jul-oppsett** med ett trykk.
+- **★ Mine oppsett:** lagre bordene slik de står under eget navn og hent dem fram igjen. Kan lastes ned som fil og åpnes på en annen PC. Navn og merking lagres aldri.
 - **Langbord + plater:** skriv antall personer, så velger den de korteste platene dere faktisk har
   (liten 37 ×2, medium 49,5 ×4, stor 55,5 ×2, ekstra stor 64 ×1) og trekker bordet ut.
 - **Stoler** vender mot bordet, kan snus (⟲ ⟳), og blir røde hvis de kolliderer.

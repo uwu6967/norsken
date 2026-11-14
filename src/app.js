@@ -3141,6 +3141,11 @@ function renderChrome() {
   });
 
   if (lunchBtn) lunchBtn.hidden = ROOM_ID !== "spisestua";
+  const julBtn = document.getElementById("jul-btn");
+  if (julBtn) {
+    julBtn.hidden = ROOM_ID !== "spisestua";
+    if (julBtn.dataset.armed !== "1") julBtn.textContent = en ? "Christmas setup" : "Jul-oppsett";
+  }
   document.getElementById("hint").textContent =
     ROOM_ID === "domino"
       ? en
@@ -4152,13 +4157,44 @@ function presetLayout(kind = "usual") {
   const rightX = r.w - 120;
   const step = (r.h - 2 * 200) / 4;
   // left column, table 1 nearest the waitress door (bottom) is the big one
-  for (let i = 0; i < 5; i += 1) put(i === 0 ? "big" : "small", leftX, r.h - 200 - i * step);
+  if (kind !== "jul") for (let i = 0; i < 5; i += 1) put(i === 0 ? "big" : "small", leftX, r.h - 200 - i * step);
   // right column 6-11, 6 at the top (Danny 2026-11-12: "normally there's
   // table 6 - 11"). Same first/last spot as the left column, six tables.
   const rightStep = (r.h - 2 * 200) / 5;
-  for (let i = 0; i < 6; i += 1) put("small", rightX, 200 + i * rightStep);
-  put("oval", r.w / 2, 170).seatTurn = 30; // 16 is the oval table: 3 + 3, none at the ends
-  if (kind === "lunch") {
+  if (kind !== "jul") {
+    for (let i = 0; i < 6; i += 1) put("small", rightX, 200 + i * rightStep);
+    put("oval", r.w / 2, 170).seatTurn = 30; // 16 is the oval table: 3 + 3, none at the ends
+  }
+  let julBig = null;
+  if (kind === "jul") {
+    // Jul-oppsett from Danny's screenshot (2026-11-14). Positions read off the
+    // picture, so they are close, not exact – save the real one under «Mine oppsett».
+    const seats = (t, n, endSide) => {
+      t.seatCount = n;
+      if (endSide) {
+        t.ends = 1;
+        t.endSide = endSide;
+      }
+      return t;
+    };
+    seats(put("small", 118, 147), 2); // 5
+    seats(put("rect", 86, 390, true), 5, "end"); // 4: metal, chair at the right end
+    seats(put("small", 118, 615), 3); // 3
+    seats(put("rect", 97, 849, true), 5, "end"); // 2: metal, chair at the right end
+    seats(put("big", 138, 1178), 5); // 1
+    seats(put("small", 571, 126), 4); // 6
+    seats(put("rect", 623, 348, true), 4); // 7: metal
+    seats(put("small", 612, 567), 4); // 8
+    seats(put("small", 612, 776), 4); // 9
+    seats(put("rect", 623, 979, true), 4); // 10: metal
+    seats(put("small", 582, 1213), 4); // 11
+    const sixteen = put("oval", 340, 178);
+    sixteen.seatTurn = 30;
+    sixteen.seatCount = 6;
+    julBig = langbord(447); // 14, pulled out with plates for 8 (below, once on the floor)
+    const small = langbord(809); // 12, closed, 4 people
+    small.seatCount = 4;
+  } else if (kind === "lunch") {
     // Lunch after a selskap (user photos IMG_2839-2842): two langbord end to end
     // down the middle with a short gap between them. The window one is laid for
     // 3 + 3 with a chair at its window end, the other for 2 + 2. Positions are a
@@ -4175,7 +4211,7 @@ function presetLayout(kind = "usual") {
     langbord(r.h / 2 + 40 - L); // 14, closed - set people to get plates
   }
   // whatever is left of the normal stock goes back in the tray
-  const used = { small: 0, big: 0, oval: 0, rect: 0, long: 0 };
+  const used = { small: 0, big: 0, oval: 0, rect: 0, long: 0 }; // counted again below
   for (const table of placed) used[table.size] += 1;
   const stock = { small: 8, big: 6, oval: 1, rect: 2, long: 4 };
   const tray = [];
@@ -4185,6 +4221,7 @@ function presetLayout(kind = "usual") {
   state.tables = [...placed, ...tray];
   state.selected = null;
   relabelRoom();
+  if (julBig) planPlates(julBig, 8);
   save();
   render();
 }
@@ -4635,3 +4672,207 @@ document.getElementById("update-later")?.addEventListener("click", () => {
 });
 checkForUpdate();
 setInterval(() => checkForUpdate(), 3 * 60 * 60 * 1000);
+
+// --- Jul-oppsett button -----------------------------------------------------
+document.getElementById("jul-btn")?.addEventListener("click", (event) => {
+  const button = event.currentTarget;
+  if (!armed(button, state.lang === "en" ? "Replace the floor? Tap again" : "Bytte ut gulvet? Trykk igjen")) return;
+  button.classList.remove("armed");
+  presetLayout("jul");
+});
+
+// --- Mine oppsett: saved table layouts ----------------------------------------
+// Kept in this browser per room. Only tables and chairs are saved, never guest
+// names, notes or marks (NDA), so a saved layout or its file is safe to move.
+const MINE_KEY = "norsken-presets-v1";
+function loadMine() {
+  try {
+    const all = JSON.parse(localStorage.getItem(MINE_KEY) || "{}");
+    return all && typeof all === "object" ? all : {};
+  } catch {
+    return {};
+  }
+}
+function saveMine(all) {
+  try {
+    localStorage.setItem(MINE_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
+}
+const GUEST_FIELDS = ["name", "booked", "redeck", "redeckPax", "seatNames", "seatNotes", "seatMarks", "seatFromGuest", "seatsRender"];
+function layoutSnapshot() {
+  const tables = JSON.parse(JSON.stringify(state.tables));
+  for (const t of tables) for (const f of GUEST_FIELDS) delete t[f];
+  return { tables, fixtures: JSON.parse(JSON.stringify(state.fixtures || [])) };
+}
+function applyLayout(layout) {
+  state.tables = JSON.parse(JSON.stringify(layout.tables || []));
+  if (Array.isArray(layout.fixtures) && layout.fixtures.length) state.fixtures = JSON.parse(JSON.stringify(layout.fixtures));
+  state.selected = null;
+  clearBookedNames();
+  relabelRoom();
+  save();
+  render();
+}
+
+function renderMine(msg) {
+  const en = state.lang === "en";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set("mine-btn-text", en ? "My setups" : "Mine oppsett");
+  set("mine-title", en ? "My setups" : "Mine oppsett");
+  set("mine-note", en ? "Save the tables as they stand now and bring them back with one tap. Names and marks are not saved." : "Lagre bordene slik de står nå, og hent dem fram igjen med ett trykk. Navn og merking blir ikke lagret.");
+  set("mine-name-label", en ? "Name of the setup" : "Navn på oppsettet");
+  set("mine-save", en ? "Save what is on the floor now" : "Lagre det som står nå");
+  set("mine-list-title", `${en ? "Saved setups" : "Lagrede oppsett"} · ${ROOMS[ROOM_ID][en ? "en" : "no"]}`);
+  set("mine-move-title", en ? "To another PC" : "Til en annen PC");
+  set("mine-move-note", en ? "Download your setups as a file and open the file on the other PC (the website, the extension or the work PC)." : "Last ned oppsettene som en fil, og åpne fila på den andre PC-en (nettsiden, utvidelsen eller jobb-PC-en).");
+  set("mine-export", en ? "Download as a file" : "Last ned som fil");
+  set("mine-import-text", en ? "Open a setup file" : "Åpne oppsett-fil");
+  const msgEl = document.getElementById("mine-msg");
+  if (msgEl && msg !== undefined) {
+    msgEl.textContent = msg;
+    msgEl.hidden = !msg;
+  }
+  const list = document.getElementById("mine-list");
+  if (!list) return;
+  const mine = loadMine()[ROOM_ID] || [];
+  list.innerHTML = mine.length
+    ? mine
+        .map(
+          (p, i) => `<li class="mine-item">
+            <span class="mine-name">${esc(p.name)}<small>${esc(new Date(p.at || 0).toLocaleDateString(en ? "en-GB" : "nb-NO"))} · ${p.tables.filter((t) => t.zone === "room").length} ${en ? "tables" : "bord"}</small></span>
+            <button type="button" class="chip big primary" data-mine-use="${i}">${en ? "Use" : "Bruk"}</button>
+            <button type="button" class="chip big" data-mine-del="${i}">${en ? "Delete" : "Slett"}</button>
+          </li>`,
+        )
+        .join("")
+    : `<li class="mine-empty">${en ? "Nothing saved yet." : "Ingenting lagret ennå."}</li>`;
+}
+
+document.getElementById("mine-save")?.addEventListener("click", () => {
+  const en = state.lang === "en";
+  const input = document.getElementById("mine-name");
+  const name = input.value.trim().slice(0, 40);
+  if (!name) {
+    renderMine(en ? "Write a name first, e.g. Jul-oppsett." : "Skriv et navn først, f.eks. Jul-oppsett.");
+    input.focus();
+    return;
+  }
+  const all = loadMine();
+  const list = all[ROOM_ID] || [];
+  const entry = { name, at: Date.now(), ...layoutSnapshot() };
+  const same = list.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
+  if (same >= 0) list[same] = entry; // same name: replaced with the new version
+  else list.push(entry);
+  all[ROOM_ID] = list;
+  const ok = saveMine(all);
+  input.value = "";
+  renderMine(ok ? (en ? `Saved: ${name}` : `Lagret: ${name}`) : en ? "Could not save in this browser." : "Kunne ikke lagre i denne nettleseren.");
+});
+
+document.getElementById("mine-list")?.addEventListener("click", (event) => {
+  const en = state.lang === "en";
+  const use = event.target.closest("[data-mine-use]");
+  const del = event.target.closest("[data-mine-del]");
+  const all = loadMine();
+  const list = all[ROOM_ID] || [];
+  if (use) {
+    const p = list[Number(use.dataset.mineUse)];
+    if (!p) return;
+    if (!armed(use, en ? "Replace the floor? Tap again" : "Bytte ut gulvet? Trykk igjen")) return;
+    applyLayout(p);
+    closeMine();
+    showToast(en ? `«${p.name}» is on the floor.` : `«${p.name}» er lagt ut.`, 4000);
+    return;
+  }
+  if (del) {
+    const i = Number(del.dataset.mineDel);
+    if (!list[i]) return;
+    if (!armed(del, en ? "Delete? Tap again" : "Slette? Trykk igjen")) return;
+    const name = list[i].name;
+    list.splice(i, 1);
+    all[ROOM_ID] = list;
+    saveMine(all);
+    renderMine(en ? `Deleted: ${name}` : `Slettet: ${name}`);
+  }
+});
+
+document.getElementById("mine-export")?.addEventListener("click", () => {
+  const all = loadMine();
+  const blob = new Blob([JSON.stringify({ norskenPresets: 1, rooms: all }, null, 1)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `norsken-oppsett-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    URL.revokeObjectURL(a.href);
+    a.remove();
+  }, 1000);
+});
+
+document.getElementById("mine-import")?.addEventListener("change", async (event) => {
+  const en = state.lang === "en";
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  let data = null;
+  try {
+    data = JSON.parse(await file.text());
+  } catch {}
+  if (!data || data.norskenPresets !== 1 || typeof data.rooms !== "object") {
+    renderMine(en ? "That is not a Norsken setup file." : "Det er ikke en Norsken oppsett-fil.");
+    return;
+  }
+  const all = loadMine();
+  let added = 0;
+  for (const room of Object.keys(ROOMS)) {
+    const incoming = Array.isArray(data.rooms[room]) ? data.rooms[room] : [];
+    const list = all[room] || [];
+    for (const p of incoming) {
+      if (!p || typeof p.name !== "string" || !Array.isArray(p.tables)) continue;
+      for (const t of p.tables) for (const f of GUEST_FIELDS) delete t[f];
+      const same = list.findIndex((q) => q.name.toLowerCase() === p.name.toLowerCase());
+      if (same >= 0) list[same] = p;
+      else list.push(p);
+      added += 1;
+    }
+    all[room] = list;
+  }
+  saveMine(all);
+  renderMine(en ? `Opened ${added} setups.` : `Åpnet ${added} oppsett.`);
+});
+
+function openMine() {
+  const panel = document.getElementById("mine-panel");
+  const backdrop = document.getElementById("mine-backdrop");
+  renderMine("");
+  panel.hidden = false;
+  backdrop.hidden = false;
+  requestAnimationFrame(() => {
+    panel.classList.add("open");
+    backdrop.classList.add("open");
+  });
+  document.getElementById("mine-name")?.focus();
+}
+function closeMine() {
+  const panel = document.getElementById("mine-panel");
+  const backdrop = document.getElementById("mine-backdrop");
+  panel.classList.remove("open");
+  backdrop.classList.remove("open");
+  setTimeout(() => {
+    panel.hidden = true;
+    backdrop.hidden = true;
+  }, 220);
+}
+document.getElementById("mine-btn")?.addEventListener("click", openMine);
+document.getElementById("mine-close")?.addEventListener("click", closeMine);
+document.getElementById("mine-backdrop")?.addEventListener("click", closeMine);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.getElementById("mine-panel")?.hidden) closeMine();
+});
