@@ -4422,6 +4422,13 @@ function seatRing(table) {
       : { c: { x: mid, y: run.cross }, hw: run.length / 2 + off, hh: run.across / 2 + off, round: false };
   }
   const s = tableCm(table);
+  if (table.kind === "oval") {
+    // the oval is a stadium: straight long sides, half-round ends
+    const vertical = s.h >= s.w;
+    const short = vertical ? s.w : s.h;
+    const long = vertical ? s.h : s.w;
+    return { c: centerCm(table), radius: short / 2 + off, straight: (long - short) / 2, vertical, stadium: true };
+  }
   return { c: centerCm(table), hw: s.w / 2 + off, hh: s.h / 2 + off, round: table.kind === "round" };
 }
 
@@ -4431,6 +4438,38 @@ function placeAround(table, deg) {
   const dx = Math.cos(rad);
   const dy = Math.sin(rad);
   if (ring.round) return { x: ring.c.x + dx * ring.hw, y: ring.c.y + dy * ring.hw, a: deg };
+  if (ring.stadium) {
+    // work as if the long axis were y; swap back at the end
+    const u = ring.vertical ? dx : dy; // across
+    const v = ring.vertical ? dy : dx; // along
+    const R = ring.radius;
+    const A = ring.straight;
+    let pu;
+    let pv;
+    let face;
+    const tSide = Math.abs(u) > 1e-6 ? R / Math.abs(u) : Infinity;
+    if (Math.abs(tSide * v) <= A) {
+      // along a straight side
+      pu = Math.sign(u) * R;
+      pv = tSide * v;
+      face = { u: Math.sign(u), v: 0 };
+    } else {
+      // round the curved end: circle of radius R around (0, ±A)
+      const cv = Math.sign(v) * A;
+      const dot = v * cv;
+      const t = dot + Math.sqrt(Math.max(0, dot * dot - cv * cv + R * R));
+      pu = t * u;
+      pv = t * v;
+      face = { u: pu / R, v: (pv - cv) / R };
+    }
+    const fx = ring.vertical ? face.u : face.v;
+    const fy = ring.vertical ? face.v : face.u;
+    return {
+      x: ring.c.x + (ring.vertical ? pu : pv),
+      y: ring.c.y + (ring.vertical ? pv : pu),
+      a: (Math.atan2(fy, fx) * 180) / Math.PI,
+    };
+  }
   // a rectangle (also the oval and a langbord): slide along its edge
   const tx = Math.abs(dx) > 1e-6 ? ring.hw / Math.abs(dx) : Infinity;
   const ty = Math.abs(dy) > 1e-6 ? ring.hh / Math.abs(dy) : Infinity;
