@@ -2073,3 +2073,36 @@ a[hidden] {
   color: white;
   border-color: var(--warn);
 }
+
+/* toast with an «Angre» button; Tomt rom and Angre in the Oppsett panel */
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+#toast-text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.toast-btn {
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #f1d9a8;
+  color: #1d1812;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.settings .danger-row {
+  color: var(--warn);
+  border-color: rgba(180, 35, 24, 0.45);
+}
+.settings .undo-row {
+  background: #fff1d6;
+  border-color: #c4a574;
+  white-space: normal;
+  text-align: left;
+}

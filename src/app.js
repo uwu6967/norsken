@@ -3783,11 +3783,14 @@ document.getElementById("reset-btn").addEventListener("click", (event) => {
   const button = event.currentTarget;
   if (!armed(button, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
   button.classList.remove("armed");
+  rememberFloor(state.lang === "en" ? "Empty room" : "Tomt rom");
   const { lang, fixtures, furniture, dims, showGrid, showMeasure, paintings, showPaintings } = state;
   state = defaultState();
   Object.assign(state, { lang, fixtures, furniture, dims, showGrid, showMeasure, paintings, showPaintings });
   save();
   render();
+  closeMine();
+  showToast(state.lang === "en" ? "The room is empty – all tables in storage." : "Rommet er tomt – alle bord er på lager.", 12000, true);
 });
 
 document.getElementById("add-row").addEventListener("click", (event) => {
@@ -4170,6 +4173,7 @@ function dominoLayout() {
 }
 
 function presetLayout(kind = "usual") {
+  rememberFloor({ usual: "Vanlig oppsett", lunch: "Lunsj-oppsett", jul: "Jul-oppsett" }[kind] || "Oppsett");
   if (ROOM_ID === "domino") return dominoLayout();
   const r = room();
   const placed = [];
@@ -4271,6 +4275,7 @@ document.getElementById("preset-btn")?.addEventListener("click", (event) => {
   button.classList.remove("armed");
   presetLayout();
   closeMine();
+  showToast(state.lang === "en" ? "The floor was replaced." : "«Vanlig oppsett» er lagt ut.", 12000, true);
 });
 
 document.getElementById("lunch-btn")?.addEventListener("click", (event) => {
@@ -4279,6 +4284,7 @@ document.getElementById("lunch-btn")?.addEventListener("click", (event) => {
   button.classList.remove("armed");
   presetLayout("lunch");
   closeMine();
+  showToast(state.lang === "en" ? "The floor was replaced." : "«Lunsj-oppsett» er lagt ut.", 12000, true);
 });
 
 // --- Dagens liste (guest list from ResDiary) --------------------------------
@@ -4513,10 +4519,17 @@ function guestSeats(table) {
 // download; opening that file prints it. As a local file the link works as before.
 // A short message at the bottom of the screen (prompt()/alert() do not work in the hosted page).
 let toastTimer = null;
-function showToast(text, ms = 9000) {
+function showToast(text, ms = 9000, withUndo = false) {
   const el = document.getElementById("toast");
   if (!el) return;
-  el.textContent = text;
+  const textEl = document.getElementById("toast-text");
+  if (textEl) textEl.textContent = text;
+  else el.textContent = text;
+  const undo = document.getElementById("toast-undo");
+  if (undo) {
+    undo.hidden = !withUndo;
+    undo.textContent = state.lang === "en" ? "↶ Undo" : "↶ Angre";
+  }
   el.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => {
@@ -4721,6 +4734,7 @@ document.getElementById("jul-btn")?.addEventListener("click", (event) => {
   button.classList.remove("armed");
   presetLayout("jul");
   closeMine();
+  showToast(state.lang === "en" ? "The floor was replaced." : "«Jul-oppsett» er lagt ut.", 12000, true);
 });
 
 // --- Mine oppsett: saved table layouts ----------------------------------------
@@ -4750,6 +4764,7 @@ function layoutSnapshot() {
   return { tables, fixtures: JSON.parse(JSON.stringify(state.fixtures || [])) };
 }
 function applyLayout(layout) {
+  rememberFloor(layout.name || "Oppsett");
   state.tables = JSON.parse(JSON.stringify(layout.tables || []));
   if (Array.isArray(layout.fixtures) && layout.fixtures.length) state.fixtures = JSON.parse(JSON.stringify(layout.fixtures));
   state.selected = null;
@@ -4830,7 +4845,7 @@ document.getElementById("mine-list")?.addEventListener("click", (event) => {
     if (!armed(use, en ? "Replace the floor? Tap again" : "Bytte ut gulvet? Trykk igjen")) return;
     applyLayout(p);
     closeMine();
-    showToast(en ? `«${p.name}» is on the floor.` : `«${p.name}» er lagt ut.`, 4000);
+    showToast(en ? `«${p.name}» is on the floor.` : `«${p.name}» er lagt ut.`, 12000, true);
     return;
   }
   if (del) {
@@ -4895,6 +4910,7 @@ function openMine() {
   const panel = document.getElementById("mine-panel");
   const backdrop = document.getElementById("mine-backdrop");
   renderMine("");
+  refreshUndo();
   panel.hidden = false;
   backdrop.hidden = false;
   requestAnimationFrame(() => {
@@ -4919,3 +4935,54 @@ document.getElementById("mine-backdrop")?.addEventListener("click", closeMine);
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !document.getElementById("mine-panel")?.hidden) closeMine();
 });
+
+// --- Angre: undo the last time the whole floor was replaced ---------------------
+// Before «Tomt rom», a ready-made setup or one of «Mine oppsett» replaces the
+// floor, the plan as it was is kept (per room, in this browser), so one tap on
+// «Angre» puts it back – also after the page was closed.
+const UNDO_KEY = `norsken-undo-${ROOM_ID}`;
+function rememberFloor(label) {
+  try {
+    localStorage.setItem(UNDO_KEY, JSON.stringify({ label, at: Date.now(), state }));
+  } catch {}
+  refreshUndo();
+}
+function readUndo() {
+  try {
+    const u = JSON.parse(localStorage.getItem(UNDO_KEY) || "null");
+    return u && u.state && Array.isArray(u.state.tables) ? u : null;
+  } catch {
+    return null;
+  }
+}
+function refreshUndo() {
+  const btn = document.getElementById("undo-btn");
+  if (!btn) return;
+  const u = readUndo();
+  btn.hidden = !u;
+  if (u) btn.textContent = state.lang === "en" ? `↶ Undo «${u.label}» (bring back the floor from before)` : `↶ Angre «${u.label}» (få tilbake gulvet fra før)`;
+}
+function undoFloor() {
+  const u = readUndo();
+  if (!u) return;
+  const view = { lang: state.lang, showGrid: state.showGrid, showMeasure: state.showMeasure, withChairs: state.withChairs, brush: state.brush };
+  state = normalizeState(u.state);
+  Object.assign(state, view);
+  state.selected = null;
+  try {
+    localStorage.removeItem(UNDO_KEY);
+  } catch {}
+  syncFurniture();
+  relabelRoom();
+  save();
+  render();
+  refreshUndo();
+  closeMine();
+  showToast(state.lang === "en" ? "The floor is back as it was." : "Gulvet er tilbake slik det var.", 5000);
+}
+document.getElementById("undo-btn")?.addEventListener("click", undoFloor);
+document.getElementById("toast-undo")?.addEventListener("click", () => {
+  document.getElementById("toast").hidden = true;
+  undoFloor();
+});
+refreshUndo();
