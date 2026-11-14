@@ -54,6 +54,8 @@
           <button type="button" class="chip big preset-row" id="preset-btn">Vanlig oppsett</button>
           <button type="button" class="chip big preset-row" id="lunch-btn">Lunsj-oppsett</button>
           <button type="button" class="chip big preset-row" id="jul-btn">Jul-oppsett</button>
+          <button type="button" class="chip big preset-row danger-row" id="reset-btn">Tomt rom</button>
+          <button type="button" class="chip big preset-row undo-row" id="undo-btn" hidden>↶ Angre</button>
         </section>
         <p class="set-note" id="mine-note">Lagre bordene slik de står nå, og hent dem fram igjen med ett trykk. Navn og merking blir ikke lagret.</p>
         <section class="set-group">
@@ -124,10 +126,6 @@
           </section>
         </section>
 
-        <section class="set-group danger">
-          <p class="set-title" id="set-room-title">Rommet</p>
-          <button type="button" class="chip big danger-btn" id="reset-btn">Tomt rom</button>
-        </section>
       </aside>
 
       <p class="hint" id="hint" hidden>Blanke bord i lageret. Nummer følger plassen: 1 nede til venstre, 6 oppe til høyre, 16 i midten oppe. Høyre side er 6–11.</p>
@@ -205,7 +203,10 @@
       </div>
 
 
-      <p class="toast" id="toast" role="status" hidden></p>
+      <div class="toast" id="toast" role="status" hidden>
+        <span id="toast-text"></span>
+        <button type="button" class="toast-btn" id="toast-undo" hidden>↶ Angre</button>
+      </div>
 
       <aside class="painting-card seat-editor" id="seat-editor" hidden>
         <div class="painting-card-head">
