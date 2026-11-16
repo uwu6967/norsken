@@ -30,7 +30,7 @@ def bm(name):
 items = [
     ('rydd-liste.js', 'Rydd liste', 'Fjerner tomme rader og kolonnene Telefon, E-post, Booket den, Kundekoder og Forhåndsbestilling.'),
     ('til-bordplan.js', 'Til bordplan', 'Kopierer tid, antall, etternavn og kommentar. Trykk så «Lim inn fra ResDiary» under Reservasjoner i bordplanen.'),
-    ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som en fil i Nedlastinger. Åpne den i bordplanen under «Dagens liste». Uten telefon, e-post, booket den, kundekoder og forhåndsbestilling. Fila blir bare på PC-en.'),
+    ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som en fil i Nedlastinger. Åpne den i bordplanen under Reservasjoner → «Åpne fil». Uten telefon, e-post, booket den, kundekoder og forhåndsbestilling. Fila blir bare på PC-en.'),
 ]
 how = 'Lag et nytt bokmerke (høyreklikk bokmerkelinja → Legg til side), gi det navnet, og lim inn koden som nettadresse. Bruk dem på ResDiary → Diary → Print.'
 md = '\n'.join([how, ''] + [f'### {t}\n\n{d}\n\n```\n{bm(f)}\n```\n' for f, t, d in items])
