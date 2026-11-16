@@ -723,6 +723,8 @@ let activeTab = (() => {
 const GUESTS_KEY = "norsken-guests-v1";
 let guests = loadGuests();
 let guestMsg = "";
+let moveFrom = null; // table id while «Flytt» waits for the target table
+let pasteArmed = false;
 let drag = null;
 
 // --- measurement helpers ---------------------------------------------------
@@ -1572,7 +1574,10 @@ function clearBookedNames() {
 }
 
 function assignBookings() {
-  const bookings = parseBookings(state.bookingsText);
+  // the guests without a table are placed; the ones already placed stay put
+  const bookings = guests.list
+    .filter((g) => !guests.placed[g.id])
+    .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), forced: null }));
   clearBookedNames();
   const floor = roomTables().filter((t) => t.lead !== false && t.label);
   if (!floor.length) {
@@ -1598,6 +1603,16 @@ function assignBookings() {
   const firstTime = new Map(); // table label -> minutes of its first booking
   const sitMin = Math.max(15, Number(state.sitMinutes) || 60);
   const rows = [];
+  // tables that already have guests (placed by hand or earlier) count as taken
+  for (const t of floor) {
+    const here = guestsOn(t);
+    if (!here.length) continue;
+    const label = String(t.label).toLowerCase();
+    taken.add(label);
+    const times = here.map((g) => minutesOf(g.time)).filter((m) => m != null);
+    if (times.length) firstTime.set(label, Math.min(...times));
+    if (here.some((g) => guests.redeck?.[g.id])) redecked.add(label);
+  }
   const sorted = bookings.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   // locked ones first so nobody else takes their table
   const locked = sorted.filter((b) => b.forced && labelMap.has(b.forced));
@@ -1662,18 +1677,16 @@ function assignBookings() {
     }
     rows.push({ ...b, table: null });
   }
+  if (!guests.redeck) guests.redeck = {};
   for (const row of rows) {
     if (!row.table) continue;
-    if (row.redeck) {
-      row.table.redeck = `${row.time ? `${row.time} ` : ""}${row.name}`.trim().slice(0, 28);
-      row.table.redeckPax = row.guests;
-      row.table.seatCount = Math.max(Number(row.table.seatCount) || 0, row.guests);
-      continue;
-    }
-    row.table.name = `${row.time ? `${row.time} ` : ""}${row.name}`.trim().slice(0, 28) || null;
-    row.table.seatCount = row.guests;
-    row.table.booked = true;
+    guests.placed[row.id] = row.table.id;
+    guests.room[row.id] = ROOM_ID;
+    if (row.redeck) guests.redeck[row.id] = true;
+    else delete guests.redeck[row.id];
   }
+  for (const t of floor) guestSeats(t);
+  saveGuests();
   if (!domino) overflowToDomino(rows.filter((row) => !row.table)); // «Bruk Domino», or the last fallback
   rows.sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   const spare = order.filter((label) => !taken.has(label));
@@ -1712,23 +1725,26 @@ function overflowToDomino(rows) {
   if (!rows.length) return;
   const plan = readRoomPlan("domino") || { tables: dominoStarter() };
   const cap = (t) => {
-    if (Number.isFinite(t.seatCount) && t.seatCount > 0 && !t.booked) return t.seatCount;
     if (t.size === "long") return 2 * Math.max(1, Math.floor(((t.custom && t.custom.l) || state.dims.long.l) / Math.max(20, state.dims.chairBig.d)));
     if (t.size === "oval") return 8;
     if (t.size === "big") return 6;
     return 4;
   };
+  const busy = new Set(
+    guests.list.filter((g) => guestRoom(g) === "domino" && guests.placed[g.id]).map((g) => guests.placed[g.id]),
+  );
   const free = plan.tables
-    .filter((t) => t.zone === "room" && t.lead !== false && t.label)
+    .filter((t) => t.zone === "room" && t.lead !== false && t.label && !busy.has(t.id))
     .sort((a, b) => (parseInt(a.label, 10) || 999) - (parseInt(b.label, 10) || 999));
   const taken = new Set();
   for (const row of rows) {
     const pick = free.find((t) => !taken.has(t.id) && cap(t) >= row.guests) || null;
     if (!pick) continue;
     taken.add(pick.id);
-    pick.name = `${row.time ? `${row.time} ` : ""}${row.name}`.trim().slice(0, 28) || null;
+    guests.placed[row.id] = pick.id;
+    guests.room[row.id] = "domino";
     pick.seatCount = row.guests;
-    pick.booked = true;
+    pick.seatFromGuest = true;
     row.table = pick;
     row.room = "domino";
   }
@@ -1785,8 +1801,7 @@ function renderBookings() {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
   };
-  set("book-title", copy.bookTitle);
-  set("book-note", copy.bookNote);
+
   set("book-order-label", copy.bookOrder);
   const en0 = state.lang === "en";
   set("overflow-title", en0 ? "When Spisestua is full" : "Når Spisestua er full");
@@ -1824,46 +1839,8 @@ function renderBookings() {
       .map((line) => `<li>${line}</li>`)
       .join("");
   }
-  set("book-run", copy.bookRun);
-  set("book-clear", copy.bookClear);
-  const text = document.getElementById("book-text");
-  if (text) {
-    text.placeholder = copy.bookPh;
-    if (document.activeElement !== text) text.value = state.bookingsText || "";
-  }
-  const order = document.getElementById("book-order");
-  if (order && document.activeElement !== order) order.value = state.bookingOrder || DEFAULT_BOOKING_ORDER;
-  const out = document.getElementById("book-result");
-  if (!out) return;
-  if (!bookingResult) {
-    out.innerHTML = "";
-    return;
-  }
-  if (bookingResult.noTables) {
-    out.innerHTML = `<p class="brush-note tight">${
-      state.lang === "en"
-        ? "No tables on the floor in this room yet. Press «Usual setup» (or drag tables out) first, then «Assign tables»."
-        : "Ingen bord ute i dette rommet ennå. Trykk «Vanlig oppsett» (eller dra ut bord) først, og så «Fordel bord»."
-    }</p>`;
-    return;
-  }
-  if (!bookingResult.rows.length) {
-    out.innerHTML = `<p class="brush-note">${copy.bookEmpty}</p>`;
-    return;
-  }
-  const extra = [...bookingResult.spare, ...(bookingResult.shared ? [`14 (${copy.bookShared})`] : [])];
-  out.innerHTML = `<div class="table-scroll"><table class="measure-table"><thead><tr><th>${copy.bookTime}</th><th>${copy.bookName}</th><th>${copy.bookGuests}</th><th>${copy.bookTable}</th></tr></thead><tbody>${bookingResult.rows
-    .map(
-      (r) =>
-        `<tr><td>${esc(r.time || "–")}</td><td>${esc(r.name || "–")}</td><td>${r.guests}</td><td>${
-          r.table
-            ? `<strong>${esc(r.room ? `${ROOMS[r.room].no} ${r.table.label}` : r.table.label)}</strong>${
-                r.redeck ? ` <span class="redeck-tag">↻ ${state.lang === "en" ? "re-set" : "dekk om"}</span>` : ""
-              }`
-            : `<span class="tight">${copy.bookNone}</span>`
-        }</td></tr>`,
-    )
-    .join("")}</tbody></table></div>${extra.length ? `<p class="book-extra"><strong>${copy.bookExtra}:</strong> ${esc(extra.join(", "))}</p>` : ""}`;
+  // the result list and the text box are gone: the tables list shows it all
+  set("book-title", en0 ? "Bookings" : "Reservasjoner");
 }
 
 function leadOf(members) {
@@ -2875,7 +2852,14 @@ function onMove(event) {
   }
   if (drag.kind === "plate") showGapTarget(event.clientX, event.clientY);
   if (drag.kind === "guest") {
-    const hit = guestDropTable(event.clientX, event.clientY);
+    // near the top or bottom edge of the list, the list scrolls by itself
+    const pane = document.querySelector(".leftcol .tab-pane:not([hidden])");
+    if (pane && pointIn(pane, event.clientX, Math.min(event.clientY, pane.getBoundingClientRect().bottom - 1))) {
+      const box = pane.getBoundingClientRect();
+      if (event.clientY > box.bottom - 60) pane.scrollTop += 14;
+      else if (event.clientY < box.top + 60) pane.scrollTop -= 14;
+    }
+    const hit = guestDropTable(event.clientX, event.clientY) || resRowTable(event.clientX, event.clientY);
     document.querySelectorAll("#room .table.guest-target").forEach((n) => {
       if (n.dataset.id !== hit?.id) n.classList.remove("guest-target");
     });
@@ -2965,22 +2949,9 @@ function finishDrag(clientX, clientY) {
   if (current.kind === "guest") {
     document.querySelectorAll(".guest-target").forEach((n) => n.classList.remove("guest-target"));
     if (!current.moved) return;
-    const hit = guestDropTable(clientX, clientY);
-    const g0 = guests.list.find((g) => g.id === current.id);
-    const before = g0 ? guestTable(g0) : null;
-    if (!guests.room) guests.room = {};
-    if (hit) {
-      guests.placed[current.id] = hit.id;
-      guests.room[current.id] = ROOM_ID;
-    } else if (pointIn(document.getElementById("guest-rack"), clientX, clientY)) {
-      delete guests.placed[current.id];
-      delete guests.room[current.id];
-    } else return;
-    saveGuests();
-    if (before) guestSeats(before);
-    if (hit) guestSeats(hit);
-    save();
-    render();
+    const hit = guestDropTable(clientX, clientY) || resRowTable(clientX, clientY);
+    if (hit) placeGuest(current.id, hit);
+    else if (pointIn(document.getElementById("guest-rack"), clientX, clientY)) unplaceGuest(current.id);
     return;
   }
   if (current.kind === "plate") {
@@ -3009,6 +2980,10 @@ function finishDrag(clientX, clientY) {
   const table = getTable(current.id);
   if (!table) return;
   if (!current.moved) {
+    if (moveFrom) {
+      finishMove(table);
+      return;
+    }
     selectTable(current.id);
     return;
   }
@@ -3723,15 +3698,46 @@ document.getElementById("book-order")?.addEventListener("change", (event) => {
   render();
 });
 document.getElementById("book-run")?.addEventListener("click", () => {
+  const en = state.lang === "en";
   const order = document.getElementById("book-order");
   if (order) state.bookingOrder = order.value.slice(0, 120) || DEFAULT_BOOKING_ORDER;
+  const before = guests.list.filter((g) => !guests.placed[g.id]).length;
   assignBookings();
   save();
   render();
+  if (bookingResult?.noTables) {
+    showToast(en ? "No tables on the floor yet – pick a setup under ★ Oppsett first." : "Ingen bord ute ennå – velg et oppsett under ★ Oppsett først.", 9000);
+    return;
+  }
+  const rows = bookingResult?.rows || [];
+  const here = rows.filter((r) => r.table && !r.room).length;
+  const domino = rows.filter((r) => r.room === "domino").length;
+  const none = rows.filter((r) => !r.table).length;
+  showToast(
+    before
+      ? en
+        ? `Placed ${here}${domino ? `, ${domino} in Domino` : ""}${none ? `, ${none} without a table` : ""}.`
+        : `Plasserte ${here}${domino ? `, ${domino} i Domino` : ""}${none ? `, ${none} uten bord` : ""}.`
+      : en
+        ? "Everyone already has a table."
+        : "Alle har allerede bord.",
+    7000,
+  );
 });
-document.getElementById("book-clear")?.addEventListener("click", () => {
+document.getElementById("book-clear")?.addEventListener("click", (event) => {
+  if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
+  const seated = roomTables().filter((t) => guestsOn(t).length);
+  for (const g of guests.list) {
+    if (guestRoom(g) === ROOM_ID || (ROOM_ID === "spisestua" && guestRoom(g) === "domino")) {
+      delete guests.placed[g.id];
+      delete guests.room[g.id];
+      if (guests.redeck) delete guests.redeck[g.id];
+    }
+  }
+  saveGuests();
   clearBookedNames();
   if (ROOM_ID === "spisestua") clearDominoBooked();
+  for (const t of seated) guestSeats(t);
   bookingResult = null;
   save();
   render();
@@ -4330,10 +4336,11 @@ function loadGuests() {
         list: g.list,
         placed: g.placed && typeof g.placed === "object" ? g.placed : {},
         room: g.room && typeof g.room === "object" ? g.room : {},
+        redeck: g.redeck && typeof g.redeck === "object" ? g.redeck : {},
       };
     }
   } catch {}
-  return { file: "", list: [], placed: {}, room: {} };
+  return { file: "", list: [], placed: {}, room: {}, redeck: {} };
 }
 
 function guestRoom(guest) {
@@ -4427,7 +4434,8 @@ function guestsOn(table) {
 
 function guestLabel(table) {
   return guestsOn(table)
-    .map((g) => `${g.time ? `${g.time} ` : ""}${g.name}`.trim())
+    .sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))
+    .map((g) => `${guests.redeck?.[g.id] ? "↻ " : ""}${g.time ? `${g.time} ` : ""}${g.name}`.trim())
     .join(" / ");
 }
 
@@ -4443,85 +4451,27 @@ function guestDropTable(x, y) {
 }
 
 function renderGuests() {
-  const en = state.lang === "en";
-  const set = (id, text) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = text;
-  };
-  set("guest-title", en ? "Today's list" : "Dagens liste");
-  set("guest-open", en ? "Open list from PC" : "Åpne liste fra PC");
-  set("guest-clear", en ? "Clear list" : "Tøm liste");
-  const clear = document.getElementById("guest-clear");
-  if (clear) clear.hidden = !guests.list.length;
-  const placed = guests.list.filter((g) => guests.placed[g.id]).length;
-  set(
-    "guest-note",
-    guestMsg ||
-    (guests.list.length
-      ? en
-        ? `${guests.file} · ${guests.list.length} bookings, ${placed} seated. Drag a name onto a table; drag it back here to remove.`
-        : `${guests.file} · ${guests.list.length} bookinger, ${placed} plassert. Dra et navn til et bord. Dra det tilbake hit for å fjerne.`
-      : en
-        ? "Open the file from the «Last ned liste» bookmark. The names stay in this browser only."
-        : "Åpne fila fra bokmerket «Last ned liste». Navnene blir bare i denne nettleseren."),
-  );
-  const list = document.getElementById("guest-list");
-  if (!list) return;
-  list.innerHTML = "";
-  for (const g of guests.list) {
-    const table = guestTable(g);
-    const elsewhere = !table && guests.placed[g.id] && guestRoom(g) !== ROOM_ID ? ROOMS[guestRoom(g)] : null;
-    const li = document.createElement("li");
-    li.className = `guest-item${table || elsewhere ? " placed" : ""}`;
-    li.dataset.id = g.id;
-    li.innerHTML = `<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${
-      g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""
-    }${elsewhere ? `<span class="g-table">→ ${esc(elsewhere[en ? "en" : "no"])}</span>` : ""}${table ? `<span class="g-table">→ ${esc(table.label)}</span><button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Remove from table" : "Fjern fra bordet"}">✕</button>` : ""}${
-      g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
-    }`;
-    li.addEventListener("pointerdown", (event) => {
-      if (event.target.closest(".g-x")) return;
-      startDrag(event, { kind: "guest", id: g.id }, li);
-    });
-    list.appendChild(li);
-  }
+  renderReservations();
 }
 
 document.getElementById("guest-file")?.addEventListener("change", async (event) => {
   const file = event.target.files?.[0];
   event.target.value = "";
   if (!file) return;
-  const list = guestsFromCsv(await file.text());
-  if (!list.length) {
-    guestMsg = state.lang === "en" ? "No bookings found in that file." : "Fant ingen bookinger i den fila.";
-    render();
-    return;
-  }
-  guestMsg = "";
-  guests = { file: file.name, list, placed: {}, room: {} };
-  saveGuests();
-  render();
+  importBookings(await file.text(), file.name);
 });
 
 document.getElementById("guest-clear")?.addEventListener("click", (event) => {
-  if (!armed(event.currentTarget, state.lang === "en" ? "Sure?" : "Sikker?")) return;
-  guests = { file: "", list: [], placed: {}, room: {} };
+  if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
+  const seated = roomTables().filter((t) => guestsOn(t).length);
+  guests = { file: "", list: [], placed: {}, room: {}, redeck: {} };
   saveGuests();
-  render();
-});
-
-document.getElementById("guest-list")?.addEventListener("click", (event) => {
-  const id = event.target.closest(".g-x")?.dataset.unplace;
-  if (!id) return;
-  const g0 = guests.list.find((g) => g.id === id);
-  const before = g0 ? guestTable(g0) : null;
-  delete guests.placed[id];
-  if (guests.room) delete guests.room[id];
-  saveGuests();
-  if (before) guestSeats(before);
+  for (const t of seated) guestSeats(t);
   save();
   render();
 });
+
+
 
 // Chairs follow the party: a table gets as many chairs as its biggest
 // booking. Only chairs set this way are undone when the guests leave; a
@@ -5043,4 +4993,325 @@ document.querySelector(".tabs")?.addEventListener("click", (event) => {
     localStorage.setItem("norsken-tab", activeTab);
   } catch {}
   renderTabs();
+});
+
+// --- Reservasjoner: one list of guests, dropped onto tables -------------------
+// (Danny 2026-11-16) Paste the list from ResDiary (the «Til bordplan» bookmark
+// copies time, people, last name and comment), drag names onto tables or let
+// «Fordel bord» do it, and move a party to another table with «Flytt» or by
+// dragging. Moving takes the people, the name and the seat marks along; the
+// tables themselves stay where they are. Names stay in this browser only.
+
+function newGuestId(i) {
+  return `g${Date.now().toString(36)}${i}`;
+}
+
+function parseClipboardBookings(text) {
+  const raw = String(text || "").replace(/^﻿/, "");
+  // a CSV/TSV with a header row (the «Last ned liste» file, or a copied table)
+  const firstLines = raw.split(/\r?\n/).slice(0, 3).join("\n");
+  if (/gjester|antall|pax/i.test(firstLines) && /\btid\b|\btime\b/i.test(firstLines)) {
+    const tsv = (firstLines.match(/\t/g) || []).length > (firstLines.match(/;/g) || []).length;
+    const list = guestsFromCsv(tsv ? raw.replace(/\t/g, ";") : raw);
+    if (list.length) return list;
+  }
+  const out = [];
+  for (const lineRaw of raw.split(/\r?\n/)) {
+    const line = lineRaw.trim();
+    if (!line) continue;
+    if (line.includes("\t")) {
+      // «Til bordplan»: time, people, last name, comment
+      const [time, pax, name, ...rest] = line.split("\t");
+      const tm = (time || "").trim().replace(".", ":");
+      if (!/^\d{1,2}:\d{2}$/.test(tm)) continue;
+      out.push({ time: tm.padStart(5, "0"), pax: parseInt(pax, 10) || 2, name: (name || "").trim().slice(0, 40), note: rest.join(" ").replace(/\s+/g, " ").trim().slice(0, 160) });
+      continue;
+    }
+    const [b] = parseBookings(line);
+    if (b && (b.time || b.name)) out.push({ time: b.time, pax: b.guests, name: b.name.slice(0, 40), note: "" });
+  }
+  return dropSubtotals(out, (g) => g.name, (g) => g.pax);
+}
+
+function importBookings(text, source) {
+  const en = state.lang === "en";
+  const list = parseClipboardBookings(text).map((g, i) => ({ id: newGuestId(i), time: g.time || "", name: g.name || "", pax: g.pax || null, rd: g.rd || "", note: g.note || "" }));
+  if (!list.length) {
+    showToast(en ? "No bookings found. Use «Til bordplan» on the ResDiary print page first." : "Fant ingen bookinger. Bruk «Til bordplan» på ResDiary-utskriften først.", 9000);
+    return false;
+  }
+  const seated = roomTables().filter((t) => guestsOn(t).length);
+  clearBookedNames();
+  guests = { file: source || "", list: list.sort((p, q) => (p.time || "99").localeCompare(q.time || "99")), placed: {}, room: {}, redeck: {} };
+  saveGuests();
+  for (const t of seated) guestSeats(t);
+  activeTab = "book";
+  save();
+  render();
+  showToast(en ? `${list.length} bookings ready. Drag them onto tables, or press «Assign tables automatically».` : `${list.length} bookinger klare. Dra dem til bordene, eller trykk «Fordel bord automatisk».`, 8000);
+  return true;
+}
+
+document.getElementById("res-paste")?.addEventListener("click", async (event) => {
+  const en = state.lang === "en";
+  const btn = event.currentTarget;
+  if (guests.list.some((g) => guests.placed[g.id]) && !armed(btn, en ? "Replace today's list? Tap again" : "Bytte ut dagens liste? Trykk igjen")) return;
+  try {
+    const text = await navigator.clipboard.readText();
+    if (importBookings(text, en ? "clipboard" : "utklippstavla")) return;
+  } catch {}
+  // the browser would not hand over the clipboard: a Ctrl+V does the same
+  pasteArmed = true;
+  showToast(en ? "Press Ctrl+V now to paste the list." : "Trykk Ctrl+V nå for å lime inn lista.", 12000);
+});
+
+document.addEventListener("paste", (event) => {
+  const target = event.target;
+  if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+  if (!pasteArmed && activeTab !== "book") return;
+  const text = event.clipboardData?.getData("text") || "";
+  if (!text.trim()) return;
+  event.preventDefault();
+  pasteArmed = false;
+  importBookings(text, state.lang === "en" ? "clipboard" : "utklippstavla");
+});
+
+// the table row under the pointer (rows in the list are drop targets too)
+function resRowTable(x, y) {
+  const row = document.elementsFromPoint(x, y).find((n) => n.classList?.contains("res-row"));
+  return row ? getTable(row.dataset.table) : null;
+}
+
+const SEAT_DATA = ["seatMarks", "seatNotes", "seatNames"];
+// Swap everything that belongs to the guests (not the table itself).
+function swapSeatData(a, b) {
+  for (const key of SEAT_DATA) {
+    const tmp = a[key];
+    if (b[key]) a[key] = b[key];
+    else delete a[key];
+    if (tmp) b[key] = tmp;
+    else delete b[key];
+  }
+  for (const key of ["name", "booked"]) {
+    const tmp = a[key];
+    a[key] = b[key] ?? (key === "name" ? null : false);
+    b[key] = tmp ?? (key === "name" ? null : false);
+  }
+}
+
+// Move a whole party from one table to another; if the other table has guests,
+// the two swap.
+function moveParty(from, to) {
+  if (!from || !to || from.id === to.id) return;
+  const a = guestsOn(from).map((g) => g.id);
+  const b = guestsOn(to).map((g) => g.id);
+  for (const id of a) guests.placed[id] = to.id;
+  for (const id of b) guests.placed[id] = from.id;
+  swapSeatData(from, to);
+  saveGuests();
+  guestSeats(from);
+  guestSeats(to);
+  save();
+}
+
+function placeGuest(id, table) {
+  const g = guests.list.find((x) => x.id === id);
+  if (!g || !table) return;
+  if (table.lead === false && table.group) table = roomTables().find((t) => t.group === table.group && t.lead !== false) || table;
+  const from = guestTable(g);
+  if (from && from.id === table.id) return;
+  if (from && guestsOn(from).length === 1) {
+    // the only party at its table: everything goes with it (swap if needed)
+    moveParty(from, table);
+  } else {
+    if (!guests.room) guests.room = {};
+    guests.placed[id] = table.id;
+    guests.room[id] = ROOM_ID;
+    if (guests.redeck) delete guests.redeck[id];
+    saveGuests();
+    if (from) guestSeats(from);
+    guestSeats(table);
+    save();
+  }
+  render();
+}
+
+function unplaceGuest(id) {
+  const g = guests.list.find((x) => x.id === id);
+  if (!g) return;
+  const from = guestTable(g);
+  delete guests.placed[id];
+  if (guests.room) delete guests.room[id];
+  if (guests.redeck) delete guests.redeck[id];
+  saveGuests();
+  if (from) guestSeats(from);
+  save();
+  render();
+}
+
+function startMove(tableId) {
+  moveFrom = tableId;
+  render();
+}
+function finishMove(target) {
+  const from = getTable(moveFrom);
+  moveFrom = null;
+  if (target && target.lead === false && target.group) target = roomTables().find((t) => t.group === target.group && t.lead !== false) || target;
+  if (from && target && from.id !== target.id) {
+    const swapped = guestsOn(target).length > 0;
+    moveParty(from, target);
+    showToast(
+      state.lang === "en"
+        ? swapped
+          ? `Tables ${from.label} and ${target.label} swapped guests.`
+          : `Moved from table ${from.label} to ${target.label}.`
+        : swapped
+          ? `Bord ${from.label} og ${target.label} byttet gjester.`
+          : `Flyttet fra bord ${from.label} til ${target.label}.`,
+      5000,
+    );
+  }
+  render();
+}
+
+function markSummary(table) {
+  const counts = {};
+  for (const key of Object.values(table.seatMarks || {})) counts[key] = (counts[key] || 0) + 1;
+  const chips = Object.entries(counts).map(([key, n]) => {
+    const m = markOf(key);
+    if (!m) return "";
+    return `<span class="seat-chip" title="${esc(markName(m))}" style="background:${m.color};color:${inkOn(m.color)}">${esc(m.code)}</span>${n > 1 ? `<small>×${n}</small>` : ""}`;
+  });
+  const notes = Object.values(table.seatNotes || {}).length;
+  if (notes) chips.push(`<span class="seat-chip note-chip" title="✎">✱</span>${notes > 1 ? `<small>×${notes}</small>` : ""}`);
+  return chips.join("");
+}
+
+function guestChip(g, en) {
+  const re = guests.redeck?.[g.id] ? '<span class="g-re" title="dekk om">↻</span>' : "";
+  return `<span class="res-guest" data-gid="${g.id}">${re}<span class="g-time">${esc(g.time || "–")}</span> <span class="g-name">${esc(g.name || (en ? "no name" : "uten navn"))}</span>${
+    g.pax ? ` <span class="g-pax">${g.pax}p</span>` : ""
+  }<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
+}
+
+function renderReservations() {
+  const en = state.lang === "en";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set("res-paste-text", en ? "Paste from ResDiary" : "Lim inn fra ResDiary");
+  set("guest-open", en ? "Open file" : "Åpne fil");
+  set("res-unplaced-title", en ? "Without a table" : "Uten bord");
+  set("res-tables-title", en ? "Tables" : "Bordene");
+  set("book-run", en ? "Assign tables automatically" : "Fordel bord automatisk");
+  const clearBtn = document.getElementById("book-clear");
+  if (clearBtn && clearBtn.dataset.armed !== "1") clearBtn.textContent = en ? "Take everyone off" : "Ta alle av bordene";
+  const wipe = document.getElementById("guest-clear");
+  if (wipe && wipe.dataset.armed !== "1") wipe.textContent = en ? "Clear the list" : "Tøm lista";
+  if (wipe) wipe.hidden = !guests.list.length;
+  if (clearBtn) clearBtn.hidden = !guests.list.some((g) => guests.placed[g.id]);
+
+  const unplaced = guests.list.filter((g) => !guests.placed[g.id]);
+  const placedHere = guests.list.filter((g) => guestTable(g)).length;
+  const elsewhere = guests.list.filter((g) => guests.placed[g.id] && guestRoom(g) !== ROOM_ID).length;
+  set(
+    "res-note",
+    guestMsg ||
+      (guests.list.length
+        ? en
+          ? `${guests.list.length} bookings · ${placedHere} at tables here${elsewhere ? ` · ${elsewhere} in ${ROOM_ID === "domino" ? "Spisestua" : "Domino"}` : ""} · ${unplaced.length} without a table. Drag a name onto a table.`
+          : `${guests.list.length} bookinger · ${placedHere} ved bord her${elsewhere ? ` · ${elsewhere} i ${ROOM_ID === "domino" ? "Spisestua" : "Domino"}` : ""} · ${unplaced.length} uten bord. Dra et navn til et bord.`
+        : en
+          ? "On the ResDiary print page press the «Til bordplan» bookmark, then press «Paste from ResDiary» here (or Ctrl+V)."
+          : "På ResDiary-utskriften trykker du bokmerket «Til bordplan», og så «Lim inn fra ResDiary» her (eller Ctrl+V)."),
+  );
+
+  const list = document.getElementById("guest-list");
+  if (list) {
+    list.innerHTML = unplaced.length
+      ? ""
+      : `<li class="res-empty">${guests.list.length ? (en ? "Everyone has a table." : "Alle har bord.") : en ? "No list yet." : "Ingen liste ennå."}</li>`;
+    for (const g of unplaced) {
+      const li = document.createElement("li");
+      li.className = "guest-item";
+      li.dataset.id = g.id;
+      li.innerHTML = `<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${
+        g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
+      }`;
+      li.addEventListener("pointerdown", (event) => startDrag(event, { kind: "guest", id: g.id }, li));
+      list.appendChild(li);
+    }
+  }
+
+  const moveNote = document.getElementById("res-move-note");
+  const from = moveFrom ? getTable(moveFrom) : null;
+  if (moveNote) {
+    moveNote.hidden = !from;
+    if (from) {
+      moveNote.innerHTML = `${
+        en ? `Moving table ${esc(from.label)}: click the table they should move to (on the map or in the list).` : `Flytter bord ${esc(from.label)}: klikk på bordet de skal til (på kartet eller i lista).`
+      } <button type="button" class="status-btn" id="res-move-cancel">${en ? "Cancel" : "Avbryt"}</button>`;
+    }
+  }
+  document.getElementById("room")?.classList.toggle("moving", Boolean(from));
+
+  const rows = document.getElementById("res-tables");
+  if (!rows) return;
+  const tables = roomTables()
+    .filter((t) => t.lead !== false && t.label)
+    .sort(byLabel);
+  rows.innerHTML = tables.length
+    ? tables
+        .map((t) => {
+          const here = guestsOn(t).sort((p, q) => (p.time || "99").localeCompare(q.time || "99"));
+          const legacy = !here.length && t.name ? `<span class="res-guest legacy">${esc(t.name)}</span>` : "";
+          const people = seatsOf(seatOwner(t)).length;
+          const has = here.length || legacy || Object.keys(t.seatMarks || {}).length;
+          return `<li class="res-row${has ? "" : " free"}${moveFrom === t.id ? " moving-from" : ""}${moveFrom && moveFrom !== t.id ? " move-target" : ""}" data-table="${t.id}">
+            <span class="res-num">${esc(t.label)}</span>
+            <span class="res-body">${here.map((g) => guestChip(g, en)).join("") || legacy || `<span class="res-free">${en ? "free" : "ledig"}</span>`}
+              <span class="res-meta">${people ? `<span class="res-people">${people} ${en ? "chairs" : "stoler"}</span>` : ""}${markSummary(t)}</span>
+            </span>
+            ${has ? `<button type="button" class="chip res-move" data-move="${t.id}">${moveFrom === t.id ? (en ? "Cancel" : "Avbryt") : en ? "Move" : "Flytt"}</button>` : ""}
+          </li>`;
+        })
+        .join("")
+    : `<li class="res-empty">${en ? "No tables on the floor yet." : "Ingen bord ute ennå."}</li>`;
+  rows.querySelectorAll(".res-guest[data-gid]").forEach((chip) => {
+    chip.addEventListener("pointerdown", (event) => {
+      if (event.target.closest(".g-x")) return;
+      startDrag(event, { kind: "guest", id: chip.dataset.gid }, chip);
+    });
+  });
+}
+
+document.getElementById("res-tables")?.addEventListener("click", (event) => {
+  const x = event.target.closest(".g-x");
+  if (x) {
+    unplaceGuest(x.dataset.unplace);
+    return;
+  }
+  const mv = event.target.closest("[data-move]");
+  if (mv) {
+    if (moveFrom === mv.dataset.move) {
+      moveFrom = null;
+      render();
+    } else startMove(mv.dataset.move);
+    return;
+  }
+  const row = event.target.closest(".res-row");
+  if (row && moveFrom && row.dataset.table !== moveFrom) finishMove(getTable(row.dataset.table));
+});
+document.getElementById("booking-panel")?.addEventListener("click", (event) => {
+  if (event.target.id === "res-move-cancel") {
+    moveFrom = null;
+    render();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && moveFrom) {
+    moveFrom = null;
+    render();
+  }
 });

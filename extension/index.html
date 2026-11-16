@@ -165,14 +165,27 @@
           </div>
           <div class="tab-pane" data-pane="book" hidden>
       <section class="brush-panel booking-panel" id="booking-panel">
-        <p class="kicker" id="book-title">Reservasjoner → bord</p>
-        <p class="brush-note" id="book-note"></p>
-        <textarea id="book-text" rows="6" autocomplete="off" spellcheck="false"></textarea>
-        <div class="book-row">
-          <button type="button" class="status-btn active" id="book-run">Fordel bord</button>
-          <button type="button" class="status-btn" id="book-clear">Fjern navn fra bordene</button>
+        <p class="kicker" id="book-title">Reservasjoner</p>
+        <div class="res-actions">
+          <button type="button" class="chip big primary" id="res-paste">📋 <span id="res-paste-text">Lim inn fra ResDiary</span></button>
+          <label class="chip big preset-row res-file">
+            <input type="file" id="guest-file" accept=".csv,.txt,text/csv,text/plain" hidden />
+            <span id="guest-open">Åpne fil</span>
+          </label>
         </div>
-        <div id="book-result"></div>
+        <p class="brush-note" id="res-note"></p>
+        <div class="res-unplaced" id="guest-rack">
+          <p class="set-title" id="res-unplaced-title">Uten bord</p>
+          <ul class="guest-list" id="guest-list"></ul>
+        </div>
+        <div class="book-row">
+          <button type="button" class="status-btn active" id="book-run">Fordel bord automatisk</button>
+          <button type="button" class="status-btn" id="book-clear">Ta alle av bordene</button>
+          <button type="button" class="status-btn" id="guest-clear">Tøm lista</button>
+        </div>
+        <p class="set-title" id="res-tables-title">Bordene</p>
+        <p class="brush-note" id="res-move-note" hidden></p>
+        <ul class="res-tables" id="res-tables"></ul>
       </section>
           </div>
           <div class="tab-pane" data-pane="marks" hidden>
@@ -196,18 +209,7 @@
         </main>
 
         <aside class="tray" id="tray">
-          <div class="guest-rack" id="guest-rack">
-            <p class="kicker" id="guest-title">Dagens liste</p>
-            <p class="plate-note" id="guest-note"></p>
-            <div class="add-row">
-              <label class="add-btn guest-open">
-                <input type="file" id="guest-file" accept=".csv,text/csv" hidden />
-                <span id="guest-open">Åpne liste fra PC</span>
-              </label>
-              <button type="button" class="add-btn" id="guest-clear" hidden>Tøm liste</button>
-            </div>
-            <ul class="guest-list" id="guest-list"></ul>
-          </div>
+
           <div class="tray-head">
             <p class="kicker" id="tray-title">Lager / ikke i bruk</p>
             <div class="add-row" id="add-row"></div>
