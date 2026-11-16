@@ -532,8 +532,8 @@
           for (const table of state.tables || []) {
             if (table.name || table.zone !== "room") continue;
             const on = g.list.filter((x) => g.placed[x.id] === table.id && ((g.room && g.room[x.id]) || "spisestua") === ROOM_ID);
-            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table, room: ROOM_ID });
-            if (on.length) table.name = on.map((x) => `${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
+            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table, room: ROOM_ID, redeck: Boolean(g.redeck && g.redeck[x.id]) });
+            if (on.length) table.name = on.map((x) => `${g.redeck && g.redeck[x.id] ? "↻ " : ""}${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
           }
         }
       } catch {}

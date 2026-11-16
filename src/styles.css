@@ -2479,3 +2479,167 @@ a[hidden] {
     padding: 0 4px;
   }
 }
+
+/* --- Reservasjoner tab (2026-11-16) ------------------------------------- */
+.res-actions {
+  display: grid;
+  gap: 8px;
+}
+.res-actions .chip {
+  justify-content: center;
+}
+.res-file {
+  cursor: pointer;
+}
+.res-unplaced {
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(196, 165, 116, 0.14);
+  border: 1px dashed rgba(196, 165, 116, 0.7);
+}
+.res-unplaced .guest-list {
+  margin-top: 6px;
+  max-height: none;
+}
+.res-empty {
+  color: var(--muted);
+  font-size: 0.95rem;
+  list-style: none;
+}
+.res-tables {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.res-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: white;
+  border: 1px solid #e0d3c3;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.res-row.free {
+  background: rgba(255, 255, 255, 0.55);
+}
+.res-row.move-target {
+  cursor: pointer;
+  border-style: dashed;
+  border-color: var(--pine);
+}
+.res-row.move-target:hover {
+  box-shadow: 0 0 0 3px rgba(47, 74, 60, 0.25);
+}
+.res-row.moving-from {
+  border-color: var(--pine);
+  box-shadow: 0 0 0 3px rgba(47, 74, 60, 0.35);
+}
+.res-num {
+  min-width: 2.1em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--pine);
+  color: white;
+  font-family: Fraunces, Georgia, serif;
+  font-weight: 650;
+  text-align: center;
+}
+.res-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.res-guest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: var(--paper);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  font-size: 0.95rem;
+}
+.res-guest.legacy {
+  cursor: default;
+}
+.res-guest .g-time {
+  font-weight: 700;
+  color: var(--pine);
+  font-variant-numeric: tabular-nums;
+}
+.res-guest .g-name {
+  font-weight: 700;
+}
+.res-guest .g-pax {
+  color: var(--muted);
+}
+.res-guest .g-note {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+.res-guest .g-x {
+  margin-left: auto;
+  min-width: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.res-guest .g-re {
+  color: #7a4a10;
+  font-weight: 700;
+}
+.res-free {
+  color: var(--muted);
+  font-style: italic;
+}
+.res-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.res-meta small {
+  margin-right: 4px;
+}
+.res-people {
+  margin-right: 6px;
+}
+.note-chip {
+  background: #ffe866;
+  color: #1d1812;
+}
+.res-move {
+  min-height: 44px;
+  padding: 6px 14px;
+  background: var(--paper-2);
+  color: var(--ink);
+  border-color: transparent;
+}
+#room.moving .table {
+  cursor: copy;
+}
+#room.moving .table:hover {
+  outline: 3px dashed var(--pine);
+  outline-offset: 3px;
+}
+/* «Åpne fil» on the light panel */
+.res-actions .res-file {
+  background: white;
+  color: var(--ink);
+  border: 1px solid #e0d3c3;
+}

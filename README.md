@@ -45,10 +45,10 @@ javascript:(function(){var DROP=["telefon","e-post","epost","booket","kundekod",
 
 ### Til bordplan
 
-Kopierer tid, antall og etternavn. Lim inn i bordplanen under Reservasjoner → bord.
+Kopierer tid, antall, etternavn og kommentar. Trykk så «Lim inn fra ResDiary» under Reservasjoner i bordplanen.
 
 ```
-javascript:(function(){var out=[];var last=function(s){s=s.replace(/\s+/g," ").trim();if(!s)return "";if(s.indexOf(",")>0)return s.split(",")[0].trim();var w=s.split(" ");return w[w.length-1];};document.querySelectorAll("table").forEach(function(t){var rows=Array.from(t.rows),head=rows.find(function(r){return Array.from(r.cells).some(function(c){return /gjester/i.test(c.textContent);});});if(!head)return;var idx=function(re){return Array.from(head.cells).findIndex(function(c){return re.test(c.textContent);});};var ti=idx(/^\s*tid/i),gi=idx(/gjester/i),ni=idx(/navn|kunde(?!kod)|^\s*gjest\s*$/i);rows.forEach(function(r){if(r===head||r.cells.length!==head.cells.length)return;var tm=r.cells[ti].textContent.replace(/\s+/g,"");if(!/^\d{1,2}[:.]\d{2}$/.test(tm))return;if(ni>=0&&!r.cells[ni].textContent.trim())return;var g=parseInt(r.cells[gi].textContent,10)||2;var n=ni>=0?last(r.cells[ni].textContent).replace(/\d+/g,"").trim():"";out.push((tm+" "+g+" "+n).trim());});});var txt=out.join("\n");if(!txt){alert("Fant ingen bookinger her.");return;}var done=function(){alert(out.length+" bookinger kopiert (tid, antall, etternavn). Lim inn i Bordplan → Reservasjoner.");};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){prompt("Kopier:",txt);});}else{prompt("Kopier:",txt);}})();
+javascript:(function(){var out=[];var last=function(s){s=s.replace(/\s+/g," ").trim();if(!s)return "";if(s.indexOf(",")>0)return s.split(",")[0].trim();var w=s.split(" ");return w[w.length-1];};document.querySelectorAll("table").forEach(function(t){var rows=Array.from(t.rows),head=rows.find(function(r){return Array.from(r.cells).some(function(c){return /gjester/i.test(c.textContent);});});if(!head)return;var idx=function(re){return Array.from(head.cells).findIndex(function(c){return re.test(c.textContent);});};var ti=idx(/^\s*tid/i),gi=idx(/gjester/i),ni=idx(/navn|kunde(?!kod)|^\s*gjest\s*$/i),ci=idx(/komment|merknad|notat|notes?|spesial/i);rows.forEach(function(r){if(r===head||r.cells.length!==head.cells.length)return;var tm=r.cells[ti].textContent.replace(/\s+/g,"");if(!/^\d{1,2}[:.]\d{2}$/.test(tm))return;if(ni>=0&&!r.cells[ni].textContent.trim())return;var g=parseInt(r.cells[gi].textContent,10)||2;var n=ni>=0?last(r.cells[ni].textContent).replace(/\d+/g,"").trim():"";var k=ci>=0?r.cells[ci].textContent.replace(/\s+/g," ").trim():"";out.push([tm,g,n,k].join("\t"));});});var txt=out.join("\n");if(!txt){alert("Fant ingen bookinger her.");return;}var done=function(){alert(out.length+" bookinger kopiert (tid, antall, etternavn, kommentar). Trykk «Lim inn fra ResDiary» i Bordplan → Reservasjoner.");};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){prompt("Kopier:",txt);});}else{prompt("Kopier:",txt);}})();
 ```
 
 ### Last ned liste
@@ -74,10 +74,10 @@ javascript:(function(){var DROP=["telefon","mobil","e-post","epost","email","boo
 - **Klaring:** advarsel når det er under 90 cm mellom stolryggene.
 - **Merking per plass:** gluten, laktose, nøtter, skalldyr, diabetes, gravid, vegetar, annet,
   veganer, pescetarianer, gult **Ønske**, og **✎ Notat** med fritekst. Totalen vises og kommer med på utskriften.
-- **Reservasjoner → bord:** én booking per linje (`12:30 2`, `B:7` låser bord). Fordeler etter
-  husets vane: sidebordene 3, 6, 5, 8, 10, 9, 11, 7, 2, 4 først, aldri midten, over 5 personer → 16.
-- **Dagens liste:** åpne lista fra bokmerket «Last ned liste» og dra hvert navn til et bord selv.
-  Navnene blir bare i nettleseren på den PC-en (ikke i den felles planen), og kommer med på utskriften.
+- **Reservasjoner:** trykk «Til bordplan» på ResDiary-utskriften og så «Lim inn fra ResDiary» (eller Ctrl+V).
+  Tid, antall, etternavn og kommentar kommer med. Dra navnene til bordene, eller «Fordel bord automatisk»
+  (husets regler). «Flytt» flytter navn, antall og allergier til et annet bord – bordet blir stående.
+  Navnene blir bare i nettleseren på den PC-en.
 - **Dekk om (↻):** når Spisestua er full, får sene bookinger et bord igjen etter at de første gjestene har sittet en stund (60 min, kan endres). Eller velg «Bruk Domino» i innstillingene.
 - **Navn ved siden av kartet:** på stor skjerm står navnene i margen med en strek til bordet – eller til stolen, med «Navn på stol».
 - **Ingen stoler** før dere legger til personer (+ / −, «Fordel bord» eller Dagens liste).
