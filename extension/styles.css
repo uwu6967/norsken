@@ -2643,3 +2643,76 @@ a[hidden] {
   color: var(--ink);
   border: 1px solid #e0d3c3;
 }
+
+/* --- change a name by hand in the Bordene list; drag names beside the map ---- */
+.res-row-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.res-edit {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 6px 10px;
+  background: var(--paper-2);
+  color: var(--ink);
+  border-color: transparent;
+}
+.res-guest .g-name[data-edit-name] {
+  cursor: text;
+  border-bottom: 1px dashed transparent;
+}
+.res-guest .g-name[data-edit-name]:hover {
+  border-bottom-color: currentColor;
+}
+.res-free-btn {
+  border: 1px dashed currentColor;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  padding: 6px 12px;
+  min-height: 44px;
+  cursor: text;
+  text-align: left;
+}
+.res-free-btn:hover,
+.res-free-btn:focus-visible {
+  color: inherit;
+  border-style: solid;
+}
+.res-guest.editing {
+  cursor: text;
+  user-select: text;
+}
+.g-edit-input {
+  flex: 1 1 8em;
+  min-width: 6em;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 2px solid var(--pine);
+  border-radius: 10px;
+  background: white;
+  color: #1d1812;
+  font: inherit;
+  font-weight: 700;
+  user-select: text;
+}
+.callout {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.drag-ghost.callout {
+  width: auto !important;
+  height: auto !important;
+  max-width: 260px;
+  opacity: 0.92;
+  cursor: grabbing;
+  box-shadow: var(--shadow);
+}
+#room .seat.guest-target {
+  outline: 3px solid var(--pine);
+  outline-offset: 3px;
+  border-radius: 50%;
+}

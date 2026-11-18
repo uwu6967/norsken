@@ -724,6 +724,12 @@ const GUESTS_KEY = "norsken-guests-v1";
 let guests = loadGuests();
 let guestMsg = "";
 let moveFrom = null; // table id while «Flytt» waits for the target table
+let resEdit = null; // { kind: "guest" | "table", id } while a name is typed in the Bordene list
+let dragJustEnded = false; // the click that follows dragging a name (label or list chip) must not also act as a click
+function markDragEnded() {
+  dragJustEnded = true;
+  setTimeout(() => (dragJustEnded = false), 0);
+}
 let pasteArmed = false;
 let drag = null;
 
@@ -2790,6 +2796,7 @@ function startDrag(event, target, el) {
     kind: target.kind,
     id: target.id,
     size: target.size,
+    sub: target.sub,
     pointerId: event.pointerId,
     startX: event.clientX,
     startY: event.clientY,
@@ -2851,6 +2858,7 @@ function onMove(event) {
     );
   }
   if (drag.kind === "plate") showGapTarget(event.clientX, event.clientY);
+  if (drag.kind === "callout") showCalloutTarget(event.clientX, event.clientY);
   if (drag.kind === "guest") {
     // near the top or bottom edge of the list, the list scrolls by itself
     const pane = document.querySelector(".leftcol .tab-pane:not([hidden])");
@@ -2946,9 +2954,17 @@ function finishDrag(clientX, clientY) {
     }
     return;
   }
+  if (current.kind === "callout") {
+    clearCalloutTarget();
+    if (!current.moved) return;
+    markDragEnded();
+    dropCallout(current, clientX, clientY);
+    return;
+  }
   if (current.kind === "guest") {
     document.querySelectorAll(".guest-target").forEach((n) => n.classList.remove("guest-target"));
     if (!current.moved) return;
+    markDragEnded();
     const hit = guestDropTable(clientX, clientY) || resRowTable(clientX, clientY);
     if (hit) placeGuest(current.id, hit);
     else if (pointIn(document.getElementById("guest-rack"), clientX, clientY)) unplaceGuest(current.id);
@@ -3572,7 +3588,7 @@ function renderCallouts() {
     const names = table.seatNames || {};
     for (const seat of seatsOf(table)) {
       const nm = names[seat.index];
-      if (nm) items.push({ id: table.id, label: table.label, lines: [nm], x: seat.pos.x, y: seat.pos.y, rx: chair / 2, ry: chair / 2, kind: "seat" });
+      if (nm) items.push({ id: table.id, label: table.label, lines: [nm], x: seat.pos.x, y: seat.pos.y, rx: chair / 2, ry: chair / 2, kind: "seat", index: seat.index });
     }
   }
   if (!items.length) return;
@@ -3600,7 +3616,12 @@ function renderCallouts() {
       el.className = `callout ${side} is-${it.kind}`;
       el.style.width = `${gutter}px`;
       el.innerHTML = `<span class="callout-num">${esc(it.label)}</span><span class="callout-text">${it.lines.map(esc).join("<br>")}</span>`;
-      el.addEventListener("click", () => selectTable(it.id));
+      el.title = state.lang === "en" ? "Drag onto another table or chair to move or swap" : "Dra til et annet bord eller en annen stol for å flytte eller bytte";
+      el.addEventListener("click", () => {
+        if (dragJustEnded) return;
+        selectTable(it.id);
+      });
+      el.addEventListener("pointerdown", (event) => startDrag(event, { kind: "callout", id: it.id, sub: it.kind, size: it.index }, el));
       layer.appendChild(el);
       const h = el.offsetHeight;
       const top = Math.max(it.p.y - h / 2, lastBottom + 6, 0);
@@ -3629,6 +3650,115 @@ function renderCallouts() {
     }
   }
 }
+// --- drag a name beside the map onto another table or chair --------------------
+// A table's name (the booked party, or a name typed on the table) moves to the
+// table it is dropped on, or swaps with the guests there. A name on one chair
+// moves to the chair it is dropped on (or the first free chair of a table) and
+// takes that chair's marks and note along; two chairs swap.
+function normalizeLead(table) {
+  if (table && table.lead === false && table.group) return roomTables().find((t) => t.group === table.group && t.lead !== false) || table;
+  return table;
+}
+
+// what is under the pointer: a chair, a table, or a row in the Bordene list
+function calloutHit(x, y) {
+  const nodes = document.elementsFromPoint(x, y);
+  const seatEl = nodes.find((n) => n.classList?.contains("seat") && n.closest("#room") && n.dataset.tableId);
+  if (seatEl) {
+    const table = getTable(seatEl.dataset.tableId);
+    if (table) return { table, seat: Number(seatEl.dataset.seatIndex) };
+  }
+  const tableEl = nodes.find((n) => n.classList?.contains("table") && n.closest("#room"));
+  if (tableEl) {
+    const table = getTable(tableEl.dataset.id);
+    if (table) return { table: normalizeLead(table), seat: null };
+  }
+  const row = resRowTable(x, y);
+  return row ? { table: normalizeLead(row), seat: null } : null;
+}
+
+function clearCalloutTarget() {
+  document.querySelectorAll("#room .guest-target").forEach((n) => n.classList.remove("guest-target"));
+}
+
+function showCalloutTarget(x, y) {
+  clearCalloutTarget();
+  const hit = calloutHit(x, y);
+  if (!hit || !drag) return;
+  if (drag.sub === "seat" && hit.seat != null) {
+    document.querySelector(`#room .seat[data-table-id="${hit.table.id}"][data-seat-index="${hit.seat}"]`)?.classList.add("guest-target");
+  } else {
+    document.querySelector(`#room .table[data-id="${normalizeLead(hit.table).id}"]`)?.classList.add("guest-target");
+  }
+}
+
+function swapSeatEntry(a, i, b, j) {
+  for (const key of SEAT_DATA) {
+    const av = a[key] ? a[key][i] : undefined;
+    const bv = b[key] ? b[key][j] : undefined;
+    if (bv !== undefined) {
+      if (!a[key]) a[key] = {};
+      a[key][i] = bv;
+    } else if (a[key]) delete a[key][i];
+    if (av !== undefined) {
+      if (!b[key]) b[key] = {};
+      b[key][j] = av;
+    } else if (b[key]) delete b[key][j];
+  }
+}
+
+function dropCallout(current, x, y) {
+  const en = state.lang === "en";
+  const from = getTable(current.id);
+  const hit = calloutHit(x, y);
+  if (!from || !hit) return;
+  if (current.sub === "seat") {
+    const index = current.size;
+    const target = hit.table;
+    let j = hit.seat;
+    if (j == null) {
+      // dropped on a table, not a chair: the first chair there without a name
+      const free = seatsOf(target).find((s) => !target.seatNames?.[s.index] && !(target.id === from.id && s.index === index));
+      if (!free) {
+        showToast(en ? `No free chair at table ${target.label}.` : `Ingen ledig stol ved bord ${target.label}.`, 4000);
+        return;
+      }
+      j = free.index;
+    }
+    if (target.id === from.id && j === index) return;
+    const swapped = Boolean(target.seatNames?.[j]);
+    swapSeatEntry(from, index, target, j);
+    save();
+    render();
+    showToast(
+      en
+        ? swapped
+          ? `Swapped the names on the two chairs.`
+          : `Moved the name to table ${target.label}.`
+        : swapped
+          ? `Byttet navn mellom de to stolene.`
+          : `Flyttet navnet til bord ${target.label}.`,
+      4000,
+    );
+    return;
+  }
+  const target = normalizeLead(hit.table);
+  if (!target || target.id === from.id) return;
+  const swapped = guestsOn(target).length > 0 || Boolean(target.name);
+  moveParty(from, target);
+  render();
+  showToast(
+    en
+      ? swapped
+        ? `Tables ${from.label} and ${target.label} swapped guests.`
+        : `Moved from table ${from.label} to ${target.label}.`
+      : swapped
+        ? `Bord ${from.label} og ${target.label} byttet gjester.`
+        : `Flyttet fra bord ${from.label} til ${target.label}.`,
+    5000,
+  );
+}
+
 let calloutTimer = null;
 window.addEventListener("resize", () => {
   clearTimeout(calloutTimer);
@@ -5187,11 +5317,61 @@ function markSummary(table) {
   return chips.join("");
 }
 
+function nameInput(value, max, en) {
+  return `<input type="text" class="g-edit-input" data-res-input maxlength="${max}" autocomplete="off" value="${esc(value)}" placeholder="${en ? "Name" : "Navn"}" aria-label="${en ? "Name" : "Navn"}" />`;
+}
+
 function guestChip(g, en) {
   const re = guests.redeck?.[g.id] ? '<span class="g-re" title="dekk om">↻</span>' : "";
-  return `<span class="res-guest" data-gid="${g.id}">${re}<span class="g-time">${esc(g.time || "–")}</span> <span class="g-name">${esc(g.name || (en ? "no name" : "uten navn"))}</span>${
+  const editing = resEdit && resEdit.kind === "guest" && resEdit.id === g.id;
+  const name = editing ? nameInput(g.name || "", 40, en) : `<span class="g-name" data-edit-name title="${en ? "Click to change the name" : "Trykk for å endre navnet"}">${esc(g.name || (en ? "no name" : "uten navn"))}</span>`;
+  return `<span class="res-guest${editing ? " editing" : ""}" data-gid="${g.id}">${re}<span class="g-time">${esc(g.time || "–")}</span> ${name}${
     g.pax ? ` <span class="g-pax">${g.pax}p</span>` : ""
   }<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
+}
+
+// --- change a name by hand in the Bordene list ---------------------------------
+// The name changes on the map while you type. A booked guest's name is changed
+// on the booking; a table without a booking gets a name of its own.
+function startResEdit(kind, id) {
+  resEdit = { kind, id };
+  resEdit.orig = resEditValue();
+  render();
+}
+
+function resEditValue() {
+  if (!resEdit) return "";
+  if (resEdit.kind === "guest") return guests.list.find((g) => g.id === resEdit.id)?.name || "";
+  return getTable(resEdit.id)?.name || "";
+}
+
+function applyResName(value) {
+  if (!resEdit) return;
+  if (resEdit.kind === "guest") {
+    const g = guests.list.find((x) => x.id === resEdit.id);
+    if (!g) return;
+    g.name = String(value ?? "").slice(0, 40);
+    saveGuests();
+  } else {
+    const table = getTable(resEdit.id);
+    if (!table) return;
+    table.name = String(value ?? "").trim().slice(0, 28) || null;
+    table.booked = false; // typed by hand: «Fjern navn» leaves it alone
+  }
+  save();
+}
+
+function stopResEdit(revertTo) {
+  if (!resEdit) return;
+  if (revertTo !== undefined) applyResName(revertTo);
+  resEdit = null;
+  render();
+}
+
+// the map follows every key press; the list itself is left alone so the cursor stays put
+function liveRedrawMap() {
+  renderRoom();
+  requestAnimationFrame(renderCallouts);
 }
 
 function renderReservations() {
@@ -5265,28 +5445,85 @@ function renderReservations() {
     ? tables
         .map((t) => {
           const here = guestsOn(t).sort((p, q) => (p.time || "99").localeCompare(q.time || "99"));
-          const legacy = !here.length && t.name ? `<span class="res-guest legacy">${esc(t.name)}</span>` : "";
+          const editingTable = resEdit && resEdit.kind === "table" && resEdit.id === t.id;
+          const legacy = !here.length && (t.name || editingTable)
+            ? editingTable
+              ? `<span class="res-guest legacy editing">${nameInput(t.name || "", 28, en)}</span>`
+              : `<span class="res-guest legacy"><span class="g-name" data-edit-name title="${en ? "Click to change the name" : "Trykk for å endre navnet"}">${esc(t.name)}</span></span>`
+            : "";
           const people = seatsOf(seatOwner(t)).length;
           const has = here.length || legacy || Object.keys(t.seatMarks || {}).length;
+          // a table without a booking: «ledig» is a button that lets you type a name straight onto it
+          const freeSlot = `<button type="button" class="res-free res-free-btn" data-edit-table="${t.id}" title="${en ? "Type a name on this table" : "Skriv et navn på dette bordet"}">${en ? "free" : "ledig"} <span aria-hidden="true">✎</span></button>`;
+          const pencil = here.length || legacy ? `<button type="button" class="chip res-edit" data-edit-table="${t.id}" data-edit-kind="${here.length ? "guest" : "table"}" data-edit-gid="${here[0]?.id || ""}" aria-label="${en ? "Change name" : "Endre navn"}" title="${en ? "Change name" : "Endre navn"}">✎</button>` : "";
           return `<li class="res-row${has ? "" : " free"}${moveFrom === t.id ? " moving-from" : ""}${moveFrom && moveFrom !== t.id ? " move-target" : ""}" data-table="${t.id}">
             <span class="res-num">${esc(t.label)}</span>
-            <span class="res-body">${here.map((g) => guestChip(g, en)).join("") || legacy || `<span class="res-free">${en ? "free" : "ledig"}</span>`}
+            <span class="res-body">${here.map((g) => guestChip(g, en)).join("") || legacy || freeSlot}
               <span class="res-meta">${people ? `<span class="res-people">${people} ${en ? "chairs" : "stoler"}</span>` : ""}${markSummary(t)}</span>
             </span>
-            ${has ? `<button type="button" class="chip res-move" data-move="${t.id}">${moveFrom === t.id ? (en ? "Cancel" : "Avbryt") : en ? "Move" : "Flytt"}</button>` : ""}
+            <span class="res-row-actions">${pencil}${has ? `<button type="button" class="chip res-move" data-move="${t.id}">${moveFrom === t.id ? (en ? "Cancel" : "Avbryt") : en ? "Move" : "Flytt"}</button>` : ""}</span>
           </li>`;
         })
         .join("")
     : `<li class="res-empty">${en ? "No tables on the floor yet." : "Ingen bord ute ennå."}</li>`;
   rows.querySelectorAll(".res-guest[data-gid]").forEach((chip) => {
     chip.addEventListener("pointerdown", (event) => {
-      if (event.target.closest(".g-x")) return;
+      if (event.target.closest(".g-x, [data-res-input]")) return;
       startDrag(event, { kind: "guest", id: chip.dataset.gid }, chip);
     });
   });
+  // the name being typed: focus it with the cursor at the end
+  const field = rows.querySelector("[data-res-input]");
+  if (field && resEdit) {
+    field.focus();
+    field.setSelectionRange(field.value.length, field.value.length);
+  }
 }
 
+// typing a name: the map follows every key press
+document.getElementById("res-tables")?.addEventListener("input", (event) => {
+  if (!event.target.matches("[data-res-input]")) return;
+  applyResName(event.target.value);
+  liveRedrawMap();
+});
+document.getElementById("res-tables")?.addEventListener("keydown", (event) => {
+  if (!event.target.matches("[data-res-input]")) return;
+  if (event.key === "Enter") {
+    event.preventDefault();
+    stopResEdit();
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    stopResEdit(resEdit?.orig);
+  }
+});
+document.getElementById("res-tables")?.addEventListener("focusout", (event) => {
+  if (!event.target.matches("[data-res-input]") || !resEdit) return;
+  // clicking another button in the list: let that click go through (it redraws the list itself)
+  if (event.relatedTarget && event.relatedTarget.closest?.("#res-tables")) {
+    resEdit = null;
+    return;
+  }
+  stopResEdit();
+});
+
 document.getElementById("res-tables")?.addEventListener("click", (event) => {
+  if (dragJustEnded) return;
+  if (!moveFrom) {
+    const nameEl = event.target.closest("[data-edit-name]");
+    const pencil = event.target.closest("[data-edit-table]");
+    if (nameEl) {
+      const chip = nameEl.closest(".res-guest[data-gid]");
+      if (chip) startResEdit("guest", chip.dataset.gid);
+      else startResEdit("table", nameEl.closest(".res-row").dataset.table);
+      return;
+    }
+    if (pencil) {
+      if (pencil.dataset.editKind === "guest" && pencil.dataset.editGid) startResEdit("guest", pencil.dataset.editGid);
+      else startResEdit("table", pencil.dataset.editTable);
+      return;
+    }
+  }
   const x = event.target.closest(".g-x");
   if (x) {
     unplaceGuest(x.dataset.unplace);
