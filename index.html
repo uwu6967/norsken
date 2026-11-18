@@ -2745,6 +2745,25 @@ a[hidden] {
   min-height: 40px;
 }
 
+/* a guest waiting for a re-set table */
+.guest-item.redeck {
+  border-color: #c4a574;
+  background: #fff6e4;
+}
+.g-redeck {
+  flex-basis: 100%;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #7a4a10;
+}
+/* the message at the bottom must not block dropping onto the map under it */
+.toast {
+  pointer-events: none;
+}
+.toast .toast-btn {
+  pointer-events: auto;
+}
+
 </style>
   </head>
   <body>
@@ -4675,14 +4694,17 @@ function assignBookings() {
       const again = want(softCap) || want(hardCap);
       if (again) {
         redecked.add(String(again.label).toLowerCase());
-        rows.push({ ...b, table: again, redeck: true });
+        // not placed: it waits in «Uten bord» with «↻ Dekk om» and the table that frees first
+        rows.push({ ...b, table: null, redeckAt: again });
         continue;
       }
     }
     rows.push({ ...b, table: null });
   }
   if (!guests.redeck) guests.redeck = {};
+  guests.redeckHint = {};
   for (const row of rows) {
+    if (row.redeckAt) guests.redeckHint[row.id] = String(row.redeckAt.label);
     if (!row.table) continue;
     guests.placed[row.id] = row.table.id;
     guests.room[row.id] = ROOM_ID;
@@ -4691,7 +4713,7 @@ function assignBookings() {
   }
   for (const t of floor) guestSeats(t);
   saveGuests();
-  if (!domino) overflowToDomino(rows.filter((row) => !row.table)); // «Bruk Domino», or the last fallback
+  if (!domino) overflowToDomino(rows.filter((row) => !row.table && !row.redeckAt)); // «Bruk Domino», or the last fallback
   rows.sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   const spare = order.filter((label) => !taken.has(label));
   const shared = floor.some((t) => String(t.label) === "14");
@@ -6879,12 +6901,13 @@ document.getElementById("book-run")?.addEventListener("click", () => {
   const rows = bookingResult?.rows || [];
   const here = rows.filter((r) => r.table && !r.room).length;
   const domino = rows.filter((r) => r.room === "domino").length;
-  const none = rows.filter((r) => !r.table).length;
+  const redeck = rows.filter((r) => !r.table && r.redeckAt).length;
+  const none = rows.filter((r) => !r.table && !r.redeckAt).length;
   showToast(
     before
       ? en
-        ? `Placed ${here}${domino ? `, ${domino} in Domino` : ""}${none ? `, ${none} without a table` : ""}.`
-        : `Plasserte ${here}${domino ? `, ${domino} i Domino` : ""}${none ? `, ${none} uten bord` : ""}.`
+        ? `Placed ${here}${domino ? `, ${domino} in Domino` : ""}${redeck ? `, ${redeck} wait for a re-set table (↻, see «Without a table»)` : ""}${none ? `, ${none} without a table` : ""}.`
+        : `Plasserte ${here}${domino ? `, ${domino} i Domino` : ""}${redeck ? `, ${redeck} venter på omdekking (↻, se «Uten bord»)` : ""}${none ? `, ${none} uten bord` : ""}.`
       : en
         ? "Everyone already has a table."
         : "Alle har allerede bord.",
@@ -7503,6 +7526,7 @@ function loadGuests() {
         placed: g.placed && typeof g.placed === "object" ? g.placed : {},
         room: g.room && typeof g.room === "object" ? g.room : {},
         redeck: g.redeck && typeof g.redeck === "object" ? g.redeck : {},
+        redeckHint: g.redeckHint && typeof g.redeckHint === "object" ? g.redeckHint : {},
       };
     }
   } catch {}
@@ -8291,9 +8315,13 @@ function placeGuest(id, table) {
     moveParty(from, table);
   } else {
     if (!guests.room) guests.room = {};
+    if (!guests.redeck) guests.redeck = {};
+    const others = guestsOn(table).filter((x) => x.id !== id).length;
     guests.placed[id] = table.id;
     guests.room[id] = ROOM_ID;
-    if (guests.redeck) delete guests.redeck[id];
+    if (others && guests.redeckHint?.[id]) guests.redeck[id] = true; // a second sitting
+    else delete guests.redeck[id];
+    if (guests.redeckHint) delete guests.redeckHint[id];
     saveGuests();
     if (from) guestSeats(from);
     guestSeats(table);
@@ -8450,9 +8478,14 @@ function renderReservations() {
       : `<li class="res-empty">${guests.list.length ? (en ? "Everyone has a table." : "Alle har bord.") : en ? "No list yet." : "Ingen liste ennå."}</li>`;
     for (const g of unplaced) {
       const li = document.createElement("li");
-      li.className = "guest-item";
+      const hint = guests.redeckHint?.[g.id];
+      li.className = `guest-item${hint ? " redeck" : ""}`;
       li.dataset.id = g.id;
-      li.innerHTML = `<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${
+      li.innerHTML = `${
+        hint
+          ? `<span class="g-redeck">↻ ${en ? `Re-set · table ${esc(hint)} frees up first` : `Dekk om · bord ${esc(hint)} blir ledig først`}</span>`
+          : ""
+      }<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${
         g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
       }`;
       li.addEventListener("pointerdown", (event) => startDrag(event, { kind: "guest", id: g.id }, li));

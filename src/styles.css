@@ -2730,3 +2730,22 @@ a[hidden] {
 .chair-marks .brush {
   min-height: 40px;
 }
+
+/* a guest waiting for a re-set table */
+.guest-item.redeck {
+  border-color: #c4a574;
+  background: #fff6e4;
+}
+.g-redeck {
+  flex-basis: 100%;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #7a4a10;
+}
+/* the message at the bottom must not block dropping onto the map under it */
+.toast {
+  pointer-events: none;
+}
+.toast .toast-btn {
+  pointer-events: auto;
+}
