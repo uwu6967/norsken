@@ -2628,6 +2628,7 @@ function seatNodes() {
   const r = room();
   const chair = Math.max(20, state.dims.chairBig.d);
   const nodes = [];
+  if (state.hideChairs) return nodes; // «Skjul alle stoler»: only the tables
   const clash = seatClashes().bad;
   for (const table of roomTables()) {
     for (const seat of seatsOf(table)) {
@@ -3201,6 +3202,8 @@ function renderChrome() {
   setText("settings-btn-text", en ? "Settings" : "Innstillinger");
   setText("drawer-empty-title", en ? "Table" : "Bord");
   setText("drawer-empty-text", en ? "Click a table to change it." : "Klikk på et bord for å endre det.");
+  setText("chairs-toggle", state.hideChairs ? (en ? "Show the chairs" : "Vis stolene") : en ? "Hide all chairs" : "Skjul alle stoler");
+  document.getElementById("chairs-toggle")?.classList.toggle("active", Boolean(state.hideChairs));
   setText("settings-title", en ? "Settings" : "Innstillinger");
   setText("set-lang-title", en ? "Language" : "Språk");
   setText("set-view-title", en ? "Show on the map" : "Vis på kartet");
@@ -5676,3 +5679,11 @@ function areaOf(text) {
   if (/domino/i.test(t)) return { area: "domino", areaLabel: "Domino" };
   return { area: `other:${t.toLowerCase()}`, areaLabel: t };
 }
+
+// «Skjul alle stoler» in the Bord tab: the map (and the printout) shows only
+// the tables. Nothing about the chairs is lost; «Vis stolene» brings them back.
+document.getElementById("chairs-toggle")?.addEventListener("click", () => {
+  state.hideChairs = !state.hideChairs;
+  save();
+  render();
+});
