@@ -3464,6 +3464,7 @@ function renderDrawer() {
         <button type="button" class="nudge wide" data-seats="auto">${copy.auto}</button>
       </span>
     </label>
+    ${timeField(table)}
     <label class="label-field name-field">
       <span>${copy.nameLabel}</span>
       <input type="text" id="name-input" maxlength="28" autocomplete="off"
@@ -4308,6 +4309,7 @@ function setTableName(value) {
 }
 
 document.getElementById("label-row").addEventListener("change", (event) => {
+  if (event.target.classList.contains("time-input")) return setGuestTime(event.target.dataset.gid, event.target.value);
   if (event.target.id === "name-input") return setTableName(event.target.value);
   if (event.target.id !== "label-input") return;
   setManualLabel(event.target.value);
@@ -4326,6 +4328,13 @@ document.getElementById("label-row").addEventListener("keydown", (event) => {
 });
 
 document.getElementById("label-row").addEventListener("click", (event) => {
+  const unlock = event.target.closest("[data-time-unlock]");
+  if (unlock) {
+    timeUnlock = timeUnlock === state.selected ? null : state.selected;
+    render();
+    if (timeUnlock) document.querySelector("#label-row .time-input")?.focus();
+    return;
+  }
   if (event.target.id !== "auto-label") return;
   const table = getTable(state.selected);
   if (!table) return;
@@ -5721,4 +5730,41 @@ function sendBackToList(table) {
   render();
   const names = here.map((g) => g.name).filter(Boolean).join(", ");
   showToast(en ? `${names || "The guests"} back in the list (table ${table.label} is free).` : `${names || "Gjestene"} er tilbake i listen (bord ${table.label} er ledig).`, 5000);
+}
+
+// --- Tidspunkt in the table box ----------------------------------------------
+// The booking's time from ResDiary. It is locked: «Endre» has to be pressed
+// first, so it is not changed by accident.
+let timeUnlock = null; // the table whose times are open for change
+
+function timeField(table) {
+  const here = guestsOn(table).sort((p, q) => (p.time || "99").localeCompare(q.time || "99"));
+  if (!here.length) return "";
+  const en = state.lang === "en";
+  const open = timeUnlock === table.id;
+  const body = open
+    ? here
+        .map(
+          (g) =>
+            `<span class="time-row">${here.length > 1 ? `<small>${esc(g.name || "")}</small>` : ""}<input type="time" class="time-input" data-gid="${g.id}" value="${esc(g.time || "")}" step="300" /></span>`,
+        )
+        .join("")
+    : `<strong class="time-shown">${esc(here.map((g) => g.time || "–").join(" / "))}</strong>`;
+  return `<div class="label-field time-field${open ? " open" : ""}">
+      <span>${en ? "Time" : "Tidspunkt"}</span>
+      <span class="time-steps">${body}<button type="button" class="nudge wide time-lock" data-time-unlock="1">${
+        open ? (en ? "Done" : "Ferdig") : en ? "🔒 Change" : "🔒 Endre"
+      }</button></span>
+    </div>`;
+}
+
+function setGuestTime(id, value) {
+  const g = guests.list.find((x) => x.id === id);
+  if (!g) return;
+  const m = String(value || "").match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return;
+  g.time = `${m[1].padStart(2, "0")}:${m[2]}`;
+  saveGuests();
+  save();
+  render();
 }
