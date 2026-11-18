@@ -30,7 +30,7 @@ jobs:
           # load the unpacked folder as a Chrome/Edge extension, or just double-click index.html.
           mkdir -p dist/Norsken
           cp -r extension/. dist/Norsken/
-          cp LES-MEG.txt dist/Norsken/
+          cp LES-MEG.txt LICENSE dist/Norsken/
           sed -i "s/\"version\": \"1.0.0\"/\"version\": \"1.0.${GITHUB_RUN_NUMBER}\"/" dist/Norsken/manifest.json
           grep '"version"' dist/Norsken/manifest.json
           (cd dist/Norsken && zip -qr ../Norsken.zip .)

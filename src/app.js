@@ -1,3 +1,4 @@
+// © 2026 uwu6967. All rights reserved. See LICENSE. Not open source.
 // Rooms (2026-11-12): Spisestua and Domino. Each room is its own plan with
 // its own storage key and shared doc. The picked room is per browser.
 const ROOMS = {
