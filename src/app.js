@@ -4661,10 +4661,28 @@ function guestsOn(table) {
   return guests.list.filter((g) => guests.placed[g.id] === table.id && guestRoom(g) === ROOM_ID && table.zone === "room");
 }
 
+// Bookings at one table, by time: the same time is one party sitting together
+// («12:00 Hansen, Berg»); a group from another room is shown by its name
+// («12:00 Onsdagsklubben · 5 pers»). Different times are a re-set: « / ».
+function guestSittings(table) {
+  const byTime = new Map();
+  for (const g of guestsOn(table).sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))) {
+    const key = g.time || "";
+    if (!byTime.has(key)) byTime.set(key, []);
+    byTime.get(key).push(g);
+  }
+  return [...byTime.entries()].map(([time, list]) => ({ time, list, pax: list.reduce((sum, g) => sum + (Number(g.pax) || 0), 0) }));
+}
+
 function guestLabel(table) {
-  return guestsOn(table)
-    .sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))
-    .map((g) => `${guests.redeck?.[g.id] ? "↻ " : ""}${g.time ? `${g.time} ` : ""}${g.name}`.trim())
+  return guestSittings(table)
+    .map(({ time, list, pax }) => {
+      const re = list.some((g) => guests.redeck?.[g.id]) ? "↻ " : "";
+      const areas = new Set(list.map((g) => g.area || "spisestua"));
+      const group = list.length > 1 && areas.size === 1 && [...areas][0].startsWith("other:") ? list[0].areaLabel : "";
+      const who = group ? `${group} · ${pax} pers` : list.map((g) => g.name).filter(Boolean).join(", ");
+      return `${re}${time ? `${time} ` : ""}${who}`.trim();
+    })
     .join(" / ");
 }
 
@@ -4707,7 +4725,8 @@ document.getElementById("guest-clear")?.addEventListener("click", (event) => {
 // leave, the table gets back the chairs it had. + / − after that is by hand.
 function guestSeats(table) {
   if (table.kind === "plate") return;
-  const pax = guestsOn(table).map((g) => Number(g.pax) || 0);
+  // bookings at the same time sit together: their people add up
+  const pax = guestSittings(table).map((s) => s.pax);
   const most = pax.length ? Math.max(...pax) : 0;
   if (most > 0) {
     if (!table.seatFromGuest) {

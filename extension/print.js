@@ -102,7 +102,23 @@
             if (table.name || table.zone !== "room") continue;
             const on = g.list.filter((x) => g.placed[x.id] === table.id && ((g.room && g.room[x.id]) || "spisestua") === ROOM_ID);
             for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, note: x.note || "", table, room: ROOM_ID, redeck: Boolean(g.redeck && g.redeck[x.id]) });
-            if (on.length) table.name = on.map((x) => `${g.redeck && g.redeck[x.id] ? "↻ " : ""}${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
+            if (on.length) {
+              // the same time is one party: «12:00 Hansen, Berg»; a group from another room by its name
+              const byTime = new Map();
+              for (const x of on.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))) {
+                if (!byTime.has(x.time || "")) byTime.set(x.time || "", []);
+                byTime.get(x.time || "").push(x);
+              }
+              table.name = [...byTime.entries()]
+                .map(([time, list]) => {
+                  const re = list.some((x) => g.redeck && g.redeck[x.id]) ? "↻ " : "";
+                  const areas = new Set(list.map((x) => x.area || "spisestua"));
+                  const pax = list.reduce((sum, x) => sum + (Number(x.pax) || 0), 0);
+                  const group = list.length > 1 && areas.size === 1 && [...areas][0].startsWith("other:") ? list[0].areaLabel : "";
+                  return `${re}${time ? `${time} ` : ""}${group ? `${group} · ${pax} pers` : list.map((x) => x.name || "").filter(Boolean).join(", ")}`.trim();
+                })
+                .join(" / ");
+            }
           }
         }
       } catch {}
