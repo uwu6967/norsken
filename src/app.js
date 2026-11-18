@@ -2877,6 +2877,9 @@ function onMove(event) {
   }
   if (drag.kind === "plate") showGapTarget(event.clientX, event.clientY);
   if (drag.kind === "callout") showCalloutTarget(event.clientX, event.clientY);
+  if (dropBackTable(drag)) {
+    document.getElementById("leftcol")?.classList.toggle("drop-back", pointIn(document.getElementById("leftcol"), event.clientX, event.clientY));
+  }
   if (drag.kind === "guest") {
     // near the top or bottom edge of the list, the list scrolls by itself
     const pane = document.querySelector(".leftcol .tab-pane:not([hidden])");
@@ -2945,6 +2948,14 @@ function finishDrag(clientX, clientY) {
     return;
   }
   cleanupDrag();
+  document.getElementById("leftcol")?.classList.remove("drop-back");
+  // a booking's name (or its table) dropped on the left column: the guests go
+  // back to the list «Uten bord»; the table itself stays where it is
+  if (current.moved && dropBackTable(current) && pointIn(document.getElementById("leftcol"), clientX, clientY)) {
+    markDragEnded();
+    sendBackToList(dropBackTable(current));
+    return;
+  }
   if (current.kind === "painting") {
     if (current.moved) {
       movePainting(current.id, clientX, clientY);
@@ -5687,3 +5698,27 @@ document.getElementById("chairs-toggle")?.addEventListener("click", () => {
   save();
   render();
 });
+
+// The table whose guests a drag can send back to the list: the name beside
+// the map, or the table itself, when the table has booked guests.
+function dropBackTable(d) {
+  if (!d || !(d.kind === "table" || (d.kind === "callout" && d.sub !== "seat"))) return null;
+  const table = normalizeLead(getTable(d.id) || {});
+  return table?.id && guestsOn(table).length ? table : null;
+}
+
+function sendBackToList(table) {
+  const en = state.lang === "en";
+  const here = guestsOn(table);
+  for (const g of here) {
+    delete guests.placed[g.id];
+    if (guests.room) delete guests.room[g.id];
+    if (guests.redeck) delete guests.redeck[g.id];
+  }
+  saveGuests();
+  guestSeats(table);
+  save();
+  render();
+  const names = here.map((g) => g.name).filter(Boolean).join(", ");
+  showToast(en ? `${names || "The guests"} back in the list (table ${table.label} is free).` : `${names || "Gjestene"} er tilbake i listen (bord ${table.label} er ledig).`, 5000);
+}
