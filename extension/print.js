@@ -90,7 +90,7 @@
         if (guestStore && guestStore.placed && Array.isArray(guestStore.list)) {
           for (const x of guestStore.list) {
             if (guestStore.placed[x.id] === table.id && ((guestStore.room && guestStore.room[x.id]) || "spisestua") === OTHER) {
-              arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table, room: OTHER });
+              arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, note: x.note || "", table, room: OTHER });
             }
           }
         }
@@ -101,7 +101,7 @@
           for (const table of state.tables || []) {
             if (table.name || table.zone !== "room") continue;
             const on = g.list.filter((x) => g.placed[x.id] === table.id && ((g.room && g.room[x.id]) || "spisestua") === ROOM_ID);
-            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, table, room: ROOM_ID, redeck: Boolean(g.redeck && g.redeck[x.id]) });
+            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, note: x.note || "", table, room: ROOM_ID, redeck: Boolean(g.redeck && g.redeck[x.id]) });
             if (on.length) table.name = on.map((x) => `${g.redeck && g.redeck[x.id] ? "↻ " : ""}${x.time ? `${x.time} ` : ""}${x.name || ""}`.trim()).join(" / ");
           }
         }
@@ -203,6 +203,7 @@
       // The A4 is for the staff: a guest name beats a table number.
       function item0Label(table) {
         if (table.lead === false) return "";
+        if (EMBED) return table.label || ""; // the small Domino corner: just the number, the names are in the list
         return table.name || table.label || "";
       }
       function obstacleName(item) {
@@ -363,14 +364,20 @@
         el.style.height = `${(cm.h / r.h) * 100}%`;
         const text = item0Label(table);
         const paxWord = lang === "en" ? "pers" : "pers";
-        if (table.name && table.lead !== false) {
+        if (table.name && table.lead !== false && !EMBED) {
           el.classList.add("named");
           const name = document.createElement("span");
           name.textContent = text;
           const sub = document.createElement("span");
-          sub.className = "sub";
-          sub.textContent = `${copy.colTable} ${table.label} · ${table.guests} ${paxWord}`;
+          sub.className = "sub num";
+          sub.textContent = `${copy.colTable} ${table.label}`;
           el.append(name, sub);
+          if (table.guests) {
+            const pax = document.createElement("span");
+            pax.className = "pax";
+            pax.textContent = `${table.guests} ${paxWord}`;
+            el.appendChild(pax);
+          }
           if (table.redeck) {
             const again = document.createElement("span");
             again.className = "sub";
@@ -469,19 +476,35 @@
             labelSortKey(a.table.label)[0] - labelSortKey(b.table.label)[0],
         );
         const total = arrivals.reduce((sum, a) => sum + (Number(a.pax) || 0), 0);
+        // marks on the chairs of each table, for the comment column
+        const marksAt = (table) => {
+          const counts = {};
+          for (const seat of table.seatsRender || []) if (markOf(seat.mark)) counts[seat.mark] = (counts[seat.mark] || 0) + 1;
+          return Object.entries(counts)
+            .map(([key, n]) => {
+              const m = markOf(key);
+              return `<span class="k" style="background:${m.color};color:${inkOn(m.color)}">${m.code}</span>${n > 1 ? `×${n}` : ""}`;
+            })
+            .join(" ");
+        };
+        const marksDone = new Set();
         const rows = arrivals
-          .map(
-            (a) =>
-              `<tr><td class="t">${escHtml(a.time || "–")}</td><td>${escHtml(a.name || "–")}</td><td>${a.pax || ""}</td><td>${escHtml(ROOM_NAMES[a.room || ROOM_ID][en ? "en" : "no"])}</td><td class="b">${escHtml(a.table.label)}${a.redeck ? ` <small>↻ ${en ? "re-set" : "dekk om"}</small>` : ""}</td></tr>`,
-          )
+          .map((a) => {
+            const where = `${a.room && a.room !== ROOM_ID ? `${ROOM_NAMES[a.room][en ? "en" : "no"]} ` : ""}${escHtml(a.table.label)}`;
+            const marks = marksDone.has(a.table.id) ? "" : marksAt(a.table);
+            marksDone.add(a.table.id);
+            const note = [a.redeck ? `↻ ${en ? "re-set" : "dekk om"}` : "", escHtml(a.note || "")].filter(Boolean).join(" · ");
+            return `<tr><td class="c"><span class="box"></span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}</td><td class="note">${marks}${marks && note ? " " : ""}${note}</td></tr>`;
+          })
           .join("");
         const taken = new Set(arrivals.map((a) => a.table.id));
         const free = sorted.filter((t) => !taken.has(t.id) && t.label).map((t) => t.label);
         listBody.innerHTML =
-          `<table class="arrivals"><thead><tr><th>${en ? "Time" : "Tid"}</th><th>${en ? "Name" : "Navn"}</th><th>${en ? "People" : "Pers."}</th><th>${en ? "Room" : "Rom"}</th><th>${en ? "Table" : "Bord"}</th></tr></thead><tbody>${rows}</tbody></table>` +
+          `<table class="arrivals"><thead><tr><th class="c">✓</th><th>${en ? "Time" : "Tid"}</th><th>${en ? "Name" : "Navn"}</th><th>${en ? "Ppl" : "Pers"}</th><th>${en ? "Table" : "Bord"}</th><th>${en ? "Comment" : "Kommentar"}</th></tr></thead><tbody>${rows}</tbody></table>` +
           `<p class="free"><strong>${en ? "Bookings" : "Bookinger"}: ${arrivals.length} · ${en ? "people" : "personer"}: ${total}</strong>${
             free.length ? ` &nbsp;·&nbsp; ${en ? "Free tables" : "Ledige bord"}: ${escHtml(free.join(", "))}` : ""
           }</p>`;
+        if (!EMBED) document.documentElement.classList.add("with-list");
       } else if (!sorted.length) {
         listBody.innerHTML = `<p>${copy.empty}</p>`;
       } else {
@@ -595,6 +618,11 @@
           `</ul>`;
       }
 
+      if (document.documentElement.classList.contains("with-list")) {
+        const page = document.createElement("style");
+        page.textContent = "@page { size: A4 landscape; margin: 0; }";
+        document.head.appendChild(page);
+      }
       document.getElementById("print").addEventListener("click", () => window.print());
       // Domino on the same sheet, small, when it is in use (bookings, names or chairs)
       function dominoInUse() {
@@ -614,10 +642,11 @@
         const plan = dominoInUse();
         if (plan) {
           const dr = (plan.dims && plan.dims.room) || { w: 500, h: 650 };
-          const mainH = 252; // mm: Spisestua a bit shorter so Domino gets a column
+          const wide = document.documentElement.classList.contains("with-list");
+          const mainH = wide ? 188 : 252; // mm: Spisestua a bit shorter so Domino gets a column
           const border = 3.7; // mm, the 7px frame on both sides
           const mainW = (mainH * r.w) / r.h + border;
-          const sideW = Math.max(40, 194 - mainW - 5);
+          const sideW = wide ? 48 : Math.max(40, 194 - mainW - 5);
           const sideH = ((sideW - 1.6) * dr.h) / dr.w + 1.6;
           document.getElementById("sheet").classList.add("two");
           room.style.height = mainH + "mm";

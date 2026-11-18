@@ -392,6 +392,65 @@
       section.list {
         display: none !important; /* no second page (Danny 2026-11-13) */
       }
+      /* with bookings: A4 landscape, the plan on the left and the guest list on the right */
+      html.with-list .spread {
+        display: flex;
+        align-items: flex-start;
+        gap: 6mm;
+      }
+      html.with-list .room {
+        height: 188mm;
+      }
+      html.with-list section.list {
+        display: block !important;
+        flex: 1;
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        break-before: auto;
+      }
+      html.with-list section.list > .kicker {
+        font-weight: 700;
+      }
+      table.arrivals td.c,
+      table.arrivals th.c {
+        width: 7mm;
+        padding-right: 2mm;
+        text-align: center;
+      }
+      table.arrivals .box {
+        display: inline-block;
+        width: 4mm;
+        height: 4mm;
+        border: 1.2px solid #1d1812;
+        border-radius: 0.8mm;
+        vertical-align: middle;
+      }
+      table.arrivals td.nm {
+        font-weight: 600;
+      }
+      table.arrivals td.p {
+        white-space: nowrap;
+      }
+      table.arrivals td.note {
+        font-size: 10px;
+        color: #4a3f35;
+      }
+      table.arrivals td.note .k {
+        display: inline-grid;
+        place-items: center;
+        min-width: 13px;
+        height: 13px;
+        padding: 0 2px;
+        border-radius: 3px;
+        font-size: 7px;
+        font-weight: 700;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      table.arrivals tr {
+        break-inside: avoid;
+      }
       html.embed body {
         padding: 0;
       }
@@ -415,6 +474,7 @@
       </div>
       <p id="meta"></p>
     </header>
+    <div class="spread">
     <div class="sheet" id="sheet">
       <div class="room" id="room"></div>
       <div class="side" id="side" hidden>
@@ -427,6 +487,7 @@
       <div id="list-body"></div>
       <div class="warnings" id="warnings"></div>
     </section>
+    </div>
     <p class="no-print"><button type="button" id="print">Skriv ut / lagre som PDF</button></p>
     <script src="print.js"></script>
   </body>
