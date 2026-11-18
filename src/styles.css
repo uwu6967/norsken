@@ -2763,3 +2763,7 @@ a[hidden] {
 .res-group.other {
   color: #5b4e7a;
 }
+
+.drawer-empty .chairs-toggle {
+  margin-top: 12px;
+}

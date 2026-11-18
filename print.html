@@ -901,7 +901,7 @@
       const seatNameList = [];
       let markedCount = 0;
       for (const table of tables) {
-        for (const seat of table.seatsRender || []) {
+        for (const seat of state.hideChairs ? [] : table.seatsRender || []) {
           const mark = markOf(seat.mark);
           const el = document.createElement("div");
           el.className = "seat" + (mark ? " marked" : "");
