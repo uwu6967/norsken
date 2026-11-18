@@ -212,7 +212,8 @@
         font-size: 8.5pt;
         font-weight: 700;
         line-height: 1.1;
-        overflow-wrap: anywhere;
+        overflow-wrap: normal;
+        word-break: keep-all;
         padding: 1mm;
         text-align: center;
       }
@@ -450,6 +451,36 @@
       }
       table.arrivals tr {
         break-inside: avoid;
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2mm;
+        margin: 2mm 0 1mm;
+      }
+      .stats .stat {
+        display: flex;
+        align-items: baseline;
+        gap: 1.2mm;
+        padding: 1.2mm 2.6mm;
+        border: 1px solid #cbb79a;
+        border-radius: 2mm;
+        background: #fbf6ee;
+        font-size: 10px;
+        color: #4a3f35;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .stats .stat b {
+        font-family: Fraunces, Georgia, serif;
+        font-size: 15px;
+        color: #1d1812;
+      }
+      .stats .free-t b {
+        font-size: 12px;
+      }
+      html.with-list table.arrivals {
+        font-size: 12.5px;
       }
       html.embed body {
         padding: 0;
@@ -888,6 +919,22 @@
         room.appendChild(el);
       }
 
+      function fitNames() {
+        for (const el of room.querySelectorAll(".table.named")) {
+          const name = el.firstElementChild;
+          if (!name) continue;
+          name.style.display = "block";
+          let size = 8.5;
+          const tooBig = () => name.scrollWidth > el.clientWidth - 2 || el.scrollHeight > el.clientHeight + 2;
+          while (tooBig() && size > 5) {
+            size -= 0.5;
+            name.style.fontSize = size + "pt";
+          }
+        }
+      }
+      fitNames();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNames);
+
       function labelSortKey(label) {
         const m = String(label ?? "").match(/^(\d+)?(.*)$/);
         return [m[1] ? Number(m[1]) : 999, (m[2] || "").toLowerCase()];
@@ -991,11 +1038,14 @@
           .join("");
         const taken = new Set(arrivals.map((a) => a.table.id));
         const free = sorted.filter((t) => !taken.has(t.id) && t.label).map((t) => t.label);
+        const used = new Set(arrivals.map((a) => `${a.room}:${a.table.id}`)).size;
+        const stat = (n, word) => `<span class="stat"><b>${n}</b>${word}</span>`;
+        const summary =
+          `<div class="stats">${stat(arrivals.length, en ? "bookings" : "bookinger")}${stat(total, en ? "guests" : "gjester")}${stat(used, en ? "tables in use" : "bord i bruk")}` +
+          `${free.length ? `<span class="stat free-t"><b>${escHtml(free.join(", "))}</b>${en ? "free tables" : "ledige bord"}</span>` : ""}</div>`;
         listBody.innerHTML =
-          `<table class="arrivals"><thead><tr><th class="c">✓</th><th>${en ? "Time" : "Tid"}</th><th>${en ? "Name" : "Navn"}</th><th>${en ? "Ppl" : "Pers"}</th><th>${en ? "Table" : "Bord"}</th><th>${en ? "Comment" : "Kommentar"}</th></tr></thead><tbody>${rows}</tbody></table>` +
-          `<p class="free"><strong>${en ? "Bookings" : "Bookinger"}: ${arrivals.length} · ${en ? "people" : "personer"}: ${total}</strong>${
-            free.length ? ` &nbsp;·&nbsp; ${en ? "Free tables" : "Ledige bord"}: ${escHtml(free.join(", "))}` : ""
-          }</p>`;
+          summary +
+          `<table class="arrivals"><thead><tr><th class="c">✓</th><th>${en ? "Time" : "Tid"}</th><th>${en ? "Name" : "Navn"}</th><th>${en ? "Ppl" : "Pers"}</th><th>${en ? "Table" : "Bord"}</th><th>${en ? "Comment" : "Kommentar"}</th></tr></thead><tbody>${rows}</tbody></table>`;
         if (!EMBED) document.documentElement.classList.add("with-list");
       } else if (!sorted.length) {
         listBody.innerHTML = `<p>${copy.empty}</p>`;
@@ -1070,7 +1120,7 @@
         }
       }
       tight.sort((x, y) => x.gap - y.gap);
-      if (plateLines.length) {
+      if (false && plateLines.length) { // not on paper any more (Danny 2026-11-18)
         const pl = document.createElement("div");
         pl.className = "plates";
         pl.innerHTML = `<p class="kicker">${copy.needPlate}</p><ul>${plateLines.join("")}</ul>`;

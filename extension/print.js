@@ -396,6 +396,22 @@
         room.appendChild(el);
       }
 
+      function fitNames() {
+        for (const el of room.querySelectorAll(".table.named")) {
+          const name = el.firstElementChild;
+          if (!name) continue;
+          name.style.display = "block";
+          let size = 8.5;
+          const tooBig = () => name.scrollWidth > el.clientWidth - 2 || el.scrollHeight > el.clientHeight + 2;
+          while (tooBig() && size > 5) {
+            size -= 0.5;
+            name.style.fontSize = size + "pt";
+          }
+        }
+      }
+      fitNames();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNames);
+
       function labelSortKey(label) {
         const m = String(label ?? "").match(/^(\d+)?(.*)$/);
         return [m[1] ? Number(m[1]) : 999, (m[2] || "").toLowerCase()];
@@ -499,11 +515,14 @@
           .join("");
         const taken = new Set(arrivals.map((a) => a.table.id));
         const free = sorted.filter((t) => !taken.has(t.id) && t.label).map((t) => t.label);
+        const used = new Set(arrivals.map((a) => `${a.room}:${a.table.id}`)).size;
+        const stat = (n, word) => `<span class="stat"><b>${n}</b>${word}</span>`;
+        const summary =
+          `<div class="stats">${stat(arrivals.length, en ? "bookings" : "bookinger")}${stat(total, en ? "guests" : "gjester")}${stat(used, en ? "tables in use" : "bord i bruk")}` +
+          `${free.length ? `<span class="stat free-t"><b>${escHtml(free.join(", "))}</b>${en ? "free tables" : "ledige bord"}</span>` : ""}</div>`;
         listBody.innerHTML =
-          `<table class="arrivals"><thead><tr><th class="c">✓</th><th>${en ? "Time" : "Tid"}</th><th>${en ? "Name" : "Navn"}</th><th>${en ? "Ppl" : "Pers"}</th><th>${en ? "Table" : "Bord"}</th><th>${en ? "Comment" : "Kommentar"}</th></tr></thead><tbody>${rows}</tbody></table>` +
-          `<p class="free"><strong>${en ? "Bookings" : "Bookinger"}: ${arrivals.length} · ${en ? "people" : "personer"}: ${total}</strong>${
-            free.length ? ` &nbsp;·&nbsp; ${en ? "Free tables" : "Ledige bord"}: ${escHtml(free.join(", "))}` : ""
-          }</p>`;
+          summary +
+          `<table class="arrivals"><thead><tr><th class="c">✓</th><th>${en ? "Time" : "Tid"}</th><th>${en ? "Name" : "Navn"}</th><th>${en ? "Ppl" : "Pers"}</th><th>${en ? "Table" : "Bord"}</th><th>${en ? "Comment" : "Kommentar"}</th></tr></thead><tbody>${rows}</tbody></table>`;
         if (!EMBED) document.documentElement.classList.add("with-list");
       } else if (!sorted.length) {
         listBody.innerHTML = `<p>${copy.empty}</p>`;
@@ -578,7 +597,7 @@
         }
       }
       tight.sort((x, y) => x.gap - y.gap);
-      if (plateLines.length) {
+      if (false && plateLines.length) { // not on paper any more (Danny 2026-11-18)
         const pl = document.createElement("div");
         pl.className = "plates";
         pl.innerHTML = `<p class="kicker">${copy.needPlate}</p><ul>${plateLines.join("")}</ul>`;
