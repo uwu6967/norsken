@@ -116,3 +116,9 @@ python3 tools/build.py
 
 Ingen gjestenavn, telefonnumre eller e-poster i denne repoen. Ikke legg inn bilder av
 bookinglister eller bordplaner med navn.
+
+## Rettigheter
+
+© 2026 uwu6967. Alle rettigheter forbeholdt. Norsken er ikke åpen kildekode: du kan se
+koden, men ikke kopiere, endre, dele eller bruke den andre steder uten skriftlig lov.
+Se [LICENSE](LICENSE).
