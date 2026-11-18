@@ -4792,6 +4792,7 @@ function overflowToDomino(rows) {
     taken.add(pick.id);
     guests.placed[row.id] = pick.id;
     guests.room[row.id] = "domino";
+    if (!pick.seatFromGuest) pick.seatBefore = Number.isFinite(pick.seatCount) ? pick.seatCount : null;
     pick.seatCount = row.guests;
     pick.seatFromGuest = true;
     row.table = pick;
@@ -6483,7 +6484,7 @@ function renderDrawer() {
     <label class="label-field name-field">
       <span>${copy.nameLabel}</span>
       <input type="text" id="name-input" maxlength="28" autocomplete="off"
-             value="${esc(table.name || "")}" placeholder="${copy.nameHint}" />
+             value="${esc(drawerName(table))}" placeholder="${copy.nameHint}" />
     </label>
     ${table.kind === "round" ? `<label class="label-field ends-field">
       <span>${copy.turnLabel}</span>
@@ -7234,6 +7235,7 @@ document.getElementById("label-row").addEventListener("click", (event) => {
   const table = seatOwner(picked);
   if (!table) return;
   delete table.seatFromGuest; // set by hand now
+  delete table.seatBefore;
   if (seats === "auto") delete table.seatCount;
   else if (picked.size === "long") planPlates(picked, seatsOf(table).length + Number(seats)); // + / − on a langbord pulls it apart or closes it with plates
   else table.seatCount = Math.max(1, Math.min(40, seatCount(table) + Number(seats)));
@@ -7293,10 +7295,29 @@ document.getElementById("label-row").addEventListener("click", (event) => {
   if (table) setCustomSize(table, null);
 });
 
+// Navn shows the booked guest. With one booking, typing here changes the
+// booking's name; with more, it shows them all and names the table.
+function drawerName(table) {
+  if (table.name) return table.name;
+  const here = guestsOn(table);
+  return here.length ? here.map((g) => g.name || "").filter(Boolean).join(" / ") : "";
+}
+
 function setTableName(value) {
   const table = getTable(state.selected);
   if (!table) return;
   const next = String(value ?? "").trim().slice(0, 28);
+  const here = guestsOn(table);
+  if (!table.name && here.length) {
+    if (next === drawerName(table)) return;
+    if (here.length === 1 && next) {
+      here[0].name = next;
+      saveGuests();
+      save();
+      render();
+      return;
+    }
+  }
   table.name = next || null;
   table.booked = false; // typed by hand: "Fjern navn" leaves it alone
   save();
@@ -7338,6 +7359,7 @@ document.getElementById("drawer-measure").addEventListener("click", (event) => {
     const table = seatOwner(picked);
     if (!table) return;
     delete table.seatFromGuest; // set by hand now
+    delete table.seatBefore;
     if (seats === "auto") delete table.seatCount;
     else if (picked.size === "long") planPlates(picked, seatsOf(table).length + Number(seats));
     else table.seatCount = Math.max(1, Math.min(40, seatCount(table) + Number(seats)));
@@ -7689,20 +7711,23 @@ document.getElementById("guest-clear")?.addEventListener("click", (event) => {
 
 
 // Chairs follow the party: a table gets as many chairs as its biggest
-// booking. Only chairs set this way are undone when the guests leave; a
-// count the waitress set by hand with + / − is left alone.
+// booking, also when the table had a set number of chairs. When the guests
+// leave, the table gets back the chairs it had. + / − after that is by hand.
 function guestSeats(table) {
   if (table.kind === "plate") return;
   const pax = guestsOn(table).map((g) => Number(g.pax) || 0);
   const most = pax.length ? Math.max(...pax) : 0;
   if (most > 0) {
-    if (table.seatFromGuest || !Number.isFinite(table.seatCount)) {
-      table.seatCount = most;
+    if (!table.seatFromGuest) {
+      table.seatBefore = Number.isFinite(table.seatCount) ? table.seatCount : null;
       table.seatFromGuest = true;
     }
+    table.seatCount = Math.min(40, most);
   } else if (table.seatFromGuest) {
-    delete table.seatCount;
+    if (Number.isFinite(table.seatBefore)) table.seatCount = table.seatBefore;
+    else delete table.seatCount;
     delete table.seatFromGuest;
+    delete table.seatBefore;
   }
 }
 
@@ -7950,7 +7975,7 @@ function saveMine(all) {
     return false;
   }
 }
-const GUEST_FIELDS = ["name", "booked", "redeck", "redeckPax", "seatNames", "seatNotes", "seatMarks", "seatFromGuest", "seatsRender"];
+const GUEST_FIELDS = ["name", "booked", "redeck", "redeckPax", "seatNames", "seatNotes", "seatMarks", "seatFromGuest", "seatBefore", "seatsRender"];
 function layoutSnapshot() {
   const tables = JSON.parse(JSON.stringify(state.tables));
   for (const t of tables) for (const f of GUEST_FIELDS) delete t[f];
