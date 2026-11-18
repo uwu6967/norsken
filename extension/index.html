@@ -229,15 +229,20 @@
         <button type="button" class="toast-btn" id="toast-undo" hidden>↶ Angre</button>
       </div>
 
-      <aside class="painting-card seat-editor" id="seat-editor" hidden>
+      <aside class="painting-card seat-editor" id="seat-editor" role="dialog" aria-labelledby="seat-editor-title" hidden>
         <div class="painting-card-head">
-          <h3 id="seat-editor-title">Navn på stol</h3>
+          <h3 id="seat-editor-title">Stol</h3>
           <button type="button" class="icon-btn" id="seat-editor-close" aria-label="Lukk">✕</button>
         </div>
+        <p class="set-title" id="seat-editor-mark-title">Merking</p>
+        <div class="brush-row chair-marks" id="seat-editor-marks"></div>
+        <label for="seat-editor-name" id="seat-editor-name-label">Navn på stolen</label>
+        <input id="seat-editor-name" type="text" maxlength="60" autocomplete="off" />
+        <label for="seat-editor-input" id="seat-editor-note-label">Notat</label>
         <input id="seat-editor-input" type="text" maxlength="60" autocomplete="off" />
         <div class="book-row">
           <button type="button" class="status-btn active" id="seat-editor-save">Lagre</button>
-          <button type="button" class="status-btn" id="seat-editor-clear">Fjern</button>
+          <button type="button" class="status-btn" id="seat-editor-clear">Fjern alt</button>
         </div>
       </aside>
 
