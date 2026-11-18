@@ -212,7 +212,8 @@
         font-size: 8.5pt;
         font-weight: 700;
         line-height: 1.1;
-        overflow-wrap: anywhere;
+        overflow-wrap: normal;
+        word-break: keep-all;
         padding: 1mm;
         text-align: center;
       }
@@ -450,6 +451,36 @@
       }
       table.arrivals tr {
         break-inside: avoid;
+      }
+      .stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2mm;
+        margin: 2mm 0 1mm;
+      }
+      .stats .stat {
+        display: flex;
+        align-items: baseline;
+        gap: 1.2mm;
+        padding: 1.2mm 2.6mm;
+        border: 1px solid #cbb79a;
+        border-radius: 2mm;
+        background: #fbf6ee;
+        font-size: 10px;
+        color: #4a3f35;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .stats .stat b {
+        font-family: Fraunces, Georgia, serif;
+        font-size: 15px;
+        color: #1d1812;
+      }
+      .stats .free-t b {
+        font-size: 12px;
+      }
+      html.with-list table.arrivals {
+        font-size: 12.5px;
       }
       html.embed body {
         padding: 0;
