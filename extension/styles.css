@@ -2749,3 +2749,17 @@ a[hidden] {
 .toast .toast-btn {
   pointer-events: auto;
 }
+
+/* Område groups in «Uten bord» */
+.res-group {
+  list-style: none;
+  margin-top: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--window);
+}
+.res-group.other {
+  color: #5b4e7a;
+}
