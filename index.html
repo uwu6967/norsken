@@ -2729,6 +2729,20 @@ a[hidden] {
   outline: 3px solid var(--pine);
   outline-offset: 3px;
   border-radius: 50%;
+/* the chair box */
+.seat-editor {
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+.seat-editor label {
+  margin-top: 4px;
+}
+.chair-marks {
+  gap: 6px;
+}
+.chair-marks .brush {
+  min-height: 40px;
 }
 
 </style>
@@ -2949,15 +2963,20 @@ a[hidden] {
         <button type="button" class="toast-btn" id="toast-undo" hidden>↶ Angre</button>
       </div>
 
-      <aside class="painting-card seat-editor" id="seat-editor" hidden>
+      <aside class="painting-card seat-editor" id="seat-editor" role="dialog" aria-labelledby="seat-editor-title" hidden>
         <div class="painting-card-head">
-          <h3 id="seat-editor-title">Navn på stol</h3>
+          <h3 id="seat-editor-title">Stol</h3>
           <button type="button" class="icon-btn" id="seat-editor-close" aria-label="Lukk">✕</button>
         </div>
+        <p class="set-title" id="seat-editor-mark-title">Merking</p>
+        <div class="brush-row chair-marks" id="seat-editor-marks"></div>
+        <label for="seat-editor-name" id="seat-editor-name-label">Navn på stolen</label>
+        <input id="seat-editor-name" type="text" maxlength="60" autocomplete="off" />
+        <label for="seat-editor-input" id="seat-editor-note-label">Notat</label>
         <input id="seat-editor-input" type="text" maxlength="60" autocomplete="off" />
         <div class="book-row">
           <button type="button" class="status-btn active" id="seat-editor-save">Lagre</button>
-          <button type="button" class="status-btn" id="seat-editor-clear">Fjern</button>
+          <button type="button" class="status-btn" id="seat-editor-clear">Fjern alt</button>
         </div>
       </aside>
 
@@ -3184,7 +3203,7 @@ const i18n = {
     chairNote: "målt fra stolrygg til stolrygg",
     topNote: "målt fra bordkant til bordkant",
     marksTitle: "Merking av plasser",
-    marksNote: "Velg en farge og klikk på en stol. Klikk igjen for å fjerne.",
+    marksNote: "Velg en farge og klikk på en stol (klikk igjen for å fjerne). Dobbeltklikk en stol for merking, navn og notat på ett sted.",
     markNone: "Ingen",
     markNote: "Notat",
     notePrompt: "Notat for denne plassen (f.eks. «ikke blåmugg»). Tomt = fjern.",
@@ -3327,7 +3346,7 @@ const i18n = {
     chairNote: "measured chair back to chair back",
     topNote: "measured tabletop to tabletop",
     marksTitle: "Seat marking",
-    marksNote: "Pick a colour, then click a chair. Click again to clear.",
+    marksNote: "Pick a colour, then click a chair (click again to clear). Double-click a chair for mark, name and note in one place.",
     markNone: "None",
     markNote: "Note",
     notePrompt: "Note for this seat (e.g. \"no blue cheese\"). Empty = remove.",
@@ -5215,7 +5234,11 @@ function baseSeatPositions(table) {
   const vertical = s.h >= s.w;
   const along = vertical ? s.h : s.w;
   const offset = (vertical ? s.w : s.h) / 2 + chair * 0.62;
-  const ends = Math.min(endSeatsOf(table), count);
+  let endsWanted = endSeatsOf(table);
+  // the oval takes up to 8: 3 + 3 along the sides, then one at each round end
+  const autoEnds = table.kind === "oval" && !endsWanted && count > 6;
+  if (autoEnds) endsWanted = Math.min(2, count - 6);
+  const ends = Math.min(endsWanted, count);
   const sideCount = count - ends;
   const perSide = Math.ceil(sideCount / 2);
   for (let side = 0; side < 2 && out.length < sideCount; side += 1) {
@@ -5227,7 +5250,7 @@ function baseSeatPositions(table) {
   }
   // end chairs go last so marks already on the side chairs keep their seat
   const endOffset = along / 2 + chair * 0.62;
-  for (const sign of endSides(table).slice(0, ends)) {
+  for (const sign of (autoEnds ? [-1, 1] : endSides(table)).slice(0, ends)) {
     if (vertical) out.push({ x: c.x, y: c.y + sign * endOffset, a: sign < 0 ? -90 : 90 });
     else out.push({ x: c.x + sign * endOffset, y: c.y, a: sign < 0 ? 180 : 0 });
   }
@@ -6490,18 +6513,34 @@ function renderDrawer() {
 
 // --- seat editor (note or name on one chair) --------------------------------
 let seatEdit = null;
-function openSeatEditor(table, index, field) {
-  seatEdit = { id: table.id, index, field };
+// The chair box: double-click a chair (or click it with no brush picked) to set
+// its mark, a guest's name and a note in one place.
+function openSeatEditor(table, index, focusField) {
   const en = state.lang === "en";
-  const box = document.getElementById("seat-editor");
-  const input = document.getElementById("seat-editor-input");
-  document.getElementById("seat-editor-title").textContent =
-    field === "seatNames" ? (en ? `Name on a chair · table ${table.label}` : `Navn på stol · bord ${table.label}`) : en ? `Note on a chair · table ${table.label}` : `Notat på stol · bord ${table.label}`;
+  seatEdit = { id: table.id, index, mark: table.seatMarks?.[index] || "" };
+  document.getElementById("seat-editor-title").textContent = en ? `Chair ${index + 1} · table ${table.label}` : `Stol ${index + 1} · bord ${table.label}`;
+  document.getElementById("seat-editor-mark-title").textContent = en ? "Mark" : "Merking";
+  document.getElementById("seat-editor-name-label").textContent = en ? "Name on the chair" : "Navn på stolen";
+  document.getElementById("seat-editor-note-label").textContent = en ? "Note" : "Notat";
   document.getElementById("seat-editor-save").textContent = en ? "Save" : "Lagre";
-  document.getElementById("seat-editor-clear").textContent = en ? "Remove" : "Fjern";
-  input.value = table[field]?.[index] || "";
-  box.hidden = false;
-  input.focus();
+  document.getElementById("seat-editor-clear").textContent = en ? "Remove all" : "Fjern alt";
+  document.getElementById("seat-editor-name").value = table.seatNames?.[index] || "";
+  document.getElementById("seat-editor-input").value = table.seatNotes?.[index] || "";
+  renderSeatEditorMarks();
+  document.getElementById("seat-editor").hidden = false;
+  if (focusField === "seatNames") document.getElementById("seat-editor-name").focus();
+  else if (focusField === "seatNotes") document.getElementById("seat-editor-input").focus();
+}
+function renderSeatEditorMarks() {
+  const row = document.getElementById("seat-editor-marks");
+  if (!row || !seatEdit) return;
+  const en = state.lang === "en";
+  row.innerHTML =
+    `<button type="button" class="brush${seatEdit.mark ? "" : " active"}" data-chair-mark="">${en ? "None" : "Ingen"}</button>` +
+    SEAT_MARKS.map(
+      (m) =>
+        `<button type="button" class="brush${seatEdit.mark === m.key ? " active" : ""}" data-chair-mark="${m.key}"><span class="dot" style="background:${m.color};color:${inkOn(m.color)}">${m.code}</span>${markName(m)}</button>`,
+    ).join("");
 }
 function closeSeatEditor() {
   seatEdit = null;
@@ -6511,21 +6550,40 @@ function saveSeatEditor(clear) {
   if (!seatEdit) return;
   const table = getTable(seatEdit.id);
   if (table) {
-    const text = clear ? "" : document.getElementById("seat-editor-input").value.trim().slice(0, 60);
-    if (!table[seatEdit.field]) table[seatEdit.field] = {};
-    if (text) table[seatEdit.field][seatEdit.index] = text;
-    else delete table[seatEdit.field][seatEdit.index];
+    const i = seatEdit.index;
+    const put = (field, value) => {
+      if (!table[field]) table[field] = {};
+      if (value) table[field][i] = value;
+      else delete table[field][i];
+    };
+    put("seatMarks", clear ? "" : seatEdit.mark);
+    put("seatNames", clear ? "" : document.getElementById("seat-editor-name").value.trim().slice(0, 60));
+    put("seatNotes", clear ? "" : document.getElementById("seat-editor-input").value.trim().slice(0, 60));
     save();
   }
   closeSeatEditor();
   render();
 }
+document.getElementById("seat-editor-marks")?.addEventListener("click", (event) => {
+  const b = event.target.closest("[data-chair-mark]");
+  if (!b || !seatEdit) return;
+  seatEdit.mark = b.dataset.chairMark;
+  renderSeatEditorMarks();
+});
 document.getElementById("seat-editor-save")?.addEventListener("click", () => saveSeatEditor(false));
 document.getElementById("seat-editor-clear")?.addEventListener("click", () => saveSeatEditor(true));
 document.getElementById("seat-editor-close")?.addEventListener("click", closeSeatEditor);
-document.getElementById("seat-editor-input")?.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") saveSeatEditor(false);
-  if (event.key === "Escape") closeSeatEditor();
+for (const id of ["seat-editor-input", "seat-editor-name"]) {
+  document.getElementById(id)?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") saveSeatEditor(false);
+    if (event.key === "Escape") closeSeatEditor();
+  });
+}
+document.getElementById("room")?.addEventListener("dblclick", (event) => {
+  const seat = event.target.closest(".seat");
+  if (!seat) return;
+  const table = getTable(seat.dataset.tableId);
+  if (table) openSeatEditor(table, Number(seat.dataset.seatIndex), "seatNames");
 });
 
 // --- names beside the map ------------------------------------------------------
@@ -7024,14 +7082,13 @@ document.getElementById("room").addEventListener("click", (event) => {
   const table = getTable(seat.dataset.tableId);
   if (!table) return;
   const index = Number(seat.dataset.seatIndex);
-  if (state.brush === "note" || state.brush === "seatname") {
-    // free text on one seat (a note like "ikke blåmugg", or a guest's name).
-    // An editor on the page: the hosted page cannot show prompt().
-    openSeatEditor(table, index, state.brush === "seatname" ? "seatNames" : "seatNotes");
+  if (!state.brush || state.brush === "note" || state.brush === "seatname") {
+    // no brush picked (or the note / name brush): the chair box opens
+    openSeatEditor(table, index, state.brush === "note" ? "seatNotes" : "seatNames");
     return;
   }
   if (!table.seatMarks) table.seatMarks = {};
-  if (!state.brush || table.seatMarks[index] === state.brush) delete table.seatMarks[index];
+  if (table.seatMarks[index] === state.brush) delete table.seatMarks[index];
   else table.seatMarks[index] = state.brush;
   save();
   render();

@@ -2715,4 +2715,18 @@ a[hidden] {
   outline: 3px solid var(--pine);
   outline-offset: 3px;
   border-radius: 50%;
+/* the chair box */
+.seat-editor {
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+}
+.seat-editor label {
+  margin-top: 4px;
+}
+.chair-marks {
+  gap: 6px;
+}
+.chair-marks .brush {
+  min-height: 40px;
 }
