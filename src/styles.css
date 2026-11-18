@@ -2767,3 +2767,10 @@ a[hidden] {
 .drawer-empty .chairs-toggle {
   margin-top: 12px;
 }
+
+/* a booking dragged from the map back to the list */
+.leftcol.drop-back {
+  outline: 3px dashed #d8b46a;
+  outline-offset: -3px;
+  border-radius: 18px;
+}
