@@ -2774,3 +2774,32 @@ a[hidden] {
   outline-offset: -3px;
   border-radius: 18px;
 }
+
+/* Tidspunkt: locked until «Endre» */
+.time-field .time-steps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.time-field .time-shown {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.15rem;
+  min-width: 64px;
+}
+.time-field .time-lock {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+.time-field.open .time-lock {
+  opacity: 1;
+}
+.time-field .time-row {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.time-field .time-input {
+  width: 132px;
+  text-align: left;
+}
