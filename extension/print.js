@@ -61,18 +61,10 @@
         const m = String(text || "").match(/^(\d{1,2})[:.](\d{2})\s*(.*)$/);
         return m ? { time: `${m[1].padStart(2, "0")}:${m[2]}`, name: m[3] } : { time: "", name: String(text || "") };
       };
-      for (const table of state.tables || []) {
-        if (table.zone !== "room" || table.lead === false) continue;
-        if (table.redeck) {
-          const again = timeOf(table.redeck);
-          arrivals.push({ time: again.time, name: again.name, pax: table.redeckPax || table.guests, table, room: ROOM_ID, redeck: true });
-        }
-        if (!table.name) continue;
-        const parts = timeOf(table.name);
-        arrivals.push({ time: parts.time, name: parts.name, pax: table.guests, table, room: ROOM_ID });
-      }
-      // The arrivals page is the whole evening: the other room's bookings too.
+      // The arrivals page is the whole evening: the other room's bookings too,
+      // and anyone still without a table (waiting for a re-set, or another room).
       const OTHER = ROOM_ID === "domino" ? "spisestua" : "domino";
+      const uiLang = state.lang === "en" ? "en" : "no";
       let otherPlan = null;
       try {
         otherPlan = JSON.parse(localStorage.getItem(OTHER === "domino" ? "norsken-layout-domino-v1" : "norsken-layout-v3") || "null");
@@ -81,47 +73,82 @@
       try {
         guestStore = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
       } catch {}
+      const guestList = guestStore && Array.isArray(guestStore.list) ? guestStore.list : [];
+      const guestRoomOf = (x) => (guestStore && guestStore.room && guestStore.room[x.id]) || "spisestua";
+      const placedIds = new Set();
+      const partyName = (people) => {
+        const byTime = new Map();
+        for (const x of people.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))) {
+          if (!byTime.has(x.time || "")) byTime.set(x.time || "", []);
+          byTime.get(x.time || "").push(x);
+        }
+        return [...byTime.entries()]
+          .map(([time, list]) => {
+            const re = list.some((x) => guestStore.redeck && guestStore.redeck[x.id]) ? "↻ " : "";
+            const areas = new Set(list.map((x) => x.area || "spisestua"));
+            const pax = list.reduce((sum, x) => sum + (Number(x.pax) || 0), 0);
+            const group = list.length > 1 && areas.size === 1 && [...areas][0].startsWith("other:") ? list[0].areaLabel : "";
+            return `${re}${time ? `${time} ` : ""}${group ? `${group} · ${pax} pers` : list.map((x) => x.name || "").filter(Boolean).join(", ")}`.trim();
+          })
+          .join(" / ");
+      };
+      const guestsOnTable = (roomId, table) =>
+        guestList.filter((x) => guestStore.placed && guestStore.placed[x.id] === table.id && guestRoomOf(x) === roomId);
+      const addTable = (roomId, table) => {
+        const people = guestStore ? guestsOnTable(roomId, table) : [];
+        if (people.length) {
+          for (const x of people) {
+            placedIds.add(x.id);
+            arrivals.push({
+              time: x.time || "",
+              name: x.name || "",
+              pax: x.pax || "",
+              note: x.note || "",
+              table,
+              room: roomId,
+              redeck: Boolean(guestStore.redeck && guestStore.redeck[x.id]),
+            });
+          }
+          // the map shows the party, not a name typed on the table (that used to hide these rows)
+          if (roomId === ROOM_ID) table.name = partyName(people);
+          return;
+        }
+        if (roomId === ROOM_ID && table.redeck) {
+          const again = timeOf(table.redeck);
+          arrivals.push({ time: again.time, name: again.name, pax: table.redeckPax || table.guests, table, room: roomId, redeck: true });
+        }
+        if (!table.name) return;
+        const parts = timeOf(table.name);
+        arrivals.push({ time: parts.time, name: parts.name, pax: table.guests || table.seatCount, table, room: roomId });
+      };
+      for (const table of state.tables || []) {
+        if (table.zone !== "room" || table.lead === false) continue;
+        addTable(ROOM_ID, table);
+      }
       for (const table of (otherPlan && otherPlan.tables) || []) {
         if (table.zone !== "room" || table.lead === false) continue;
-        if (table.name) {
-          const parts = timeOf(table.name);
-          arrivals.push({ time: parts.time, name: parts.name, pax: table.guests || table.seatCount, table, room: OTHER });
-        }
-        if (guestStore && guestStore.placed && Array.isArray(guestStore.list)) {
-          for (const x of guestStore.list) {
-            if (guestStore.placed[x.id] === table.id && ((guestStore.room && guestStore.room[x.id]) || "spisestua") === OTHER) {
-              arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, note: x.note || "", table, room: OTHER });
-            }
-          }
-        }
+        addTable(OTHER, table);
       }
-      try {
-        const g = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
-        if (g && g.placed && Array.isArray(g.list)) {
-          for (const table of state.tables || []) {
-            if (table.name || table.zone !== "room") continue;
-            const on = g.list.filter((x) => g.placed[x.id] === table.id && ((g.room && g.room[x.id]) || "spisestua") === ROOM_ID);
-            for (const x of on) arrivals.push({ time: x.time || "", name: x.name || "", pax: x.pax || table.guests, note: x.note || "", table, room: ROOM_ID, redeck: Boolean(g.redeck && g.redeck[x.id]) });
-            if (on.length) {
-              // the same time is one party: «12:00 Hansen, Berg»; a group from another room by its name
-              const byTime = new Map();
-              for (const x of on.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))) {
-                if (!byTime.has(x.time || "")) byTime.set(x.time || "", []);
-                byTime.get(x.time || "").push(x);
-              }
-              table.name = [...byTime.entries()]
-                .map(([time, list]) => {
-                  const re = list.some((x) => g.redeck && g.redeck[x.id]) ? "↻ " : "";
-                  const areas = new Set(list.map((x) => x.area || "spisestua"));
-                  const pax = list.reduce((sum, x) => sum + (Number(x.pax) || 0), 0);
-                  const group = list.length > 1 && areas.size === 1 && [...areas][0].startsWith("other:") ? list[0].areaLabel : "";
-                  return `${re}${time ? `${time} ` : ""}${group ? `${group} · ${pax} pers` : list.map((x) => x.name || "").filter(Boolean).join(", ")}`.trim();
-                })
-                .join(" / ");
-            }
-          }
-        }
-      } catch {}
+      for (const x of guestList) {
+        if (placedIds.has(x.id)) continue;
+        const hint = guestStore.redeckHint && guestStore.redeckHint[x.id];
+        const area = String(x.area || "");
+        const room = guestRoomOf(x);
+        let where = "";
+        if (hint) where = uiLang === "en" ? `↻ table ${hint}` : `↻ bord ${hint}`;
+        else if (area.startsWith("other:")) where = x.areaLabel || area.slice(6);
+        else if (room !== ROOM_ID && ROOM_NAMES[room]) where = ROOM_NAMES[room][uiLang];
+        arrivals.push({
+          time: x.time || "",
+          name: x.name || "",
+          pax: x.pax || "",
+          note: x.note || "",
+          table: null,
+          room,
+          where,
+          redeck: Boolean(hint || (guestStore.redeck && guestStore.redeck[x.id])),
+        });
+      }
       const lang = state.lang === "en" ? "en" : "no";
       document.title = `Norsken — ${ROOM_NAMES[ROOM_ID][lang]}`;
       const dims = (() => {
@@ -505,7 +532,7 @@
           (a, b) =>
             (a.time || "99").localeCompare(b.time || "99") ||
             (a.room === b.room ? 0 : a.room === "spisestua" ? -1 : 1) ||
-            labelSortKey(a.table.label)[0] - labelSortKey(b.table.label)[0],
+            labelSortKey(a.table && a.table.label)[0] - labelSortKey(b.table && b.table.label)[0],
         );
         const total = arrivals.reduce((sum, a) => sum + (Number(a.pax) || 0), 0);
         // marks on the chairs of each table, for the comment column
@@ -522,16 +549,19 @@
         const marksDone = new Set();
         const rows = arrivals
           .map((a) => {
-            const where = `${a.room && a.room !== ROOM_ID ? `${ROOM_NAMES[a.room][en ? "en" : "no"]} ` : ""}${escHtml(a.table.label)}`;
-            const marks = marksDone.has(a.table.id) ? "" : marksAt(a.table);
-            marksDone.add(a.table.id);
+            const where = a.table
+              ? `${a.room && a.room !== ROOM_ID ? `${ROOM_NAMES[a.room][en ? "en" : "no"]} ` : ""}${escHtml(a.table.label)}`
+              : escHtml(a.where || (en ? "no table" : "uten bord"));
+            const marks = !a.table || marksDone.has(a.table.id) ? "" : marksAt(a.table);
+            if (a.table) marksDone.add(a.table.id);
             const note = [a.redeck ? `↻ ${en ? "re-set" : "dekk om"}` : "", escHtml(a.note || "")].filter(Boolean).join(" · ");
             return `<tr><td class="c"><span class="box"></span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}</td><td class="note">${marks}${marks && note ? " " : ""}${note}</td></tr>`;
           })
           .join("");
-        const taken = new Set(arrivals.map((a) => a.table.id));
+        const seated = arrivals.filter((a) => a.table);
+        const taken = new Set(seated.filter((a) => a.room === ROOM_ID).map((a) => a.table.id));
         const free = sorted.filter((t) => !taken.has(t.id) && t.label).map((t) => t.label);
-        const used = new Set(arrivals.map((a) => `${a.room}:${a.table.id}`)).size;
+        const used = new Set(seated.map((a) => `${a.room}:${a.table.id}`)).size;
         const stat = (n, word) => `<span class="stat"><b>${n}</b>${word}</span>`;
         const summary =
           `<div class="stats">${stat(arrivals.length, en ? "bookings" : "bookinger")}${stat(total, en ? "guests" : "gjester")}${stat(used, en ? "tables in use" : "bord i bruk")}` +
