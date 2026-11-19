@@ -1686,7 +1686,11 @@ function assignBookings() {
     rows.push({ ...b, table: null });
   }
   if (!guests.redeck) guests.redeck = {};
-  guests.redeckHint = {};
+  // Only this room's unplaced bookings are decided here. Wiping the whole
+  // hint map would drop Spisestua's «dekk om» notes when «Fordel bord» is
+  // run in Domino (and the other way around).
+  if (!guests.redeckHint) guests.redeckHint = {};
+  for (const b of bookings) delete guests.redeckHint[b.id];
   for (const row of rows) {
     if (row.redeckAt) guests.redeckHint[row.id] = String(row.redeckAt.label);
     if (!row.table) continue;
@@ -2784,7 +2788,7 @@ function tableButton(table, inTray) {
   const floorTag = [sizeName, seatN ? `${seatN}p` : ""].filter(Boolean).join(" · ");
   // Wide screen: names sit beside the map with a line to the table
   // (renderCallouts), so the table itself only shows its number.
-  const shownName = calloutMode() ? "" : [table.name || guestLabel(table), table.redeck ? `↻ ${table.redeck}` : ""].filter(Boolean).join(" · ");
+  const shownName = calloutMode() ? "" : [tableTitle(table), table.redeck ? `↻ ${table.redeck}` : ""].filter(Boolean).join(" · ");
   if (inTray) btn.title = sizeLabelCm(table);
   btn.innerHTML = inTray
     ? sizeName ? `<span class="size-tag">${sizeName}</span>` : ""
@@ -3370,7 +3374,7 @@ function renderList() {
           : copy.none;
         return `<tr>
             <td class="num-cell">${table.label}</td>
-            <td>${esc(table.name || guestLabel(table) || "–")}</td>
+            <td>${esc(tableTitle(table) || "–")}</td>
             <td>${seatsOf(table).length}</td>
             <td>${sizeLabelCm(table)}</td>
             <td>${fmt(c.top)}</td>
@@ -3466,11 +3470,18 @@ function renderDrawer() {
       </span>
     </label>
     ${timeField(table)}
-    <label class="label-field name-field">
+    ${
+      guestsOn(table).length > 1
+        ? `<div class="label-field name-field">
       <span>${copy.nameLabel}</span>
-      <input type="text" id="name-input" maxlength="28" autocomplete="off"
+      <strong class="time-shown">${esc(drawerName(table))}</strong>
+    </div>`
+        : `<label class="label-field name-field">
+      <span>${copy.nameLabel}</span>
+      <input type="text" id="name-input" maxlength="${guestsOn(table).length === 1 ? 40 : 28}" autocomplete="off"
              value="${esc(drawerName(table))}" placeholder="${copy.nameHint}" />
-    </label>
+    </label>`
+    }
     ${table.kind === "round" ? `<label class="label-field ends-field">
       <span>${copy.turnLabel}</span>
       <span class="people-steps">
@@ -3647,7 +3658,7 @@ function renderCallouts() {
   for (const table of roomTables()) {
     if (table.lead === false) continue;
     const lines = [];
-    const main = table.name || guestLabel(table);
+    const main = tableTitle(table);
     if (main) lines.push(main);
     if (table.redeck) lines.push(`↻ ${table.redeck}`);
     const c = centerCm(table);
@@ -4280,29 +4291,35 @@ document.getElementById("label-row").addEventListener("click", (event) => {
   if (table) setCustomSize(table, null);
 });
 
-// Navn shows the booked guest. With one booking, typing here changes the
-// booking's name; with more, it shows them all and names the table.
+// Navn shows the booked guest. One booking: typing here changes that booking's
+// name (up to 40 characters, same as the list). Several bookings: the names are
+// only shown — the box is 28 characters, so saving the joined text used to cut
+// them and hide the real bookings on the map and the printout. Change each
+// name in the Bordene list instead.
 function drawerName(table) {
-  if (table.name) return table.name;
   const here = guestsOn(table);
-  return here.length ? here.map((g) => g.name || "").filter(Boolean).join(" / ") : "";
+  if (here.length === 1) return here[0].name || "";
+  if (here.length) return here.map((g) => g.name || "").filter(Boolean).join(" / ");
+  return table.name || "";
 }
 
 function setTableName(value) {
   const table = getTable(state.selected);
   if (!table) return;
-  const next = String(value ?? "").trim().slice(0, 28);
   const here = guestsOn(table);
-  if (!table.name && here.length) {
-    if (next === drawerName(table)) return;
-    if (here.length === 1 && next) {
-      here[0].name = next;
-      saveGuests();
-      save();
-      render();
-      return;
-    }
+  if (here.length > 1) return;
+  const next = String(value ?? "").trim().slice(0, here.length === 1 ? 40 : 28);
+  if (here.length === 1) {
+    if ((here[0].name || "") === next && !table.name) return;
+    here[0].name = next;
+    table.name = null; // the booking is the name; a table name would hide it
+    table.booked = false;
+    saveGuests();
+    save();
+    render();
+    return;
   }
+  if ((table.name || "") === next) return;
   table.name = next || null;
   table.booked = false; // typed by hand: "Fjern navn" leaves it alone
   save();
@@ -4685,6 +4702,12 @@ function guestLabel(table) {
       return `${re}${time ? `${time} ` : ""}${who}`.trim();
     })
     .join(" / ");
+}
+
+// Booked guests win over a name typed on the table. The typed name is what an
+// empty table shows.
+function tableTitle(table) {
+  return guestLabel(table) || table.name || "";
 }
 
 // The table under the pointer; a langbord half hands over to the half that
@@ -5783,8 +5806,13 @@ function setGuestTime(id, value) {
   if (!g) return;
   const m = String(value || "").match(/^(\d{1,2}):(\d{2})/);
   if (!m) return;
-  g.time = `${m[1].padStart(2, "0")}:${m[2]}`;
+  const next = `${m[1].padStart(2, "0")}:${m[2]}`;
+  if (g.time === next) return;
+  g.time = next;
+  // same time is one party: chairs follow the new total, not the old sitting
+  const table = guestTable(g);
   saveGuests();
+  if (table) guestSeats(table);
   save();
   render();
 }
