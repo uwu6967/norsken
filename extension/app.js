@@ -3665,7 +3665,7 @@ function renderCallouts() {
     if (table.redeck) lines.push(`↻ ${table.redeck}`);
     const c = centerCm(table);
     const s = tableCm(table);
-    if (lines.length) items.push({ id: table.id, label: table.label, lines, x: c.x, y: c.y, rx: s.w / 2, ry: s.h / 2, kind: "table", arrived: tableArrived(table) });
+    if (lines.length) items.push({ id: table.id, label: table.label, lines, x: c.x, y: c.y, rx: s.w / 2, ry: s.h / 2, kind: "table", arrived: tableArrived(table), diet: [...new Set(guestsOn(table).flatMap((g) => dietTags(g.note)))] });
     const names = table.seatNames || {};
     for (const seat of seatsOf(table)) {
       const nm = names[seat.index];
@@ -3696,7 +3696,9 @@ function renderCallouts() {
       el.type = "button";
       el.className = `callout ${side} is-${it.kind}${it.arrived ? " arrived" : ""}`;
       el.style.width = `${gutter}px`;
-      el.innerHTML = `<span class="callout-num">${esc(it.label)}</span><span class="callout-text">${it.lines.map(esc).join("<br>")}</span>`;
+      el.innerHTML = `<span class="callout-num">${esc(it.label)}</span><span class="callout-text">${it.lines.map(esc).join("<br>")}${
+        it.diet?.length ? `<span class="callout-diet">${it.diet.map((key) => markOf(key)).filter(Boolean).map((m) => `<span class="seat-chip" title="${esc(markName(m))}" style="background:${m.color};color:${inkOn(m.color)}">${esc(m.code)}</span>`).join("")}</span>` : ""
+      }</span>`;
       el.title = state.lang === "en" ? "Drag onto another table or chair to move or swap" : "Dra til et annet bord eller en annen stol for å flytte eller bytte";
       el.addEventListener("click", () => {
         if (dragJustEnded) return;
