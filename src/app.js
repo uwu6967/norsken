@@ -725,6 +725,7 @@ const GUESTS_KEY = "norsken-guests-v1";
 let guests = loadGuests();
 let guestMsg = "";
 let moveFrom = null; // table id while «Flytt» waits for the target table
+let resQuery = ""; // the search box in Reservasjoner
 let resEdit = null; // { kind: "guest" | "table", id } while a name is typed in the Bordene list
 let dragJustEnded = false; // the click that follows dragging a name (label or list chip) must not also act as a click
 function markDragEnded() {
@@ -5555,6 +5556,12 @@ function renderReservations() {
   if (wipe) wipe.hidden = !guests.list.length;
   if (clearBtn) clearBtn.hidden = !guests.list.some((g) => guests.placed[g.id]);
 
+  const search = document.getElementById("res-search");
+  if (search) {
+    search.hidden = !guests.list.length;
+    search.placeholder = en ? "🔍 Search name or table" : "🔍 Søk navn eller bord";
+    if (!guests.list.length && resQuery) resQuery = search.value = "";
+  }
   const unplaced = guests.list.filter((g) => !guests.placed[g.id]);
   const placedHere = guests.list.filter((g) => guestTable(g)).length;
   const elsewhere = guests.list.filter((g) => guests.placed[g.id] && guestRoom(g) !== ROOM_ID).length;
@@ -5577,7 +5584,7 @@ function renderReservations() {
       : `<li class="res-empty">${guests.list.length ? (en ? "Everyone has a table." : "Alle har bord.") : en ? "No list yet." : "Ingen liste ennå."}</li>`;
     // grouped by Område: this room first, then the other room, then other rooms
     const rank = (g) => ((g.area || "spisestua") === ROOM_ID ? 0 : String(g.area || "").startsWith("other:") ? 2 : 1);
-    const ordered = unplaced.slice().sort((p, q) => rank(p) - rank(q) || String(p.areaLabel || "").localeCompare(String(q.areaLabel || "")) || (p.time || "99").localeCompare(q.time || "99"));
+    const ordered = unplaced.filter((g) => guestMatches(g)).sort((p, q) => rank(p) - rank(q) || String(p.areaLabel || "").localeCompare(String(q.areaLabel || "")) || (p.time || "99").localeCompare(q.time || "99"));
     let lastGroup = null;
     for (const g of ordered) {
       const groupKey = g.area || "spisestua";
@@ -5623,9 +5630,29 @@ function renderReservations() {
 
   const rows = document.getElementById("res-tables");
   if (!rows) return;
-  const tables = roomTables()
+  const allTables = roomTables()
     .filter((t) => t.lead !== false && t.label)
     .sort(byLabel);
+  // how many have come, over the tables with bookings here
+  const booked = allTables.filter((t) => guestsOn(t).length);
+  const inside = booked.filter((t) => tableArrived(t));
+  const people = (list) => list.reduce((sum, t) => sum + guestsOn(t).reduce((n, g) => n + (Number(g.pax) || 0), 0), 0);
+  set(
+    "res-tables-title",
+    booked.length
+      ? en
+        ? `Tables · ✓ ${inside.length} of ${booked.length} arrived (${people(inside)} of ${people(booked)} guests)`
+        : `Bordene · ✓ ${inside.length} av ${booked.length} kommet (${people(inside)} av ${people(booked)} gjester)`
+      : en
+        ? "Tables"
+        : "Bordene",
+  );
+  const tables = resQuery
+    ? allTables.filter((t) => String(t.label).toLowerCase() === resQuery.trim().toLowerCase() || guestsOn(t).some((g) => guestMatches(g)) || (t.name && String(t.name).toLowerCase().includes(resQuery.trim().toLowerCase())))
+    : allTables;
+  // the tables found also light up on the map
+  const found = new Set(resQuery.trim() ? tables.map((t) => t.id) : []);
+  document.querySelectorAll("#room .table").forEach((n) => n.classList.toggle("found", found.has(n.dataset.id)));
   rows.innerHTML = tables.length
     ? tables
         .map((t) => {
@@ -5650,7 +5677,7 @@ function renderReservations() {
           </li>`;
         })
         .join("")
-    : `<li class="res-empty">${en ? "No tables on the floor yet." : "Ingen bord ute ennå."}</li>`;
+    : `<li class="res-empty">${resQuery ? (en ? "No table matches the search." : "Ingen bord passer søket.") : en ? "No tables on the floor yet." : "Ingen bord ute ennå."}</li>`;
   rows.querySelectorAll(".res-guest[data-gid]").forEach((chip) => {
     chip.addEventListener("pointerdown", (event) => {
       if (event.target.closest(".g-x, .g-in, [data-res-input]")) return;
@@ -5869,3 +5896,19 @@ document.getElementById("res-tables")?.addEventListener("click", (event) => {
   saveGuests();
   render();
 }, true);
+
+// --- search in Reservasjoner: a name, part of a name, a time or a table number ---
+function guestMatches(g) {
+  const q = resQuery.trim().toLowerCase();
+  if (!q) return true;
+  return [g.name, g.time, g.note, g.areaLabel].some((v) => String(v || "").toLowerCase().includes(q));
+}
+document.getElementById("res-search")?.addEventListener("input", (event) => {
+  resQuery = event.target.value;
+  renderReservations();
+});
+document.getElementById("res-search")?.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  event.target.value = resQuery = "";
+  renderReservations();
+});

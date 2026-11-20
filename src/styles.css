@@ -2870,3 +2870,18 @@ a[hidden] {
   background: #2f7a4f;
   color: #fff;
 }
+
+/* search in Reservasjoner */
+.res-search {
+  width: 100%;
+  margin: 4px 0 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font: inherit;
+  font-size: 1rem;
+}
+#room .table.found {
+  outline: 4px solid #e0a63a;
+  outline-offset: 4px;
+  z-index: 6;
+}
