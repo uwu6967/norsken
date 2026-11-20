@@ -2885,3 +2885,13 @@ a[hidden] {
   outline-offset: 4px;
   z-index: 6;
 }
+.callout-diet {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: inherit;
+  gap: 3px;
+  margin-top: 3px;
+}
+.callout.left .callout-diet {
+  justify-content: flex-end;
+}
