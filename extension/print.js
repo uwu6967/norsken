@@ -123,6 +123,9 @@
               name: x.name || "",
               pax: x.pax || "",
               note: x.note || "",
+              id: x.id,
+              area: x.area || "",
+              areaLabel: x.areaLabel || "",
               arrived: Boolean(guestStore.arrived && guestStore.arrived[x.id]),
               table,
               room: roomId,
@@ -163,6 +166,10 @@
           name: x.name || "",
           pax: x.pax || "",
           note: x.note || "",
+          id: x.id,
+          area: x.area || "",
+          areaLabel: x.areaLabel || "",
+          arrived: Boolean(guestStore.arrived && guestStore.arrived[x.id]),
           table: null,
           room,
           where,
@@ -449,7 +456,7 @@
           }
         } else {
           el.textContent = text;
-          if (text && table.lead !== false && table.guests) {
+          if (text && table.lead !== false && table.guests && !EMBED) {
             const pax = document.createElement("span");
             pax.className = "pax";
             pax.textContent = `${table.guests} ${paxWord}`;
@@ -488,7 +495,7 @@
       const seatNameList = [];
       let markedCount = 0;
       for (const table of tables) {
-        for (const seat of state.hideChairs ? [] : table.seatsRender || []) {
+        for (const seat of state.printNoChairs ? [] : table.seatsRender || []) {
           const mark = markOf(seat.mark);
           const el = document.createElement("div");
           el.className = "seat" + (mark ? " marked" : "");
@@ -567,20 +574,77 @@
             .join(" ");
         };
         const marksDone = new Set();
+        // grouped by room: Spisestua, Domino, then the other rooms (Møterom, Bar, 1772 …)
+        const groupOf = (a) => {
+          if (a.table) return { key: a.room || ROOM_ID, label: ROOM_NAMES[a.room || ROOM_ID][en ? "en" : "no"] };
+          const area = String(a.area || "");
+          if (area.startsWith("other:")) return { key: area, label: a.areaLabel || area.slice(6) };
+          const room = ROOM_NAMES[area] ? area : a.room || "spisestua";
+          return { key: room, label: ROOM_NAMES[room] ? ROOM_NAMES[room][en ? "en" : "no"] : room };
+        };
+        const rank = (key) => (key === "spisestua" ? 0 : key === "domino" ? 1 : 2);
+        for (const a of arrivals) a.group = groupOf(a);
+        // the same name booked more than once (in two rooms, or twice): maybe a double booking
+        const nameKey = (n) => String(n || "").toLowerCase().replace(/\s+/g, " ").trim();
+        const byName = new Map();
+        for (const a of arrivals) {
+          if (!a.id || !nameKey(a.name)) continue;
+          if (!byName.has(nameKey(a.name))) byName.set(nameKey(a.name), []);
+          byName.get(nameKey(a.name)).push(a);
+        }
+        const minutes = (t) => {
+          const m = String(t || "").match(/^(\d{1,2})[:.](\d{2})/);
+          return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+        };
+        // red only when the two bookings are under 1½ hours apart (booked twice by
+        // mistake); otherwise just a note (cards in 1772 first, dinner later)
+        const clashes = (a) => {
+          const same = ((a.id && byName.get(nameKey(a.name))) || []).filter((x) => x !== a);
+          const at = minutes(a.time);
+          return {
+            same,
+            close: same.filter((x) => at == null || minutes(x.time) == null || Math.abs(minutes(x.time) - at) < 90),
+          };
+        };
+        const doubleNote = (a) => {
+          const { same, close } = clashes(a);
+          if (!same.length) return "";
+          const list = (xs) => escHtml(xs.map((x) => `${x.group.label} ${x.time || ""}`.trim()).join(", "));
+          return close.length
+            ? `<strong class="double">⚠ ${en ? "double booking?" : "dobbeltbooking?"}</strong> ${en ? "also" : "også"} ${list(close)}`
+            : `↔ ${en ? "also" : "også"} ${list(same)}`;
+        };
+        arrivals.sort(
+          (a, b) =>
+            rank(a.group.key) - rank(b.group.key) ||
+            a.group.label.localeCompare(b.group.label) ||
+            (a.time || "99").localeCompare(b.time || "99") ||
+            labelSortKey(a.table && a.table.label)[0] - labelSortKey(b.table && b.table.label)[0],
+        );
+        let lastGroup = null;
         const rows = arrivals
           .map((a) => {
+            let head = "";
+            if (a.group.key !== lastGroup) {
+              lastGroup = a.group.key;
+              const same = arrivals.filter((x) => x.group.key === a.group.key);
+              const ppl = same.reduce((sum, x) => sum + (Number(x.pax) || 0), 0);
+              head = `<tr class="grp"><td colspan="6">${escHtml(a.group.label)} <small>· ${same.length} ${en ? (same.length === 1 ? "booking" : "bookings") : same.length === 1 ? "booking" : "bookinger"} · ${ppl} ${en ? "guests" : "gjester"}</small></td></tr>`;
+            }
             const where = a.table
               ? `${a.room && a.room !== ROOM_ID ? `${ROOM_NAMES[a.room][en ? "en" : "no"]} ` : ""}${escHtml(a.table.label)}`
-              : escHtml(a.where || (en ? "no table" : "uten bord"));
+              : a.group.key.startsWith("other:") && (!a.where || a.where === a.group.label)
+                ? "–" // their own room: no table of ours
+                : escHtml(a.where || (en ? "no table" : "uten bord"));
             const marks = !a.table || marksDone.has(a.table.id) ? "" : marksAt(a.table);
             if (a.table) marksDone.add(a.table.id);
-            const note = [a.redeck ? `↻ ${en ? "re-set" : "dekk om"}` : "", escHtml(a.note || "")].filter(Boolean).join(" · ");
+            const note = [doubleNote(a), a.redeck ? `↻ ${en ? "re-set" : "dekk om"}` : "", escHtml(a.note || "")].filter(Boolean).join(" · ");
             const diet = dietTagsOf(a.note)
               .map((key) => markOf(key))
               .filter(Boolean)
               .map((m) => `<span class="k" style="background:${m.color};color:${inkOn(m.color)}">${m.code}</span>`)
               .join(" ");
-            return `<tr><td class="c"><span class="box">${a.arrived ? "✓" : ""}</span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}</td><td class="note">${[diet, marks].filter(Boolean).join(" ")}${(diet || marks) && note ? " " : ""}${note}</td></tr>`;
+            return `${head}<tr${clashes(a).close.length ? ' class="dbl"' : ""}><td class="c"><span class="box">${a.arrived ? "✓" : ""}</span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}</td><td class="note">${[diet, marks].filter(Boolean).join(" ")}${(diet || marks) && note ? " " : ""}${note}</td></tr>`;
           })
           .join("");
         const seated = arrivals.filter((a) => a.table);
@@ -708,6 +772,20 @@
           `</ul>`;
       }
 
+      // a long list is made a little smaller until it fits beside the map on one page
+      function fitList() {
+        if (!document.documentElement.classList.contains("with-list")) return;
+        const list = document.querySelector("section.list");
+        const limit = room.getBoundingClientRect().height + 4;
+        let zoom = 1;
+        list.style.zoom = "1";
+        while (list.getBoundingClientRect().height > limit && zoom > 0.5) {
+          zoom = Math.round((zoom - 0.04) * 100) / 100;
+          list.style.zoom = String(zoom);
+        }
+      }
+      fitList();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitList);
       if (document.documentElement.classList.contains("with-list")) {
         const page = document.createElement("style");
         page.textContent = "@page { size: A4 landscape; margin: 0; }";

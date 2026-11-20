@@ -2895,3 +2895,41 @@ a[hidden] {
 .callout.left .callout-diet {
   justify-content: flex-end;
 }
+
+/* print: with or without chairs */
+.print-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.print-chairs {
+  font-size: 0.85rem;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+.print-chairs.off {
+  opacity: 0.75;
+  text-decoration: none;
+  border-style: dashed;
+}
+.g-double {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #b42318;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.g-also {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.72rem;
+  opacity: 0.7;
+  vertical-align: middle;
+}
