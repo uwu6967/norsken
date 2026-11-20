@@ -3231,6 +3231,14 @@ function renderChrome() {
   document.documentElement.lang = state.lang;
   document.getElementById("lang-btn").textContent = state.lang.toUpperCase();
   document.getElementById("print-btn").textContent = copy.print;
+  const pc = document.getElementById("print-chairs");
+  if (pc) {
+    const on = !state.printNoChairs;
+    pc.textContent = state.lang === "en" ? (on ? "🪑 with chairs" : "🪑 no chairs") : on ? "🪑 med stoler" : "🪑 uten stoler";
+    pc.setAttribute("aria-pressed", String(on));
+    pc.classList.toggle("off", !on);
+    pc.title = state.lang === "en" ? "Tap to print with or without chairs" : "Trykk for å skrive ut med eller uten stoler";
+  }
   document.getElementById("reset-btn").textContent = copy.reset;
   const presetBtn = document.getElementById("preset-btn");
   if (presetBtn && presetBtn.dataset.armed !== "1") presetBtn.textContent = state.lang === "en" ? "Usual setup" : "Vanlig oppsett";
@@ -5379,7 +5387,13 @@ function parseClipboardBookings(text) {
 
 function importBookings(text, source) {
   const en = state.lang === "en";
-  const list = parseClipboardBookings(text).map((g, i) => ({ id: newGuestId(i), time: g.time || "", name: g.name || "", pax: g.pax || null, rd: g.rd || "", note: g.note || "", ...areaOf(g.area) }));
+  const list = parseClipboardBookings(text).map((g, i) => {
+    const area = String(g.area || "").trim();
+    // «Fast meny i Spisestue»: sits in Spisestua, but the extra words matter – first in the comment
+    const extra = area && !/^(spisestue|spisestua|domino)$/i.test(area) && /spisest|domino/i.test(area) ? area : "";
+    const note = [extra, g.note || ""].filter(Boolean).join(" · ");
+    return { id: newGuestId(i), time: g.time || "", name: g.name || "", pax: g.pax || null, rd: g.rd || "", note, ...areaOf(g.area) };
+  });
   if (!list.length) {
     showToast(en ? "No bookings found. Use «Til bordplan» on the ResDiary print page first." : "Fant ingen bookinger. Bruk «Til bordplan» på ResDiary-utskriften først.", 9000);
     return false;
@@ -5549,7 +5563,7 @@ function guestChip(g, en) {
     en ? (inside ? "Arrived – tap to undo" : "Tap when they arrive") : inside ? "Kommet – trykk for å angre" : "Trykk når de kommer"
   }">✓</button>${re}<span class="g-time">${esc(g.time || "–")}</span> ${name}${
     g.pax ? ` <span class="g-pax">${g.pax}p</span>` : ""
-  }${dietChips(g.note)}<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
+  }${doubleChip(g, en)}${dietChips(g.note)}<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
 }
 
 // --- change a name by hand in the Bordene list ---------------------------------
@@ -5654,8 +5668,8 @@ function renderReservations() {
         head.className = `res-group${groupKey.startsWith("other:") ? " other" : ""}`;
         const label = g.areaLabel || ROOMS[groupKey]?.[en ? "en" : "no"] || "Spisestua";
         head.textContent = groupKey.startsWith("other:")
-          ? `${label} · ${same.length} ${en ? "bookings" : "bookinger"}, ${people} ${en ? "people" : "personer"} – ${en ? "another room, not our tables" : "eget rom, ikke på våre bord"}`
-          : `${label} · ${same.length} ${en ? "bookings" : "bookinger"}, ${people} ${en ? "people" : "personer"}`;
+          ? `${label} · ${same.length} ${bookingWord(same.length, en)}, ${people} ${en ? "people" : "personer"} – ${en ? "another room, not our tables" : "eget rom, ikke på våre bord"}`
+          : `${label} · ${same.length} ${bookingWord(same.length, en)}, ${people} ${en ? "people" : "personer"}`;
         list.appendChild(head);
       }
       const li = document.createElement("li");
@@ -5666,7 +5680,7 @@ function renderReservations() {
         hint
           ? `<span class="g-redeck">↻ ${en ? `Re-set · table ${esc(hint)} frees up first` : `Dekk om · bord ${esc(hint)} blir ledig først`}</span>`
           : ""
-      }<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${dietChips(g.note)}${
+      }<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${doubleChip(g, en)}${dietChips(g.note)}${
         g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
       }`;
       li.addEventListener("pointerdown", (event) => startDrag(event, { kind: "guest", id: g.id }, li));
@@ -6026,4 +6040,44 @@ function restoreGuests(snap) {
   save();
   render();
   showToast(state.lang === "en" ? "Back as it was." : "Tilbake som før.", 4000);
+}
+
+// Print with or without chairs (the screen keeps its own «Skjul alle stoler»)
+document.getElementById("print-chairs")?.addEventListener("click", () => {
+  state.printNoChairs = !state.printNoChairs;
+  save();
+  render();
+  showToast(
+    state.lang === "en"
+      ? state.printNoChairs ? "The printout will have no chairs." : "The printout will have chairs."
+      : state.printNoChairs ? "Utskriften blir uten stoler." : "Utskriften blir med stoler.",
+    3000,
+  );
+});
+
+function bookingWord(n, en) {
+  return n === 1 ? "booking" : en ? "bookings" : "bookinger";
+}
+
+// The same name booked more than once (in two rooms, or twice): maybe a
+// double booking – often card players in 1772 who also have a table here.
+function doubleOf(g) {
+  const key = String(g.name || "").toLowerCase().replace(/\s+/g, " ").trim();
+  if (!key) return [];
+  return guests.list.filter((x) => x !== g && String(x.name || "").toLowerCase().replace(/\s+/g, " ").trim() === key);
+}
+function doubleChip(g, en) {
+  const others = doubleOf(g);
+  if (!others.length) return "";
+  const where = (x) => `${x.areaLabel || (en ? "Dining room" : "Spisestua")} ${x.time || ""}`.trim();
+  // close in time (under 1½ hours apart): probably booked twice by mistake
+  const at = minutesOf(g.time);
+  const clash = others.filter((x) => {
+    const m = minutesOf(x.time);
+    return at == null || m == null || Math.abs(m - at) < 90;
+  });
+  if (clash.length) {
+    return `<span class="g-double" title="${esc((en ? "Booked twice at about the same time – also: " : "Booket to ganger nesten samtidig – også: ") + clash.map(where).join(", "))}">⚠ ${en ? "double?" : "dobbel?"} ${esc(clash.map(where).join(", "))}</span>`;
+  }
+  return `<span class="g-also" title="${esc(en ? "Same name, another booking" : "Samme navn, en annen booking")}">↔ ${esc(others.map(where).join(", "))}</span>`;
 }
