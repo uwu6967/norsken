@@ -2948,6 +2948,160 @@ a[hidden] {
   vertical-align: middle;
 }
 
+/* 🏠 Norsken: the whole club as a heat map */
+.house {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 8, 6, 0.6);
+}
+.house[hidden] {
+  display: none;
+}
+.house-card {
+  width: min(1180px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.house-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.house-head h2 {
+  margin: 2px 0 0;
+  font-family: Fraunces, Georgia, serif;
+  font-size: 1.7rem;
+}
+.house-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+.house-times .chip.active {
+  background: var(--pine, #2f4a3c);
+  color: #fff;
+}
+.house-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 18px;
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .house-body {
+    grid-template-columns: 1fr;
+  }
+}
+.house-map {
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  background: #2b241d;
+  padding: 6px;
+}
+.house-room {
+  cursor: pointer;
+}
+.house-room rect {
+  stroke: #e8dcc6;
+  stroke-width: 2;
+  transition: fill 0.25s;
+}
+.house-room.quiet rect {
+  fill: rgba(255, 255, 255, 0.03);
+  stroke-dasharray: 4 3;
+  stroke-opacity: 0.5;
+}
+.house-room.open rect,
+.house-room:focus-visible rect {
+  stroke: #ffd36b;
+  stroke-width: 4;
+}
+.house-room:focus {
+  outline: none;
+}
+.house-room text {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: Outfit, system-ui, sans-serif;
+  font-weight: 700;
+  fill: #f6efe3;
+  pointer-events: none;
+}
+.house-room .hr-count {
+  font-family: Fraunces, Georgia, serif;
+}
+.house-room text:not(.on-dark) {
+  fill: #f6efe3;
+}
+.house-room rect[fill^="rgb("] + text:not(.on-dark),
+.house-room rect[fill^="rgb("] ~ text:not(.on-dark) {
+  fill: #2a1d12;
+}
+.house-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.house-chip {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.house-chip.open {
+  outline: 3px solid #e0a63a;
+}
+.house-list ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.house-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.house-list li span {
+  opacity: 0.65;
+}
+.house-empty,
+.house-note {
+  opacity: 0.75;
+  font-size: 0.92rem;
+}
+.house-times .chip {
+  background: rgba(60, 40, 20, 0.08);
+  color: var(--ink);
+  border: 1px solid rgba(60, 40, 20, 0.18);
+}
+.house-times .chip.active {
+  background: var(--pine, #2f4a3c);
+  border-color: transparent;
+  color: #fff;
+}
+.house-side .set-title {
+  margin: 0 0 6px;
+}
+.house-side .set-title + .set-title {
+  margin-top: 10px;
+}
+
 </style>
   </head>
   <body>
@@ -2970,6 +3124,7 @@ a[hidden] {
           <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
         </nav>
         <div class="topbar-actions">
+          <button type="button" class="chip big" id="house-btn" aria-haspopup="dialog" aria-controls="house">🏠 <span id="house-btn-text">Norsken</span></button>
           <button type="button" class="chip big" id="mine-btn" aria-haspopup="dialog" aria-controls="mine-panel">★ <span id="mine-btn-text">Oppsett</span></button>
           <span class="print-group">
             <a class="chip big primary" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
@@ -2984,6 +3139,23 @@ a[hidden] {
 
       <!-- Mine oppsett: lagrede bordoppsett -->
       <div class="settings-backdrop" id="mine-backdrop" hidden></div>
+      <div class="house" id="house" role="dialog" aria-modal="true" aria-labelledby="house-title" hidden>
+        <div class="house-card">
+          <div class="house-head">
+            <div>
+              <p class="kicker" id="house-kicker">Norsken</p>
+              <h2 id="house-title">Hvor er det folk i dag?</h2>
+            </div>
+            <button type="button" class="icon-btn settings-close" id="house-close" aria-label="Lukk">✕</button>
+          </div>
+          <div class="house-times" id="house-times"></div>
+          <div class="house-body">
+            <svg class="house-map" id="house-map" viewBox="180 100 700 330" role="img" aria-label="Kart over Norsken"></svg>
+            <div class="house-side" id="house-side"></div>
+          </div>
+          <p class="house-note" id="house-note"></p>
+        </div>
+      </div>
       <aside class="settings" id="mine-panel" role="dialog" aria-modal="true" aria-labelledby="mine-title" hidden>
         <div class="settings-head">
           <h2 id="mine-title">Oppsett</h2>
@@ -9287,6 +9459,178 @@ function doubleChip(g, en) {
   }
   return `<span class="g-also" title="${esc(en ? "Same name, another booking" : "Samme navn, en annen booking")}">↔ ${esc(others.map(where).join(", "))}</span>`;
 }
+
+// --- 🏠 Norsken: the whole club as a heat map ---------------------------------------
+// Each room is coloured by how many guests are booked there (Område from
+// ResDiary). The rooms are drawn from Danny's sketch (2026-11-20); move them
+// here when the better drawing comes. x, y, w, h are in the map's own units.
+const HOUSE_ROOMS = [
+  { id: "atheneum", name: "Atheneum", keys: ["atheneum", "ateneum", "athenaeum"], x: 205, y: 145, w: 98, h: 125 },
+  { id: "blarom", name: "Blårom", keys: ["blårom", "blå rom", "blaarom", "blarom", "blått rom"], x: 303, y: 145, w: 74, h: 125 },
+  { id: "arneberg", name: "Arneberg", keys: ["arneberg"], x: 377, y: 145, w: 100, h: 150 },
+  { id: "gang", name: "", keys: [], x: 477, y: 140, w: 38, h: 88, quiet: true },
+  { id: "toddy", name: "Toddy", keys: ["toddy"], x: 515, y: 135, w: 70, h: 90 },
+  { id: "kasse", name: "Kasse", keys: ["kasse"], x: 535, y: 225, w: 62, h: 115, quiet: true },
+  { id: "domino", name: "Domino", keys: ["domino"], x: 585, y: 125, w: 107, h: 110 },
+  { id: "bar", name: "Bar", keys: ["bar"], x: 597, y: 235, w: 95, h: 105 },
+  { id: "spisestua", name: "Spisestua", keys: ["spisestue", "spisestua"], x: 692, y: 125, w: 165, h: 250 },
+  { id: "moterom", name: "Møterom", keys: ["møterom", "moterom", "møte"], x: 290, y: 280, w: 72, h: 52 },
+  { id: "bibliotek", name: "Bibliotek", keys: ["bibliotek", "library"], x: 248, y: 330, w: 66, h: 85 },
+];
+let houseHour = null; // null: the whole day, else the hour shown (guests there then)
+
+// which room of the house a booking is in: where it sits, else its Område
+function houseRoomOf(g) {
+  if (guests.placed[g.id] && guests.room?.[g.id]) return guests.room[g.id] === "domino" ? "domino" : "spisestua";
+  const area = String(g.area || "spisestua");
+  if (area === "spisestua" || area === "domino") return area;
+  const label = String(g.areaLabel || area.replace(/^other:/, "")).toLowerCase();
+  const hit = HOUSE_ROOMS.find((r) => r.keys.some((k) => label === k || label.includes(k)));
+  return hit ? hit.id : `other:${label}`;
+}
+
+// a party is counted from its time and the next two hours
+function houseHere(g) {
+  if (houseHour == null) return true;
+  const m = minutesOf(g.time);
+  if (m == null) return false;
+  const at = houseHour * 60 + 30;
+  return m <= at && at < m + 120;
+}
+
+function houseCounts() {
+  const counts = new Map();
+  for (const g of guests.list) {
+    if (!houseHere(g)) continue;
+    const key = houseRoomOf(g);
+    const c = counts.get(key) || { people: 0, bookings: [], label: g.areaLabel || key };
+    c.people += Number(g.pax) || 0;
+    c.bookings.push(g);
+    counts.set(key, c);
+  }
+  return counts;
+}
+
+// light sand for few, deep red for the busiest room
+function heatColor(people, most) {
+  if (!people) return "rgba(255,255,255,0.06)";
+  const t = Math.min(1, people / Math.max(1, most));
+  const from = [240, 215, 150];
+  const to = [178, 34, 34];
+  const c = from.map((f, i) => Math.round(f + (to[i] - f) * t));
+  return `rgb(${c.join(",")})`;
+}
+
+let houseOpenRoom = null;
+function renderHouse() {
+  const en = state.lang === "en";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set("house-kicker", "Norsken");
+  set("house-title", en ? "Where are the guests today?" : "Hvor er det folk i dag?");
+  // hour buttons: the whole day, or the hours that have bookings
+  const hours = [...new Set(guests.list.map((g) => minutesOf(g.time)).filter((m) => m != null).map((m) => Math.floor(m / 60)))].sort((a, b) => a - b);
+  const times = document.getElementById("house-times");
+  times.innerHTML =
+    `<button type="button" class="chip${houseHour == null ? " active" : ""}" data-hour="">${en ? "All day" : "Hele dagen"}</button>` +
+    hours.map((h) => `<button type="button" class="chip${houseHour === h ? " active" : ""}" data-hour="${h}">${String(h).padStart(2, "0")}:30</button>`).join("");
+  const counts = houseCounts();
+  const most = Math.max(0, ...[...counts.values()].map((c) => c.people));
+  const svg = document.getElementById("house-map");
+  svg.innerHTML = HOUSE_ROOMS.map((r) => {
+    const c = counts.get(r.id);
+    const people = c ? c.people : 0;
+    const dark = people && people / Math.max(1, most) > 0.55;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const small = r.w < 80 || r.h < 60;
+    return `<g class="house-room${r.quiet ? " quiet" : ""}${houseOpenRoom === r.id ? " open" : ""}" data-house-room="${r.id}" tabindex="0" role="button">
+      <rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6" fill="${heatColor(people, most)}" />
+      ${r.name ? `<text x="${cx}" y="${cy - (people ? 8 : 0)}" class="hr-name${dark ? " on-dark" : ""}" font-size="${small ? 11 : 15}">${esc(r.name)}</text>` : ""}
+      ${people ? `<text x="${cx}" y="${cy + 14}" class="hr-count${dark ? " on-dark" : ""}" font-size="${small ? 13 : 18}">${people} ${en ? "ppl" : "pers"}</text>` : ""}
+    </g>`;
+  }).join("");
+  // rooms in the list that are not on the drawing yet (1772, 1814, 1818 …)
+  const extra = [...counts.entries()].filter(([key]) => !HOUSE_ROOMS.some((r) => r.id === key));
+  const side = document.getElementById("house-side");
+  const open = houseOpenRoom ? counts.get(houseOpenRoom) : null;
+  const openName = houseOpenRoom ? HOUSE_ROOMS.find((r) => r.id === houseOpenRoom)?.name || open?.label || houseOpenRoom.replace(/^other:/, "") : "";
+  const total = [...counts.values()].reduce((sum, c) => sum + c.people, 0);
+  side.innerHTML =
+    `<p class="set-title">${en ? "Guests" : "Gjester"}: <strong>${total}</strong></p>` +
+    (extra.length
+      ? `<p class="set-title">${en ? "Other rooms" : "Andre rom"}</p><div class="house-extra">${extra
+          .sort((a, b) => b[1].people - a[1].people)
+          .map(
+            ([key, c]) =>
+              `<button type="button" class="house-chip${houseOpenRoom === key ? " open" : ""}" data-house-room="${esc(key)}" style="background:${heatColor(c.people, most)}${c.people / Math.max(1, most) > 0.55 ? ";color:#fff" : ""}">${esc(c.label || key.replace(/^other:/, ""))} · ${c.people}</button>`,
+          )
+          .join("")}</div>`
+      : "") +
+    (houseOpenRoom
+      ? `<div class="house-list"><p class="set-title">${esc(openName)}${open ? ` · ${open.people} ${en ? "guests" : "gjester"}` : ""}</p>${
+          open
+            ? `<ul>${open.bookings
+                .slice()
+                .sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))
+                .map((g) => `<li><b>${esc(g.time || "–")}</b> ${esc(g.name || "–")} <span>${g.pax || ""}p</span></li>`)
+                .join("")}</ul>`
+            : `<p class="house-empty">${en ? "Nobody booked here." : "Ingen booket her."}</p>`
+        }</div>`
+      : `<p class="house-empty">${en ? "Tap a room to see who is booked there." : "Trykk på et rom for å se hvem som er booket der."}</p>`);
+  set(
+    "house-note",
+    guests.list.length
+      ? houseHour == null
+        ? en
+          ? "Colour = how many guests are booked in the room today. Red is the busiest."
+          : "Farge = hvor mange gjester som er booket i rommet i dag. Rødt er der det er flest."
+        : en
+          ? `Guests there at ${String(houseHour).padStart(2, "0")}:30 (a booking counts for two hours).`
+          : `Gjester der kl. ${String(houseHour).padStart(2, "0")}:30 (en booking teller i to timer).`
+      : en
+        ? "Paste today's list under Reservasjoner first."
+        : "Lim inn dagens liste under Reservasjoner først.",
+  );
+}
+
+function openHouse() {
+  houseOpenRoom = null;
+  renderHouse();
+  const el = document.getElementById("house");
+  el.hidden = false;
+  document.getElementById("house-close")?.focus();
+}
+function closeHouse() {
+  document.getElementById("house").hidden = true;
+}
+document.getElementById("house-btn")?.addEventListener("click", openHouse);
+document.getElementById("house-close")?.addEventListener("click", closeHouse);
+document.getElementById("house")?.addEventListener("click", (event) => {
+  if (event.target.id === "house") return closeHouse(); // the dark backdrop
+  const hour = event.target.closest("[data-hour]");
+  if (hour) {
+    houseHour = hour.dataset.hour === "" ? null : Number(hour.dataset.hour);
+    return renderHouse();
+  }
+  const roomEl = event.target.closest("[data-house-room]");
+  if (roomEl) {
+    const id = roomEl.dataset.houseRoom;
+    houseOpenRoom = houseOpenRoom === id ? null : id;
+    renderHouse();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  const el = document.getElementById("house");
+  if (!el || el.hidden) return;
+  if (event.key === "Escape") closeHouse();
+  if ((event.key === "Enter" || event.key === " ") && event.target.closest?.("[data-house-room]")) {
+    event.preventDefault();
+    event.target.closest("[data-house-room]").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
+});
 
 </script>
   </body>

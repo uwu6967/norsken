@@ -33,6 +33,7 @@
           <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
         </nav>
         <div class="topbar-actions">
+          <button type="button" class="chip big" id="house-btn" aria-haspopup="dialog" aria-controls="house">🏠 <span id="house-btn-text">Norsken</span></button>
           <button type="button" class="chip big" id="mine-btn" aria-haspopup="dialog" aria-controls="mine-panel">★ <span id="mine-btn-text">Oppsett</span></button>
           <span class="print-group">
             <a class="chip big primary" id="print-btn" href="print.html" target="_blank" rel="noopener">Skriv ut / PDF</a>
@@ -47,6 +48,23 @@
 
       <!-- Mine oppsett: lagrede bordoppsett -->
       <div class="settings-backdrop" id="mine-backdrop" hidden></div>
+      <div class="house" id="house" role="dialog" aria-modal="true" aria-labelledby="house-title" hidden>
+        <div class="house-card">
+          <div class="house-head">
+            <div>
+              <p class="kicker" id="house-kicker">Norsken</p>
+              <h2 id="house-title">Hvor er det folk i dag?</h2>
+            </div>
+            <button type="button" class="icon-btn settings-close" id="house-close" aria-label="Lukk">✕</button>
+          </div>
+          <div class="house-times" id="house-times"></div>
+          <div class="house-body">
+            <svg class="house-map" id="house-map" viewBox="180 100 700 330" role="img" aria-label="Kart over Norsken"></svg>
+            <div class="house-side" id="house-side"></div>
+          </div>
+          <p class="house-note" id="house-note"></p>
+        </div>
+      </div>
       <aside class="settings" id="mine-panel" role="dialog" aria-modal="true" aria-labelledby="mine-title" hidden>
         <div class="settings-head">
           <h2 id="mine-title">Oppsett</h2>

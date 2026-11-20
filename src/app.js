@@ -6081,3 +6081,175 @@ function doubleChip(g, en) {
   }
   return `<span class="g-also" title="${esc(en ? "Same name, another booking" : "Samme navn, en annen booking")}">↔ ${esc(others.map(where).join(", "))}</span>`;
 }
+
+// --- 🏠 Norsken: the whole club as a heat map ---------------------------------------
+// Each room is coloured by how many guests are booked there (Område from
+// ResDiary). The rooms are drawn from Danny's sketch (2026-11-20); move them
+// here when the better drawing comes. x, y, w, h are in the map's own units.
+const HOUSE_ROOMS = [
+  { id: "atheneum", name: "Atheneum", keys: ["atheneum", "ateneum", "athenaeum"], x: 205, y: 145, w: 98, h: 125 },
+  { id: "blarom", name: "Blårom", keys: ["blårom", "blå rom", "blaarom", "blarom", "blått rom"], x: 303, y: 145, w: 74, h: 125 },
+  { id: "arneberg", name: "Arneberg", keys: ["arneberg"], x: 377, y: 145, w: 100, h: 150 },
+  { id: "gang", name: "", keys: [], x: 477, y: 140, w: 38, h: 88, quiet: true },
+  { id: "toddy", name: "Toddy", keys: ["toddy"], x: 515, y: 135, w: 70, h: 90 },
+  { id: "kasse", name: "Kasse", keys: ["kasse"], x: 535, y: 225, w: 62, h: 115, quiet: true },
+  { id: "domino", name: "Domino", keys: ["domino"], x: 585, y: 125, w: 107, h: 110 },
+  { id: "bar", name: "Bar", keys: ["bar"], x: 597, y: 235, w: 95, h: 105 },
+  { id: "spisestua", name: "Spisestua", keys: ["spisestue", "spisestua"], x: 692, y: 125, w: 165, h: 250 },
+  { id: "moterom", name: "Møterom", keys: ["møterom", "moterom", "møte"], x: 290, y: 280, w: 72, h: 52 },
+  { id: "bibliotek", name: "Bibliotek", keys: ["bibliotek", "library"], x: 248, y: 330, w: 66, h: 85 },
+];
+let houseHour = null; // null: the whole day, else the hour shown (guests there then)
+
+// which room of the house a booking is in: where it sits, else its Område
+function houseRoomOf(g) {
+  if (guests.placed[g.id] && guests.room?.[g.id]) return guests.room[g.id] === "domino" ? "domino" : "spisestua";
+  const area = String(g.area || "spisestua");
+  if (area === "spisestua" || area === "domino") return area;
+  const label = String(g.areaLabel || area.replace(/^other:/, "")).toLowerCase();
+  const hit = HOUSE_ROOMS.find((r) => r.keys.some((k) => label === k || label.includes(k)));
+  return hit ? hit.id : `other:${label}`;
+}
+
+// a party is counted from its time and the next two hours
+function houseHere(g) {
+  if (houseHour == null) return true;
+  const m = minutesOf(g.time);
+  if (m == null) return false;
+  const at = houseHour * 60 + 30;
+  return m <= at && at < m + 120;
+}
+
+function houseCounts() {
+  const counts = new Map();
+  for (const g of guests.list) {
+    if (!houseHere(g)) continue;
+    const key = houseRoomOf(g);
+    const c = counts.get(key) || { people: 0, bookings: [], label: g.areaLabel || key };
+    c.people += Number(g.pax) || 0;
+    c.bookings.push(g);
+    counts.set(key, c);
+  }
+  return counts;
+}
+
+// light sand for few, deep red for the busiest room
+function heatColor(people, most) {
+  if (!people) return "rgba(255,255,255,0.06)";
+  const t = Math.min(1, people / Math.max(1, most));
+  const from = [240, 215, 150];
+  const to = [178, 34, 34];
+  const c = from.map((f, i) => Math.round(f + (to[i] - f) * t));
+  return `rgb(${c.join(",")})`;
+}
+
+let houseOpenRoom = null;
+function renderHouse() {
+  const en = state.lang === "en";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set("house-kicker", "Norsken");
+  set("house-title", en ? "Where are the guests today?" : "Hvor er det folk i dag?");
+  // hour buttons: the whole day, or the hours that have bookings
+  const hours = [...new Set(guests.list.map((g) => minutesOf(g.time)).filter((m) => m != null).map((m) => Math.floor(m / 60)))].sort((a, b) => a - b);
+  const times = document.getElementById("house-times");
+  times.innerHTML =
+    `<button type="button" class="chip${houseHour == null ? " active" : ""}" data-hour="">${en ? "All day" : "Hele dagen"}</button>` +
+    hours.map((h) => `<button type="button" class="chip${houseHour === h ? " active" : ""}" data-hour="${h}">${String(h).padStart(2, "0")}:30</button>`).join("");
+  const counts = houseCounts();
+  const most = Math.max(0, ...[...counts.values()].map((c) => c.people));
+  const svg = document.getElementById("house-map");
+  svg.innerHTML = HOUSE_ROOMS.map((r) => {
+    const c = counts.get(r.id);
+    const people = c ? c.people : 0;
+    const dark = people && people / Math.max(1, most) > 0.55;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const small = r.w < 80 || r.h < 60;
+    return `<g class="house-room${r.quiet ? " quiet" : ""}${houseOpenRoom === r.id ? " open" : ""}" data-house-room="${r.id}" tabindex="0" role="button">
+      <rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6" fill="${heatColor(people, most)}" />
+      ${r.name ? `<text x="${cx}" y="${cy - (people ? 8 : 0)}" class="hr-name${dark ? " on-dark" : ""}" font-size="${small ? 11 : 15}">${esc(r.name)}</text>` : ""}
+      ${people ? `<text x="${cx}" y="${cy + 14}" class="hr-count${dark ? " on-dark" : ""}" font-size="${small ? 13 : 18}">${people} ${en ? "ppl" : "pers"}</text>` : ""}
+    </g>`;
+  }).join("");
+  // rooms in the list that are not on the drawing yet (1772, 1814, 1818 …)
+  const extra = [...counts.entries()].filter(([key]) => !HOUSE_ROOMS.some((r) => r.id === key));
+  const side = document.getElementById("house-side");
+  const open = houseOpenRoom ? counts.get(houseOpenRoom) : null;
+  const openName = houseOpenRoom ? HOUSE_ROOMS.find((r) => r.id === houseOpenRoom)?.name || open?.label || houseOpenRoom.replace(/^other:/, "") : "";
+  const total = [...counts.values()].reduce((sum, c) => sum + c.people, 0);
+  side.innerHTML =
+    `<p class="set-title">${en ? "Guests" : "Gjester"}: <strong>${total}</strong></p>` +
+    (extra.length
+      ? `<p class="set-title">${en ? "Other rooms" : "Andre rom"}</p><div class="house-extra">${extra
+          .sort((a, b) => b[1].people - a[1].people)
+          .map(
+            ([key, c]) =>
+              `<button type="button" class="house-chip${houseOpenRoom === key ? " open" : ""}" data-house-room="${esc(key)}" style="background:${heatColor(c.people, most)}${c.people / Math.max(1, most) > 0.55 ? ";color:#fff" : ""}">${esc(c.label || key.replace(/^other:/, ""))} · ${c.people}</button>`,
+          )
+          .join("")}</div>`
+      : "") +
+    (houseOpenRoom
+      ? `<div class="house-list"><p class="set-title">${esc(openName)}${open ? ` · ${open.people} ${en ? "guests" : "gjester"}` : ""}</p>${
+          open
+            ? `<ul>${open.bookings
+                .slice()
+                .sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))
+                .map((g) => `<li><b>${esc(g.time || "–")}</b> ${esc(g.name || "–")} <span>${g.pax || ""}p</span></li>`)
+                .join("")}</ul>`
+            : `<p class="house-empty">${en ? "Nobody booked here." : "Ingen booket her."}</p>`
+        }</div>`
+      : `<p class="house-empty">${en ? "Tap a room to see who is booked there." : "Trykk på et rom for å se hvem som er booket der."}</p>`);
+  set(
+    "house-note",
+    guests.list.length
+      ? houseHour == null
+        ? en
+          ? "Colour = how many guests are booked in the room today. Red is the busiest."
+          : "Farge = hvor mange gjester som er booket i rommet i dag. Rødt er der det er flest."
+        : en
+          ? `Guests there at ${String(houseHour).padStart(2, "0")}:30 (a booking counts for two hours).`
+          : `Gjester der kl. ${String(houseHour).padStart(2, "0")}:30 (en booking teller i to timer).`
+      : en
+        ? "Paste today's list under Reservasjoner first."
+        : "Lim inn dagens liste under Reservasjoner først.",
+  );
+}
+
+function openHouse() {
+  houseOpenRoom = null;
+  renderHouse();
+  const el = document.getElementById("house");
+  el.hidden = false;
+  document.getElementById("house-close")?.focus();
+}
+function closeHouse() {
+  document.getElementById("house").hidden = true;
+}
+document.getElementById("house-btn")?.addEventListener("click", openHouse);
+document.getElementById("house-close")?.addEventListener("click", closeHouse);
+document.getElementById("house")?.addEventListener("click", (event) => {
+  if (event.target.id === "house") return closeHouse(); // the dark backdrop
+  const hour = event.target.closest("[data-hour]");
+  if (hour) {
+    houseHour = hour.dataset.hour === "" ? null : Number(hour.dataset.hour);
+    return renderHouse();
+  }
+  const roomEl = event.target.closest("[data-house-room]");
+  if (roomEl) {
+    const id = roomEl.dataset.houseRoom;
+    houseOpenRoom = houseOpenRoom === id ? null : id;
+    renderHouse();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  const el = document.getElementById("house");
+  if (!el || el.hidden) return;
+  if (event.key === "Escape") closeHouse();
+  if ((event.key === "Enter" || event.key === " ") && event.target.closest?.("[data-house-room]")) {
+    event.preventDefault();
+    event.target.closest("[data-house-room]").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
+});
