@@ -3976,6 +3976,7 @@ document.getElementById("book-run")?.addEventListener("click", () => {
 });
 document.getElementById("book-clear")?.addEventListener("click", (event) => {
   if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
+  const before = guestSnapshot();
   const seated = roomTables().filter((t) => guestsOn(t).length);
   for (const g of guests.list) {
     if (guestRoom(g) === ROOM_ID || (ROOM_ID === "spisestua" && guestRoom(g) === "domino")) {
@@ -3991,6 +3992,7 @@ document.getElementById("book-clear")?.addEventListener("click", (event) => {
   bookingResult = null;
   save();
   render();
+  showToast(state.lang === "en" ? "Everyone is off the tables." : "Alle er tatt av bordene.", 12000, () => restoreGuests(before));
 });
 
 document.getElementById("paintings-btn")?.addEventListener("click", () => {
@@ -4777,6 +4779,7 @@ document.getElementById("guest-file")?.addEventListener("change", async (event) 
 
 document.getElementById("guest-clear")?.addEventListener("click", (event) => {
   if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
+  const before = guestSnapshot();
   const seated = roomTables().filter((t) => guestsOn(t).length);
   guests = { file: "", list: [], placed: {}, room: {}, redeck: {} };
   saveGuests();
@@ -4784,6 +4787,7 @@ document.getElementById("guest-clear")?.addEventListener("click", (event) => {
   releaseOtherRoomSeats();
   save();
   render();
+  showToast(state.lang === "en" ? "The list is cleared." : "Lista er tømt.", 12000, () => restoreGuests(before));
 });
 
 
@@ -4816,7 +4820,9 @@ function guestSeats(table) {
 // download; opening that file prints it. As a local file the link works as before.
 // A short message at the bottom of the screen (prompt()/alert() do not work in the hosted page).
 let toastTimer = null;
+let toastUndo = null; // what «Angre» in the message does (default: bring back the floor)
 function showToast(text, ms = 9000, withUndo = false) {
+  toastUndo = typeof withUndo === "function" ? withUndo : null;
   const el = document.getElementById("toast");
   if (!el) return;
   const textEl = document.getElementById("toast-text");
@@ -5287,7 +5293,10 @@ function undoFloor() {
 document.getElementById("undo-btn")?.addEventListener("click", undoFloor);
 document.getElementById("toast-undo")?.addEventListener("click", () => {
   document.getElementById("toast").hidden = true;
-  undoFloor();
+  const fn = toastUndo;
+  toastUndo = null;
+  if (fn) fn();
+  else undoFloor();
 });
 refreshUndo();
 
@@ -5842,6 +5851,7 @@ function dropBackTable(d) {
 
 function sendBackToList(table) {
   const en = state.lang === "en";
+  const before = guestSnapshot();
   const here = guestsOn(table);
   for (const g of here) {
     delete guests.placed[g.id];
@@ -5853,7 +5863,7 @@ function sendBackToList(table) {
   save();
   render();
   const names = here.map((g) => g.name).filter(Boolean).join(", ");
-  showToast(en ? `${names || "The guests"} back in the list (table ${table.label} is free).` : `${names || "Gjestene"} er tilbake i listen (bord ${table.label} er ledig).`, 5000);
+  showToast(en ? `${names || "The guests"} back in the list (table ${table.label} is free).` : `${names || "Gjestene"} er tilbake i listen (bord ${table.label} er ledig).`, 8000, () => restoreGuests(before));
 }
 
 // --- Tidspunkt in the table box ----------------------------------------------
@@ -6002,4 +6012,18 @@ function releaseOtherRoomSeats() {
   try {
     localStorage.setItem(ROOMS[other].key, JSON.stringify(plan));
   } catch {}
+}
+
+// «Angre» for the guest list: Ta alle av bordene, Tøm lista, a name dragged back
+function guestSnapshot() {
+  return JSON.parse(JSON.stringify(guests));
+}
+function restoreGuests(snap) {
+  if (!snap) return;
+  guests = snap;
+  saveGuests();
+  for (const t of roomTables()) guestSeats(t);
+  save();
+  render();
+  showToast(state.lang === "en" ? "Back as it was." : "Tilbake som før.", 4000);
 }
