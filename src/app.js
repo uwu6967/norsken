@@ -2773,6 +2773,7 @@ function tableButton(table, inTray) {
     inTray || !table.label ? " blank" : ""
   }`;
   btn.dataset.id = table.id;
+  if (!inTray && tableArrived(table)) btn.classList.add("arrived");
   if (!inTray) {
     btn.style.left = `${table.x}%`;
     btn.style.top = `${table.y}%`;
@@ -3663,7 +3664,7 @@ function renderCallouts() {
     if (table.redeck) lines.push(`↻ ${table.redeck}`);
     const c = centerCm(table);
     const s = tableCm(table);
-    if (lines.length) items.push({ id: table.id, label: table.label, lines, x: c.x, y: c.y, rx: s.w / 2, ry: s.h / 2, kind: "table" });
+    if (lines.length) items.push({ id: table.id, label: table.label, lines, x: c.x, y: c.y, rx: s.w / 2, ry: s.h / 2, kind: "table", arrived: tableArrived(table) });
     const names = table.seatNames || {};
     for (const seat of seatsOf(table)) {
       const nm = names[seat.index];
@@ -3692,7 +3693,7 @@ function renderCallouts() {
     for (const it of sides[side].sort((a, b) => a.p.y - b.p.y)) {
       const el = document.createElement("button");
       el.type = "button";
-      el.className = `callout ${side} is-${it.kind}`;
+      el.className = `callout ${side} is-${it.kind}${it.arrived ? " arrived" : ""}`;
       el.style.width = `${gutter}px`;
       el.innerHTML = `<span class="callout-num">${esc(it.label)}</span><span class="callout-text">${it.lines.map(esc).join("<br>")}</span>`;
       el.title = state.lang === "en" ? "Drag onto another table or chair to move or swap" : "Dra til et annet bord eller en annen stol for å flytte eller bytte";
@@ -4582,6 +4583,7 @@ function loadGuests() {
         room: g.room && typeof g.room === "object" ? g.room : {},
         redeck: g.redeck && typeof g.redeck === "object" ? g.redeck : {},
         redeckHint: g.redeckHint && typeof g.redeckHint === "object" ? g.redeckHint : {},
+        arrived: g.arrived && typeof g.arrived === "object" ? g.arrived : {},
       };
     }
   } catch {}
@@ -5483,9 +5485,12 @@ function guestChip(g, en) {
   const re = guests.redeck?.[g.id] ? '<span class="g-re" title="dekk om">↻</span>' : "";
   const editing = resEdit && resEdit.kind === "guest" && resEdit.id === g.id;
   const name = editing ? nameInput(g.name || "", 40, en) : `<span class="g-name" data-edit-name title="${en ? "Click to change the name" : "Trykk for å endre navnet"}">${esc(g.name || (en ? "no name" : "uten navn"))}</span>`;
-  return `<span class="res-guest${editing ? " editing" : ""}" data-gid="${g.id}">${re}<span class="g-time">${esc(g.time || "–")}</span> ${name}${
+  const inside = Boolean(guests.arrived?.[g.id]);
+  return `<span class="res-guest${editing ? " editing" : ""}${inside ? " arrived" : ""}" data-gid="${g.id}"><button type="button" class="g-in${inside ? " on" : ""}" data-arrived="${g.id}" aria-pressed="${inside}" title="${
+    en ? (inside ? "Arrived – tap to undo" : "Tap when they arrive") : inside ? "Kommet – trykk for å angre" : "Trykk når de kommer"
+  }">✓</button>${re}<span class="g-time">${esc(g.time || "–")}</span> ${name}${
     g.pax ? ` <span class="g-pax">${g.pax}p</span>` : ""
-  }<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
+  }${dietChips(g.note)}<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
 }
 
 // --- change a name by hand in the Bordene list ---------------------------------
@@ -5596,7 +5601,7 @@ function renderReservations() {
         hint
           ? `<span class="g-redeck">↻ ${en ? `Re-set · table ${esc(hint)} frees up first` : `Dekk om · bord ${esc(hint)} blir ledig først`}</span>`
           : ""
-      }<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${
+      }<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${dietChips(g.note)}${
         g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
       }`;
       li.addEventListener("pointerdown", (event) => startDrag(event, { kind: "guest", id: g.id }, li));
@@ -5648,7 +5653,7 @@ function renderReservations() {
     : `<li class="res-empty">${en ? "No tables on the floor yet." : "Ingen bord ute ennå."}</li>`;
   rows.querySelectorAll(".res-guest[data-gid]").forEach((chip) => {
     chip.addEventListener("pointerdown", (event) => {
-      if (event.target.closest(".g-x, [data-res-input]")) return;
+      if (event.target.closest(".g-x, .g-in, [data-res-input]")) return;
       startDrag(event, { kind: "guest", id: chip.dataset.gid }, chip);
     });
   });
@@ -5816,3 +5821,51 @@ function setGuestTime(id, value) {
   save();
   render();
 }
+
+// --- allergies and diets in the booking comment --------------------------------
+// ResDiary comments like «glutenfri, en gravid» get the same coloured codes as
+// the chair marks, so they are seen at a glance. Only a hint: nothing is
+// marked on a chair by itself.
+const DIET_WORDS = [
+  ["gluten", /glut[e]?n|c[øo]liaki|coeliac|celiac/i],
+  ["laktose", /lakto|lacto|melkeallerg|melkefri|melkeprotein/i],
+  ["notter", /n[øo]tt|peanut|pean[øo]tt|mandel|nut allerg|nuts\b/i],
+  ["skalldyr", /skalldyr|skjell|reke|krabbe|hummer|shellfish|bl[øo]tdyr/i],
+  ["diabetes", /diabet/i],
+  ["gravid", /gravid|pregnan/i],
+  ["veganer", /vegan/i],
+  ["vegetar", /vegetar/i],
+  ["pescetar", /pesc|pesk/i],
+];
+function dietTags(text) {
+  const t = String(text || "");
+  if (!t) return [];
+  const keys = DIET_WORDS.filter(([, re]) => re.test(t)).map(([key]) => key);
+  if (!keys.length && /allerg|intoleran/i.test(t)) keys.push("annet");
+  return keys;
+}
+function dietChips(text) {
+  return dietTags(text)
+    .map((key) => {
+      const m = markOf(key);
+      return m ? `<span class="seat-chip diet-chip" title="${esc(markName(m))}" style="background:${m.color};color:${inkOn(m.color)}">${esc(m.code)}</span>` : "";
+    })
+    .join("");
+}
+
+// --- «kommet»: tick a party off when they arrive ---------------------------------
+function tableArrived(table) {
+  const here = guestsOn(table);
+  return here.length > 0 && here.every((g) => guests.arrived?.[g.id]);
+}
+document.getElementById("res-tables")?.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-arrived]");
+  if (!btn) return;
+  event.stopPropagation();
+  if (!guests.arrived) guests.arrived = {};
+  const id = btn.dataset.arrived;
+  if (guests.arrived[id]) delete guests.arrived[id];
+  else guests.arrived[id] = true;
+  saveGuests();
+  render();
+}, true);

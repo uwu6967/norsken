@@ -2715,6 +2715,7 @@ a[hidden] {
   outline: 3px solid var(--pine);
   outline-offset: 3px;
   border-radius: 50%;
+}
 /* the chair box */
 .seat-editor {
   width: min(420px, calc(100vw - 24px));
@@ -2802,4 +2803,70 @@ a[hidden] {
 .time-field .time-input {
   width: 132px;
   text-align: left;
+}
+
+/* allergy / diet words found in the booking comment */
+.diet-chip {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* «kommet»: tick a party off when they arrive */
+.res-guest .g-in {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 6px;
+  border-radius: 8px;
+  border: 1.5px solid currentColor;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  vertical-align: middle;
+}
+.res-guest .g-in:not(.on) {
+  color: transparent;
+  border-color: rgba(160, 140, 110, 0.8);
+}
+.res-guest .g-in.on {
+  opacity: 1;
+  background: #2f7a4f;
+  border-color: #2f7a4f;
+  color: #fff;
+}
+.res-guest.arrived .g-name {
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+  opacity: 0.7;
+}
+#room .table.arrived {
+  box-shadow: 0 0 0 3px #2f7a4f, 0 0 0 6px rgba(47, 122, 79, 0.25);
+}
+#room .table.arrived::after {
+  content: "✓";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #2f7a4f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  z-index: 5;
+}
+.callout.arrived {
+  border-color: #2f7a4f;
+  opacity: 0.6;
+}
+.callout.arrived .callout-num {
+  background: #2f7a4f;
+  color: #fff;
 }
