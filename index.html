@@ -3891,6 +3891,18 @@ let guests = loadGuests();
 let guestMsg = "";
 let moveFrom = null; // table id while «Flytt» waits for the target table
 let resQuery = ""; // the search box in Reservasjoner
+let timeUnlock = null; // the table whose times are open for change (Tidspunkt)
+const DIET_WORDS = [
+  ["gluten", /glut[e]?n|c[øo]liaki|coeliac|celiac/i],
+  ["laktose", /lakto|lacto|melkeallerg|melkefri|melkeprotein/i],
+  ["notter", /n[øo]tt|peanut|pean[øo]tt|mandel|nut allerg|nuts\b/i],
+  ["skalldyr", /skalldyr|skjell|reke|krabbe|hummer|shellfish|bl[øo]tdyr/i],
+  ["diabetes", /diabet/i],
+  ["gravid", /gravid|pregnan/i],
+  ["veganer", /vegan/i],
+  ["vegetar", /vegetar/i],
+  ["pescetar", /pesc|pesk/i],
+];
 let resEdit = null; // { kind: "guest" | "table", id } while a name is typed in the Bordene list
 let dragJustEnded = false; // the click that follows dragging a name (label or list chip) must not also act as a click
 function markDragEnded() {
@@ -4114,6 +4126,7 @@ function applySize(table, size) {
 
 function save() {
   const r = room();
+  releaseEmptySeats(state.tables);
   for (const table of state.tables) {
     const cm = tableCm(table);
     table.w = (cm.w / r.w) * 100;
@@ -4749,7 +4762,7 @@ function clearBookedNames() {
 function assignBookings() {
   // the guests without a table are placed; the ones already placed stay put
   const bookings = guests.list
-    .filter((g) => !guests.placed[g.id] && (g.area || "spisestua") === ROOM_ID)
+    .filter((g) => isUnplaced(g) && (g.area || "spisestua") === ROOM_ID)
     .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), forced: null, wish: wishedTables(g.note) }));
   clearBookedNames();
   const floor = roomTables().filter((t) => t.lead !== false && t.label);
@@ -4906,6 +4919,13 @@ function clearDominoBooked() {
   const plan = readRoomPlan("domino");
   if (!plan) return;
   for (const table of plan.tables) {
+    if (table.seatFromGuest && !guests.list.some((g) => guests.placed[g.id] === table.id && guestRoom(g) === "domino")) {
+      if (Number.isFinite(table.seatBefore)) table.seatCount = table.seatBefore;
+      else delete table.seatCount;
+      delete table.seatFromGuest;
+      delete table.seatBefore;
+      table.guests = Number.isFinite(table.seatCount) ? table.seatCount : table.guests;
+    }
     if (!table.booked) continue;
     table.name = null;
     delete table.seatCount;
@@ -4942,6 +4962,7 @@ function overflowToDomino(rows) {
     guests.room[row.id] = "domino";
     if (!pick.seatFromGuest) pick.seatBefore = Number.isFinite(pick.seatCount) ? pick.seatCount : null;
     pick.seatCount = row.guests;
+    pick.guests = row.guests; // print.html reads this
     pick.seatFromGuest = true;
     row.table = pick;
     row.room = "domino";
@@ -7481,6 +7502,7 @@ document.getElementById("label-row").addEventListener("click", (event) => {
 // them and hide the real bookings on the map and the printout. Change each
 // name in the Bordene list instead.
 function drawerName(table) {
+  table = normalizeLead(table);
   const here = guestsOn(table);
   if (here.length === 1) return here[0].name || "";
   if (here.length) return here.map((g) => g.name || "").filter(Boolean).join(" / ");
@@ -7488,7 +7510,7 @@ function drawerName(table) {
 }
 
 function setTableName(value) {
-  const table = getTable(state.selected);
+  const table = normalizeLead(getTable(state.selected));
   if (!table) return;
   const here = guestsOn(table);
   if (here.length > 1) return;
@@ -7532,7 +7554,8 @@ document.getElementById("label-row").addEventListener("keydown", (event) => {
 document.getElementById("label-row").addEventListener("click", (event) => {
   const unlock = event.target.closest("[data-time-unlock]");
   if (unlock) {
-    timeUnlock = timeUnlock === state.selected ? null : state.selected;
+    const lead = normalizeLead(getTable(state.selected));
+    timeUnlock = !lead || timeUnlock === lead.id ? null : lead.id;
     render();
     if (timeUnlock) document.querySelector("#label-row .time-input")?.focus();
     return;
@@ -7923,6 +7946,7 @@ document.getElementById("guest-clear")?.addEventListener("click", (event) => {
   guests = { file: "", list: [], placed: {}, room: {}, redeck: {} };
   saveGuests();
   for (const t of seated) guestSeats(t);
+  releaseOtherRoomSeats();
   save();
   render();
 });
@@ -8198,7 +8222,14 @@ function saveMine(all) {
 const GUEST_FIELDS = ["name", "booked", "redeck", "redeckPax", "seatNames", "seatNotes", "seatMarks", "seatFromGuest", "seatBefore", "seatsRender"];
 function layoutSnapshot() {
   const tables = JSON.parse(JSON.stringify(state.tables));
-  for (const t of tables) for (const f of GUEST_FIELDS) delete t[f];
+  for (const t of tables) {
+    // chairs given to a booking are not part of the layout: keep the table's own
+    if (t.seatFromGuest) {
+      if (Number.isFinite(t.seatBefore)) t.seatCount = t.seatBefore;
+      else delete t.seatCount;
+    }
+    for (const f of GUEST_FIELDS) delete t[f];
+  }
   return { tables, fixtures: JSON.parse(JSON.stringify(state.fixtures || [])) };
 }
 function applyLayout(layout) {
@@ -8514,6 +8545,7 @@ function importBookings(text, source) {
   guests = { file: source || "", list: list.sort((p, q) => (p.time || "99").localeCompare(q.time || "99")), placed: {}, room: {}, redeck: {} };
   saveGuests();
   for (const t of seated) guestSeats(t);
+  releaseOtherRoomSeats();
   activeTab = "book";
   save();
   render();
@@ -8744,7 +8776,7 @@ function renderReservations() {
     search.placeholder = en ? "🔍 Search name or table" : "🔍 Søk navn eller bord";
     if (!guests.list.length && resQuery) resQuery = search.value = "";
   }
-  const unplaced = guests.list.filter((g) => !guests.placed[g.id]);
+  const unplaced = guests.list.filter((g) => isUnplaced(g));
   const placedHere = guests.list.filter((g) => guestTable(g)).length;
   const elsewhere = guests.list.filter((g) => guests.placed[g.id] && guestRoom(g) !== ROOM_ID).length;
   set(
@@ -8992,9 +9024,9 @@ function sendBackToList(table) {
 // --- Tidspunkt in the table box ----------------------------------------------
 // The booking's time from ResDiary. It is locked: «Endre» has to be pressed
 // first, so it is not changed by accident.
-let timeUnlock = null; // the table whose times are open for change
 
 function timeField(table) {
+  table = normalizeLead(table);
   const here = guestsOn(table).sort((p, q) => (p.time || "99").localeCompare(q.time || "99"));
   if (!here.length) return "";
   const en = state.lang === "en";
@@ -9035,17 +9067,6 @@ function setGuestTime(id, value) {
 // ResDiary comments like «glutenfri, en gravid» get the same coloured codes as
 // the chair marks, so they are seen at a glance. Only a hint: nothing is
 // marked on a chair by itself.
-const DIET_WORDS = [
-  ["gluten", /glut[e]?n|c[øo]liaki|coeliac|celiac/i],
-  ["laktose", /lakto|lacto|melkeallerg|melkefri|melkeprotein/i],
-  ["notter", /n[øo]tt|peanut|pean[øo]tt|mandel|nut allerg|nuts\b/i],
-  ["skalldyr", /skalldyr|skjell|reke|krabbe|hummer|shellfish|bl[øo]tdyr/i],
-  ["diabetes", /diabet/i],
-  ["gravid", /gravid|pregnan/i],
-  ["veganer", /vegan/i],
-  ["vegetar", /vegetar/i],
-  ["pescetar", /pesc|pesk/i],
-];
 function dietTags(text) {
   const t = String(text || "");
   if (!t) return [];
@@ -9104,6 +9125,48 @@ function wishedTables(note) {
     for (const n of m[1].split(/\s*(?:,|\/|og|eller|el\.?|or|-)\s*/i)) if (n && !out.includes(n.toLowerCase())) out.push(n.toLowerCase());
   }
   return out;
+}
+
+// A booking whose table is no longer on the floor (sent to the store, or a new
+// setup was chosen) is back in «Uten bord», so nobody is lost.
+function isUnplaced(g) {
+  if (!guests.placed[g.id]) return true;
+  return guestRoom(g) === ROOM_ID && !guestTable(g);
+}
+
+// Chairs given to a party go back to the table's own number once nobody is
+// booked there any more (also tables sent to the store).
+function releaseEmptySeats(tables) {
+  for (const t of tables) {
+    if (!t.seatFromGuest) continue;
+    if (t.zone === "room" && guestsOn(t).length) continue;
+    if (Number.isFinite(t.seatBefore)) t.seatCount = t.seatBefore;
+    else delete t.seatCount;
+    delete t.seatFromGuest;
+    delete t.seatBefore;
+  }
+}
+
+// The other room's plan lives in storage: its tables get their own chairs back
+// when the bookings that sat there are gone (Tøm lista, a new list).
+function releaseOtherRoomSeats() {
+  const other = ROOM_ID === "domino" ? "spisestua" : "domino";
+  const plan = readRoomPlan(other);
+  if (!plan) return;
+  let changed = false;
+  for (const t of plan.tables) {
+    if (!t.seatFromGuest) continue;
+    if (guests.list.some((g) => guests.placed[g.id] === t.id && guestRoom(g) === other)) continue;
+    if (Number.isFinite(t.seatBefore)) t.seatCount = t.seatBefore;
+    else delete t.seatCount;
+    delete t.seatFromGuest;
+    delete t.seatBefore;
+    changed = true;
+  }
+  if (!changed) return;
+  try {
+    localStorage.setItem(ROOMS[other].key, JSON.stringify(plan));
+  } catch {}
 }
 
 </script>
