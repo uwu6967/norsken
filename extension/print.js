@@ -20,6 +20,25 @@
         // a wish about the food, not an allergy - e.g. cold goose at gåsemiddag (yellow on the paper plan)
         { key: "onske", color: "#ffe14d", code: "Ø", no: "Ønske", en: "Request" },
       ];
+      // the same allergy/diet words as the app (app.js dietTags)
+      const DIET_WORDS = [
+        ["gluten", /glut[e]?n|c[øo]liaki|coeliac|celiac/i],
+        ["laktose", /lakto|lacto|melkeallerg|melkefri|melkeprotein/i],
+        ["notter", /n[øo]tt|peanut|pean[øo]tt|mandel|nut allerg|nuts\b/i],
+        ["skalldyr", /skalldyr|skjell|reke|krabbe|hummer|shellfish|bl[øo]tdyr/i],
+        ["diabetes", /diabet/i],
+        ["gravid", /gravid|pregnan/i],
+        ["veganer", /vegan/i],
+        ["vegetar", /vegetar/i],
+        ["pescetar", /pesc|pesk/i],
+      ];
+      function dietTagsOf(text) {
+        const t = String(text || "");
+        if (!t) return [];
+        const keys = DIET_WORDS.filter(([, re]) => re.test(t)).map(([key]) => key);
+        if (!keys.length && /allerg|intoleran/i.test(t)) keys.push("annet");
+        return keys;
+      }
       function markOf(key) { return SEAT_MARKS.find((m) => m.key === key) || null; }
       function inkOn(hex) {
         const n = parseInt(hex.slice(1), 16);
@@ -104,6 +123,7 @@
               name: x.name || "",
               pax: x.pax || "",
               note: x.note || "",
+              arrived: Boolean(guestStore.arrived && guestStore.arrived[x.id]),
               table,
               room: roomId,
               redeck: Boolean(guestStore.redeck && guestStore.redeck[x.id]),
@@ -555,7 +575,12 @@
             const marks = !a.table || marksDone.has(a.table.id) ? "" : marksAt(a.table);
             if (a.table) marksDone.add(a.table.id);
             const note = [a.redeck ? `↻ ${en ? "re-set" : "dekk om"}` : "", escHtml(a.note || "")].filter(Boolean).join(" · ");
-            return `<tr><td class="c"><span class="box"></span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}</td><td class="note">${marks}${marks && note ? " " : ""}${note}</td></tr>`;
+            const diet = dietTagsOf(a.note)
+              .map((key) => markOf(key))
+              .filter(Boolean)
+              .map((m) => `<span class="k" style="background:${m.color};color:${inkOn(m.color)}">${m.code}</span>`)
+              .join(" ");
+            return `<tr><td class="c"><span class="box">${a.arrived ? "✓" : ""}</span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}</td><td class="note">${[diet, marks].filter(Boolean).join(" ")}${(diet || marks) && note ? " " : ""}${note}</td></tr>`;
           })
           .join("");
         const seated = arrivals.filter((a) => a.table);
