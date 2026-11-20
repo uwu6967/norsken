@@ -1585,7 +1585,7 @@ function assignBookings() {
   // the guests without a table are placed; the ones already placed stay put
   const bookings = guests.list
     .filter((g) => !guests.placed[g.id] && (g.area || "spisestua") === ROOM_ID)
-    .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), forced: null }));
+    .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), forced: null, wish: wishedTables(g.note) }));
   clearBookedNames();
   const floor = roomTables().filter((t) => t.lead !== false && t.label);
   if (!floor.length) {
@@ -1624,7 +1624,10 @@ function assignBookings() {
   const sorted = bookings.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   // locked ones first so nobody else takes their table
   const locked = sorted.filter((b) => b.forced && labelMap.has(b.forced));
-  const free = sorted.filter((b) => !(b.forced && labelMap.has(b.forced)));
+  const free = sorted
+    .filter((b) => !(b.forced && labelMap.has(b.forced)))
+    // a booking that asked for a table goes first, so nobody else takes it
+    .sort((p, q) => Number(q.wish.length > 0) - Number(p.wish.length > 0) || (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
   for (const b of locked) {
     if (taken.has(b.forced)) rows.push({ ...b, table: null });
     else {
@@ -1642,8 +1645,13 @@ function assignBookings() {
     }
     const list = ruleOrder(b.guests, floor, order, side);
     const fits = (label, cap) => labelMap.has(label) && !taken.has(label) && cap(labelMap.get(label)) >= b.guests;
-    // first where it is comfortable, then where it can squeeze in
-    let pick = list.find((label) => fits(label, softCap)) || list.find((label) => fits(label, hardCap));
+    // a wish in the comment («gjerne bord 6 eller 11») goes first, if it fits;
+    // then where it is comfortable, then where it can squeeze in
+    let pick =
+      b.wish.find((label) => fits(label, softCap)) ||
+      b.wish.find((label) => fits(label, hardCap)) ||
+      list.find((label) => fits(label, softCap)) ||
+      list.find((label) => fits(label, hardCap));
     if (pick) {
       taken.add(pick);
       firstTime.set(pick, minutesOf(b.time));
@@ -3927,11 +3935,18 @@ document.getElementById("book-run")?.addEventListener("click", () => {
   const domino = rows.filter((r) => r.room === "domino").length;
   const redeck = rows.filter((r) => !r.table && r.redeckAt).length;
   const none = rows.filter((r) => !r.table && !r.redeckAt).length;
+  // a table asked for in the comment that could not be given
+  const missed = rows.filter((r) => r.wish?.length && !(r.table && r.wish.includes(String(r.table.label).toLowerCase())));
+  const missedText = missed.length
+    ? en
+      ? ` Wish not met: ${missed.map((r) => `${r.name} (table ${r.wish.join("/")})`).join(", ")}.`
+      : ` Ønske ikke oppfylt: ${missed.map((r) => `${r.name} (bord ${r.wish.join("/")})`).join(", ")}.`
+    : "";
   showToast(
     before
       ? en
-        ? `Placed ${here}${domino ? `, ${domino} in Domino` : ""}${redeck ? `, ${redeck} wait for a re-set table (↻, see «Without a table»)` : ""}${none ? `, ${none} without a table` : ""}.`
-        : `Plasserte ${here}${domino ? `, ${domino} i Domino` : ""}${redeck ? `, ${redeck} venter på omdekking (↻, se «Uten bord»)` : ""}${none ? `, ${none} uten bord` : ""}.`
+        ? `Placed ${here}${domino ? `, ${domino} in Domino` : ""}${redeck ? `, ${redeck} wait for a re-set table (↻, see «Without a table»)` : ""}${none ? `, ${none} without a table` : ""}.${missedText}`
+        : `Plasserte ${here}${domino ? `, ${domino} i Domino` : ""}${redeck ? `, ${redeck} venter på omdekking (↻, se «Uten bord»)` : ""}${none ? `, ${none} uten bord` : ""}.${missedText}`
       : en
         ? "Everyone already has a table."
         : "Alle har allerede bord.",
@@ -5914,3 +5929,14 @@ document.getElementById("res-search")?.addEventListener("keydown", (event) => {
   event.target.value = resQuery = "";
   renderReservations();
 });
+
+// «Gjerne bord 6 eller 11», «ønsker bord 4», «bord 5/6»: the table numbers a
+// guest asked for in the ResDiary comment, in the order they wrote them.
+function wishedTables(note) {
+  const t = String(note || "");
+  const out = [];
+  for (const m of t.matchAll(/\bbord(?:ene)?\s*(?:nr\.?\s*)?(\d{1,2}[a-z]?(?:\s*(?:,|\/|og|eller|el\.?|or|-)\s*\d{1,2}[a-z]?)*)/gi)) {
+    for (const n of m[1].split(/\s*(?:,|\/|og|eller|el\.?|or|-)\s*/i)) if (n && !out.includes(n.toLowerCase())) out.push(n.toLowerCase());
+  }
+  return out;
+}
