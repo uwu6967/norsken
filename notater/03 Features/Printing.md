@@ -281,6 +281,7 @@ CSS for `.window` and `.corner` exists but no element uses it.
 - [[Files and build]]
 - [[Extension, website and releases]]
 - [[ResDiary import]]
+- [[House map]]
 - [[Rules]]
 - [[Decisions]]
 - [[Open questions and ideas]]

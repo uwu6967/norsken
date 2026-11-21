@@ -138,6 +138,7 @@ uses them now.
 - [[ResDiary import]]
 - [[Shifts and start screen]]
 - [[Reservations list]]
+- [[Printing]]
 - [[Storage and data]]
 - [[Auto seating]]
 - [[Aperitif]]
