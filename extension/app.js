@@ -642,7 +642,7 @@ function normalizeState(parsed) {
     next.showGrid = parsed.showGrid !== false;
     next.withChairs = parsed.withChairs !== false;
     next.showMeasure = parsed.showMeasure === true;
-    next.bookingsText = typeof parsed.bookingsText === "string" ? parsed.bookingsText.slice(0, 4000) : "";
+    next.bookingsText = ""; // the old pasted list is not kept any more
     next.bookingOrder = typeof parsed.bookingOrder === "string" && parsed.bookingOrder.trim() ? parsed.bookingOrder.slice(0, 120) : DEFAULT_BOOKING_ORDER;
     if ((Number(parsed.dims?.v) || 0) < 10 && !next.tables.some((t) => t.size === "oval")) {
       const sixteen = next.tables.find((t) => t.zone === "room" && t.label === "16" && (t.size === "small" || t.size === "big"));
@@ -1020,14 +1020,31 @@ function save() {
 // per person. Opened as a plain local file, none of this runs and the board
 // keeps using localStorage only.
 const SHARED_DOC = ROOMS[ROOM_ID].doc;
-const SHARED_KEYS = ["tables", "fixtures", "furniture", "dims", "paintings", "bookingsText", "bookingOrder"];
+// Only the layout is shared: tables, fixtures, sizes. Guest fields (names, chair
+// notes, allergy marks, chairs set by a booking) stay on this device.
+const SHARED_KEYS = ["tables", "fixtures", "furniture", "dims", "paintings", "bookingOrder"];
 const CLIENT_ID = Math.random().toString(36).slice(2);
 const share = { db: null, ready: false, timer: null, lastSent: "", canWrite: true, status: "local", at: null };
 
 function sharedPayload() {
   const out = {};
   for (const key of SHARED_KEYS) out[key] = state[key];
+  out.tables = layoutOnly(state.tables);
   return out;
+}
+
+// A copy of the tables without anything that comes from a guest
+function layoutOnly(tables) {
+  const copy = JSON.parse(JSON.stringify(tables || []));
+  for (const t of copy) {
+    if (t.seatFromGuest) {
+      if (Number.isFinite(t.seatBefore)) t.seatCount = t.seatBefore;
+      else delete t.seatCount;
+    }
+    for (const f of GUEST_FIELDS) delete t[f];
+    delete t.guests;
+  }
+  return copy;
 }
 
 function scheduleShare() {
@@ -1071,6 +1088,18 @@ function applyRemote(doc) {
   }
   const view = { lang: state.lang, showGrid: state.showGrid, showMeasure: state.showMeasure, withChairs: state.withChairs, brush: state.brush, showPaintings: state.showPaintings, selectedPainting: state.selectedPainting };
   const keepSelected = state.selected;
+  // the shared plan has no guest fields: keep this device's own on the same tables
+  const mine = new Map((state.tables || []).map((t) => [t.id, t]));
+  if (Array.isArray(remote.tables)) {
+    remote.tables = layoutOnly(remote.tables).map((t) => {
+      const local = mine.get(t.id);
+      if (!local) return t;
+      for (const f of GUEST_FIELDS) if (local[f] !== undefined) t[f] = local[f];
+      if (local.seatFromGuest && Number.isFinite(local.seatCount)) t.seatCount = local.seatCount;
+      return t;
+    });
+  }
+  delete remote.bookingsText;
   const next = normalizeState({ ...view, ...remote });
   Object.assign(next, view);
   next.selected = next.tables.some((table) => table.id === keepSelected) ? keepSelected : null;
@@ -3449,7 +3478,7 @@ function renderList() {
           ? `<span class="${near.gap < state.dims.aisle ? "tight" : ""}">${obstacleName(near.table)} · ${fmt(near.gap)}</span>`
           : copy.none;
         return `<tr>
-            <td class="num-cell">${table.label}</td>
+            <td class="num-cell">${esc(table.label)}</td>
             <td>${esc(tableTitle(table) || "–")}</td>
             <td>${seatsOf(table).length}</td>
             <td>${sizeLabelCm(table)}</td>
@@ -5457,7 +5486,10 @@ document.getElementById("res-paste")?.addEventListener("click", async (event) =>
   if (guests.list.some((g) => guests.placed[g.id]) && !armed(btn, en ? "Replace today's list? Tap again" : "Bytte ut dagens liste? Trykk igjen")) return;
   try {
     const text = await navigator.clipboard.readText();
-    if (importBookings(text, en ? "clipboard" : "utklippstavla")) return;
+    if (importBookings(text, en ? "clipboard" : "utklippstavla")) {
+      navigator.clipboard.writeText("").catch(() => {}); // the list does not stay on the clipboard
+      return;
+    }
   } catch {}
   // the browser would not hand over the clipboard: a Ctrl+V does the same
   pasteArmed = true;
@@ -5472,7 +5504,7 @@ document.addEventListener("paste", (event) => {
   if (!text.trim()) return;
   event.preventDefault();
   pasteArmed = false;
-  importBookings(text, state.lang === "en" ? "clipboard" : "utklippstavla");
+  if (importBookings(text, state.lang === "en" ? "clipboard" : "utklippstavla")) navigator.clipboard?.writeText("").catch(() => {});
 });
 
 // the table row under the pointer (rows in the list are drop targets too)
@@ -6598,11 +6630,37 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && !document.getElementById("today")?.hidden) closeToday();
 });
 
-// «Til Norsken» on ResDiary opens this page with the list after #import= .
-// The part after # never leaves the browser. It is read, then wiped from the
-// address bar, so the names are not left in the address or the history.
+// «Til Norsken» on ResDiary opens this page (…/norsken/#fra-resdiary) and then
+// hands the list over in memory with postMessage. Nothing is put in the
+// address, so nothing lands in the browser history or its sync. Only messages
+// from a ResDiary page are taken; ResDiary gets «norsken-ok» back.
+const RESDIARY_ORIGIN = /^https:\/\/([a-z0-9-]+\.)*resdiary\.[a-z.]{2,6}$/i;
+let lastHandoff = { text: "", at: 0 };
+window.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || typeof data.norsken !== "string" || !RESDIARY_ORIGIN.test(event.origin)) return;
+  const fresh = !(data.norsken === lastHandoff.text && Date.now() - lastHandoff.at < 60000);
+  if (fresh) {
+    lastHandoff = { text: data.norsken, at: Date.now() };
+    if (importBookings(data.norsken, "ResDiary")) openToday();
+  }
+  try {
+    event.source?.postMessage("norsken-ok", event.origin);
+  } catch {}
+});
+
+// An older «Til Norsken» button put the list after #import= in the address.
+// It still works, but the address can stay in the browser history – so the
+// list is read, wiped from the address bar, and Danny is asked to get the new
+// button from bokmerke.html.
 function importFromHash() {
   const h = location.hash || "";
+  if (h === "#fra-resdiary") {
+    try {
+      history.replaceState(null, "", location.pathname + location.search);
+    } catch {}
+    return false;
+  }
   if (!h.startsWith("#import=")) return false;
   let text = "";
   try {
@@ -6618,6 +6676,12 @@ function importFromHash() {
   if (!text.trim()) return false;
   importBookings(text, "ResDiary");
   openToday();
+  showToast(
+    state.lang === "en"
+      ? "This ResDiary button is old. Get the new one on bokmerke.html – it keeps the list out of the browser history."
+      : "Denne ResDiary-knappen er gammel. Hent den nye på bokmerke.html – den holder lista utenfor nettleserhistorikken.",
+    15000,
+  );
   return true;
 }
 window.addEventListener("hashchange", importFromHash);

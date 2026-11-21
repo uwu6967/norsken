@@ -1,4 +1,4 @@
-/* Norsken – «Til Norsken»: ett trykk på ResDiary-utskriften åpner Norsken med dagens bookinger (tid, antall, etternavn, kommentar, område). Ingenting sendes til noen server: lista ligger etter # i adressen, som nettleseren aldri sender. Bokmerke-versjon: se README.md */
+/* Norsken – «Til Norsken»: ett trykk på ResDiary-utskriften åpner Norsken og gir den dagens bookinger (tid, antall, etternavn, kommentar, område, bord). Lista sendes direkte mellom de to fanene i nettleseren – aldri i adressen, aldri til noen server. Bokmerke-versjon: se README.md */
 (function(){
 var out=[];
 var last=function(s){s=s.replace(/\s+/g," ").trim();if(!s)return "";if(s.indexOf(",")>0)return s.split(",")[0].trim();var w=s.split(" ");return w[w.length-1];};
@@ -19,7 +19,11 @@ out.push([tm,g,n,k,a,b].join("\t"));});
 });
 var txt=out.join("\n");
 if(!txt){alert("Fant ingen bookinger her. Gå til Diary → Print (utskriften) i ResDiary, og trykk knappen igjen.");return;}
-var url="https:/"+"/uwu6967.github.io/norsken/#import="+encodeURIComponent(txt);
-var w=window.open(url,"norsken");
-if(!w){location.href=url;}
+var O="https:/"+"/uwu6967.github.io";
+var w=window.open(O+"/norsken/#fra-resdiary","norsken");
+if(!w){alert("Nettleseren stoppet Norsken-vinduet. Tillat popup-vinduer for ResDiary, og trykk knappen igjen.");return;}
+var done=false,n=0;
+var ok=function(e){if(e.origin===O&&e.data==="norsken-ok"){done=true;window.removeEventListener("message",ok);}};
+window.addEventListener("message",ok);
+var t=setInterval(function(){if(done){clearInterval(t);return;}if(++n>80){clearInterval(t);window.removeEventListener("message",ok);alert("Norsken svarte ikke. Vent til Norsken har åpnet, og trykk knappen igjen.");return;}try{w.postMessage({norsken:txt},O);}catch(e){}},250);
 })();
