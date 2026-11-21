@@ -854,6 +854,7 @@
       // The A4 is for the staff: a guest name beats a table number.
       function item0Label(table) {
         if (table.lead === false) return "";
+        if (table.piece) return { flygel: lang === "en" ? "Grand piano" : "Flygel" }[table.piece] || "";
         if (EMBED) return table.label || ""; // the small Domino corner: just the number, the names are in the list
         return table.name || table.label || "";
       }
@@ -862,7 +863,7 @@
         return `${copy.colTable} ${item.label}`;
       }
       function customCm(table) {
-        const c = normSize(table) === "long" ? table.custom : null;
+        const c = normSize(table) === "long" ? table.custom : table.own;
         return c && Number.isFinite(c.w) && Number.isFinite(c.l) ? c : null;
       }
       function sizeCm(table) {

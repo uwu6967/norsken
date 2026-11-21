@@ -10,7 +10,7 @@ const ROOM_DEFS = [
   { id: "spisestua", no: "Spisestua", en: "Dining room", profile: "home", key: "norsken-layout-v3", doc: "plan/current", keys: ["spisestue", "spisestua"], x: 210, y: 870, w: 262, h: 470 },
   { id: "domino", no: "Domino", en: "Domino", profile: "domino", key: "norsken-layout-domino-v1", doc: "plan/domino", keys: ["domino"], x: 472, y: 1140, w: 160, h: 180 },
   { id: "bar", no: "Bar", en: "Bar", profile: "salong", apero: true, keys: ["bar"], x: 472, y: 950, w: 230, h: 185, size: { w: 650, h: 520 } },
-  { id: "toddy", no: "Toddy", en: "Toddy", profile: "salong", apero: true, keys: ["toddy"], x: 632, y: 1140, w: 206, h: 180, size: { w: 580, h: 500 } },
+  { id: "toddy", no: "Toddy", en: "Toddy", profile: "salong", apero: true, keys: ["toddy"], x: 632, y: 1140, w: 206, h: 180, size: { w: 800, h: 700 }, starter: "toddy" },
   { id: "danske", no: "Danske kjelleret", en: "Danske kjelleret", profile: "salong", apero: false, keys: ["danske", "kjeller"], x: 838, y: 1140, w: 147, h: 180, size: { w: 410, h: 500 } },
   { id: "arneberg", no: "Arneberg", en: "Arneberg", profile: "salong", apero: true, keys: ["arneberg"], x: 985, y: 1020, w: 155, h: 300, size: { w: 430, h: 840 } },
   { id: "moterom", no: "Møterom", en: "Meeting room", profile: "salong", apero: true, keys: ["møterom", "moterom", "møte"], x: 1140, y: 1020, w: 130, h: 110, size: { w: 360, h: 310 } },
@@ -573,9 +573,9 @@ function defaultState() {
       if (IS_SALON) d.room = { ...(ROOMS[ROOM_ID].size || { w: 500, h: 500 }) };
       return d;
     })(),
-    tables: ROOM_ID === "domino" ? dominoStarter() : IS_SALON ? [] : starterTables(),
+    tables: ROOM_ID === "domino" ? dominoStarter() : IS_SALON ? roomStarter(ROOM_ID) : starterTables(),
     apero: IS_SALON ? ROOMS[ROOM_ID].apero !== false : undefined, // «🥂 Brukes til aperitiff»
-    sized: IS_SALON ? false : undefined, // the room size has been set in the room editor
+    sized: IS_SALON ? Boolean(ROOMS[ROOM_ID].starter) : undefined, // the room size has been set in the room editor
     fixtures: defaultFixtures(),
     furniture: defaultFurniture(),
     paintings: defaultPaintings(),
@@ -790,6 +790,17 @@ let RIG = (() => {
 })();
 let rigUndo = [];
 let houseHint = false; // «Innover» opened the house map: tell what to tap
+// Pieces of furniture that are not tables (salons): they take space, never get a number or guests
+const PIECES = { flygel: { no: "🎹 Flygel", en: "🎹 Grand piano" } };
+// the table types in the room editor
+const RIG_SIZES = [
+  { size: "small", no: "Lite rundt", en: "Small round", seats: 4 },
+  { size: "big", no: "Stort rundt", en: "Big round", seats: 6 },
+  { size: "oval", no: "Ovalt", en: "Oval", seats: 6 },
+  { size: "rect", no: "Firkant", en: "Square", seats: 4 },
+  { size: "long", no: "Langt", en: "Long", seats: 6 },
+];
+
 const DIET_WORDS = [
   ["gluten", /glut[e]?n|c[øo]liaki|coeliac|celiac/i],
   ["laktose", /lakto|lacto|melkeallerg|melkefri|melkeprotein/i],
@@ -820,7 +831,7 @@ function room() {
 // its own measured width x length in table.custom. Without it the table uses
 // the default langbord size from Mål.
 function customCm(table) {
-  const c = table && table.size === "long" ? table.custom : null;
+  const c = table && (table.size === "long" ? table.custom : table.own);
   return c && Number.isFinite(c.w) && Number.isFinite(c.l) ? c : null;
 }
 
@@ -2220,6 +2231,7 @@ function groupRun(lead) {
 }
 
 function seatCount(table) {
+  if (table.piece) return 0; // the grand piano: no chairs, no guests
   const lead = groupSeatLead(table);
   if (lead && lead !== table) return 0;
   if (Number.isFinite(table.seatCount) && table.seatCount > 0) return Math.min(40, table.seatCount);
@@ -2466,7 +2478,8 @@ function relabelRoom() {
   for (const members of groups.values()) leadIds.add(leadOf(members).id);
   for (const table of all) table.lead = !table.group || leadIds.has(table.id);
 
-  const tables = all.filter((table) => table.lead);
+  const tables = all.filter((table) => table.lead && !table.piece);
+  for (const table of all) if (table.piece) table.label = "";
   const used = new Set();
 
   if (ROOM_ID !== "spisestua") {
@@ -2917,7 +2930,10 @@ function tableButton(table, inTray) {
         : ""
       : copy[table.size];
   const seatN = seatsOf(table).length;
-  const floorTag = [sizeName, seatN ? `${seatN}p` : ""].filter(Boolean).join(" · ");
+  const extra = Number(table.extraSeats) || 0;
+  const floorTag = table.piece
+    ? PIECES[table.piece]?.[state.lang === "en" ? "en" : "no"] || ""
+    : [IS_SALON ? "" : sizeName, seatN ? `${seatN}${extra ? `+${extra}` : ""}p` : ""].filter(Boolean).join(" · ");
   // Wide screen: names sit beside the map with a line to the table
   // (renderCallouts), so the table itself only shows its number.
   const shownName = calloutMode() ? "" : [tableTitle(table), table.redeck ? `↻ ${table.redeck}` : ""].filter(Boolean).join(" · ");
@@ -4612,10 +4628,13 @@ render();
 // Pure (no `state`): also used to start a Domino plan from Spisestua when
 // «Fordel bord» needs the overflow room and Domino was never opened.
 function dominoTablesAt(r) {
+  // Danny 2026-11-21: in from Spisestua (right wall) there is one table to the
+  // right by the window (top) and two to the left (bottom); the middle of the
+  // left wall is the opening to the bar
   const spots = [
-    [r.w * 0.4, 110, false],
-    [r.w - 110, r.h * 0.55, false],
-    [150, r.h - 115, true],
+    [r.w * 0.45, 110, true],
+    [r.w * 0.28, r.h - 115, true],
+    [r.w * 0.72, r.h - 115, true],
   ];
   return spots.map(([x, y, rotated], i) => {
     const table = makeTable("long");
@@ -6814,13 +6833,6 @@ function offerTableUndo(beforeTables) {
 // (how many can sit there), «⟳ Snu», «🔒 Står fast», «Ta bort» (to a store
 // strip that remembers the spot), «Neste rom ›». Spisestua and Domino can use
 // the same editor; there the tables come from their own store.
-const RIG_SIZES = [
-  { size: "small", no: "Lite rundt", en: "Small round", seats: 4 },
-  { size: "big", no: "Stort rundt", en: "Big round", seats: 6 },
-  { size: "oval", no: "Ovalt", en: "Oval", seats: 6 },
-  { size: "rect", no: "Firkant", en: "Square", seats: 4 },
-  { size: "long", no: "Langt", en: "Long", seats: 6 },
-];
 
 // Open a room: a salon is remembered for this tab only, Spisestua/Domino for the browser
 function goRoom(id, rig = false) {
@@ -6955,7 +6967,7 @@ function renderRig() {
   head.innerHTML = `<button type="button" class="rig-btn" data-rig="done">‹ ${en ? "Done" : "Ferdig"}</button>
     <strong class="rig-name">${esc(name)}</strong>
     <button type="button" class="rig-btn" data-rig="undo" ${rigUndo.length ? "" : "disabled"}>↶ ${en ? "Undo" : "Angre"}</button>
-    ${nxt ? `<button type="button" class="rig-btn" data-rig="next">${esc(nxt[en ? "en" : "no"])} ›</button>` : ""}`;
+    ${nxt ? `<button type="button" class="rig-btn" data-rig="next" title="${esc(nxt[en ? "en" : "no"])}">${en ? "Next" : "Neste"} ›</button>` : ""}`;
   const t = rigTable();
   const r = room();
   const m = (cm) => (Math.round(cm / 10) / 10).toLocaleString(en ? "en-GB" : "nb-NO");
@@ -6967,14 +6979,25 @@ function renderRig() {
   } else if (t) {
     const n = seatsOf(seatOwner(t)).length;
     const spec = RIG_SIZES.find((x) => x.size === t.size);
-    panel.innerHTML = `<p class="rig-title">${en ? "Table" : "Bord"} ${esc(t.label || t.manual || "")} · ${esc(spec ? spec[en ? "en" : "no"] : t.size)}${t.fixed ? " · 🔒" : ""}</p>
-      <div class="rig-row"><span class="rig-label">${en ? "Seats" : "Plasser"}</span><button type="button" class="rig-btn big" data-rig="seat-">−</button><strong class="rig-val">${n}</strong><button type="button" class="rig-btn big" data-rig="seat+">+</button>
+    const what = t.piece ? PIECES[t.piece]?.[en ? "en" : "no"] || "" : `${en ? "Table" : "Bord"} ${esc(t.label || t.manual || "")} · ${esc(spec ? spec[en ? "en" : "no"] : t.size)}`;
+    panel.innerHTML = `<p class="rig-title">${what}${t.fixed ? " · 🔒" : ""}</p>
+      ${
+        t.piece
+          ? `<div class="rig-row"><button type="button" class="rig-btn" data-rig="turn">⟳ ${en ? "Turn" : "Snu"}</button></div>`
+          : `<div class="rig-row"><span class="rig-label">${en ? "Seats" : "Plasser"}</span><button type="button" class="rig-btn big" data-rig="seat-">−</button><strong class="rig-val">${n}</strong><button type="button" class="rig-btn big" data-rig="seat+">+</button>
         ${t.kind === "round" ? "" : `<button type="button" class="rig-btn" data-rig="turn">⟳ ${en ? "Turn" : "Snu"}</button>`}</div>
+        ${IS_SALON ? `<div class="rig-row"><span class="rig-label">${en ? "Extra chairs" : "Ekstra stoler"}</span><button type="button" class="rig-btn big" data-rig="extra-">−</button><strong class="rig-val">${Number(t.extraSeats) || 0}</strong><button type="button" class="rig-btn big" data-rig="extra+">+</button></div>` : ""}`
+      }
       <div class="rig-row arrows"><button type="button" class="rig-btn big" data-rig="left" aria-label="←">←</button><button type="button" class="rig-btn big" data-rig="up" aria-label="↑">↑</button><button type="button" class="rig-btn big" data-rig="down" aria-label="↓">↓</button><button type="button" class="rig-btn big" data-rig="right" aria-label="→">→</button></div>
       <div class="rig-row"><button type="button" class="rig-btn${t.fixed ? " on" : ""}" data-rig="fixed">🔒 ${en ? "Fixed" : "Står fast"}</button><button type="button" class="rig-btn danger" data-rig="remove">${en ? "Take away" : "Ta bort"}</button><button type="button" class="rig-btn primary" data-rig="deselect">✓ ${en ? "Done" : "Ferdig"}</button></div>`;
   } else {
     const stored = state.tables.filter((x) => x.zone === "tray" && (IS_SALON || x.home));
-    panel.innerHTML = `<p class="rig-title">${en ? "Tap a table to change it, or add one:" : "Trykk på et bord for å endre det, eller legg til:"}</p>
+    const suggest = IS_SALON && ROOMS[ROOM_ID].starter && !roomTables().length;
+    panel.innerHTML = `${
+      suggest
+        ? `<div class="rig-row"><button type="button" class="rig-btn primary wide" data-rig="starter">⭐ ${en ? `Put out the suggestion for ${esc(ROOMS[ROOM_ID].en)}` : `Legg ut forslaget for ${esc(ROOMS[ROOM_ID].no)}`}</button></div>`
+        : ""
+    }<p class="rig-title">${en ? "Tap a table to change it, or add one:" : "Trykk på et bord for å endre det, eller legg til:"}</p>
       <div class="rig-row wrap">${RIG_SIZES.map((x) => `<button type="button" class="rig-btn" data-rig-add="${x.size}">+ ${esc(x[en ? "en" : "no"])}</button>`).join("")}</div>
       ${
         stored.length
@@ -7037,6 +7060,15 @@ function rigAction(action) {
       break;
     case "remove":
       return rigRemove();
+    case "starter": {
+      rigSnapshot();
+      const keep = state.tables.filter((x) => x.zone !== "room");
+      state.tables = [...roomStarter(ROOM_ID), ...keep];
+      state.dims.room = { ...ROOMS[ROOM_ID].size };
+      state.sized = true;
+      state.selected = null;
+      break;
+    }
     default: {
       if (!t) return;
       rigSnapshot();
@@ -7050,6 +7082,8 @@ function rigAction(action) {
         setCenterCm(t, centerCm(t), false);
       } else if (action === "fixed") {
         t.fixed = !t.fixed;
+      } else if (action === "extra-" || action === "extra+") {
+        t.extraSeats = Math.max(0, Math.min(8, (Number(t.extraSeats) || 0) + (action === "extra+" ? 1 : -1)));
       } else if (["left", "right", "up", "down"].includes(action)) {
         const c = centerCm(t);
         const dx = action === "left" ? -step : action === "right" ? step : 0;
@@ -7240,4 +7274,31 @@ function roomMapButton(id, en) {
   return `<button type="button" class="chip big primary house-go" data-go-room="${id}">✏️ ${
     n ? (en ? `Table map for ${r.en} · ${n} tables` : `Bordkart for ${r.no} · ${n} bord`) : en ? `Draw the tables in ${r.en}` : `Lag bordkart for ${r.no}`
   }</button>`;
+}
+
+// --- Ready suggestions for the rooms, from Danny's descriptions ----------------
+
+// Toddy (2026-11-21), seen from the reception door with the windows ahead:
+// by the windows, left and right, a sofa against the wall, a small oval table
+// and two big armchairs – 4 people, up to 3 more chairs can be added; by the
+// door, left, a small round table (2, at most 4); right, the grand piano.
+function roomStarter(id) {
+  const def = ROOMS[id];
+  if (!def || def.starter !== "toddy") return [];
+  const r = def.size;
+  const put = (size, own, cm, extra) => {
+    const t = makeTable(size); // made off the floor: this runs before the room exists
+    t.zone = "room";
+    t.own = own;
+    Object.assign(t, extra);
+    t.x = (cm.x / r.w) * 100;
+    t.y = (cm.y / r.h) * 100;
+    return t;
+  };
+  return [
+    put("oval", { w: 60, l: 110 }, { x: 175, y: 175 }, { manual: "1", seatCount: 4, extraSeats: 3, fixed: true }),
+    put("oval", { w: 60, l: 110 }, { x: r.w - 175, y: 175 }, { manual: "2", seatCount: 4, extraSeats: 3, fixed: true }),
+    put("small", { w: 60, l: 60 }, { x: 170, y: r.h - 120 }, { manual: "3", seatCount: 2, extraSeats: 2 }),
+    put("rect", { w: 150, l: 200 }, { x: r.w - 210, y: r.h - 140 }, { piece: "flygel", rotated: true, fixed: true }),
+  ];
 }

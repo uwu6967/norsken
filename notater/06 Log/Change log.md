@@ -9,6 +9,8 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-21
+- Toddy suggestion (sofa groups 4+3, small table, grand piano); «Ekstra stoler»; furniture that is not
+  a table («🎹 Flygel»); Domino laid out as Danny walks in from Spisestua.
 - Rooms «innover»: every room of the club has its own table map; the «Innover ▾» button and «🏠 Norsken»
   open them; a full-screen editor for the phone («✏️ Flytt bord»); «📤 Send bordkart» to another PC.
 - Phone: a finger sliding off the map no longer sends a table to storage; «Til lager» and a drag to
