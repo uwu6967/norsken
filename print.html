@@ -650,10 +650,10 @@
       const isEvent = (g) => (g.event === true ? true : g.event === false ? false : EVENT_WORDS.test(String(g.areaLabel || g.area || "")) || EVENT_WORDS.test(String(g.note || "")));
       const inShift = (g) => {
         if (!SHIFT) return true;
-        if (SHIFT === "arrangement") return isEvent(g);
         const m = String(g.time || "").match(/^(\d{1,2})[:.](\d{2})/);
         const lunch = m ? Number(m[1]) * 60 + Number(m[2]) < 15 * 60 : false;
-        return SHIFT === "lunsj" ? lunch : !lunch;
+        // same as app.js: Lunsj/Middag are the ordinary guests, «+arrangement» adds the event
+        return SHIFT.split("+").some((part) => (part === "arrangement" ? isEvent(g) : !isEvent(g) && (part === "lunsj" ? lunch : !lunch)));
       };
       const guestList = (guestStore && Array.isArray(guestStore.list) ? guestStore.list : []).filter(inShift);
       const guestRoomOf = (x) => (guestStore && guestStore.room && guestStore.room[x.id]) || "spisestua";
@@ -1145,7 +1145,13 @@
       const escHtml = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
       if (arrivals.length) {
         const en = lang === "en";
-        const shiftName = { lunsj: en ? "Lunch" : "Lunsj", middag: en ? "Dinner" : "Middag", arrangement: en ? "Event" : "Arrangement" }[SHIFT];
+        const shiftName = {
+          lunsj: en ? "Lunch" : "Lunsj",
+          middag: en ? "Dinner" : "Middag",
+          arrangement: en ? "Event" : "Arrangement",
+          "middag+arrangement": en ? "Dinner + Event" : "Middag + Arrangement",
+          "lunsj+arrangement": en ? "Lunch + Event" : "Lunsj + Arrangement",
+        }[SHIFT];
         document.getElementById("list-title").textContent = (en ? "Arrivals" : "Ankomster") + (shiftName ? ` · ${shiftName}` : "");
         arrivals.sort(
           (a, b) =>
