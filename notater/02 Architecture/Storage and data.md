@@ -35,7 +35,8 @@ Notes on the table:
 - **Presets**: `layoutSnapshot()` strips `GUEST_FIELDS` = `name`, `booked`, `redeck`, `redeckPax`, `seatNames`, `seatNotes`, `seatMarks`, `seatFromGuest`, `seatBefore`, `seatsRender` from every table, and puts back the table's own chair count (`seatBefore`) when the chairs came from a booking. So a saved setup or its file never carries names. Same name (case-insensitive) replaces the old entry. The export file is `norsken-oppsett-YYYY-MM-DD.json` with `{ norskenPresets: 1, rooms: <the same object> }`; import checks `norskenPresets === 1` and strips `GUEST_FIELDS` again.
 - **Undo** holds a full `state` (it may contain typed table names). One level only, per room, survives closing the page.
 - **Update check** only does anything in the extension: `installedRelease()` reads the last part of the manifest version (`1.0.<n>`), and returns 0 elsewhere. It asks the GitHub releases API at most every 3 hours (`3 * 60 * 60 * 1000` ms), compares `<n>` with the `-<n>` at the end of the tag, and `skip` remembers a version the user postponed with «Senere».
-- **Not localStorage**: the CSV from «Last ned liste» (stays in Downloads), the hosted copy's print download `norsken-oppsett-YYYY-MM-DD.html` (has the guests baked in), and the list in the address after `#import=` (read once by `importFromHash()`, then wiped with `history.replaceState`).
+- **Not localStorage**: the CSV from «Last ned liste» (stays in Downloads), and the hosted copy's print download `norsken-oppsett-YYYY-MM-DD.html` (has the guests baked in).
+- **How the list arrives** (details on [[ResDiary import]]): the «Til Norsken» bookmark opens `…/norsken/#fra-resdiary` and hands the list over in memory with `postMessage` (`{ norsken: <text> }`); the page only accepts it from an origin matching `RESDIARY_ORIGIN`, ignores the same text again within 60 s (`lastHandoff`), and answers `"norsken-ok"`. Nothing goes in the address. The older bookmark put the list after `#import=`; `importFromHash()` still reads that, wipes it from the address bar with `history.replaceState`, and shows a toast asking for the new button. After a successful paste import («Lim inn fra ResDiary» or Ctrl+V) the clipboard is overwritten with an empty string.
 
 ## Rooms: ROOMS, ROOM_ID and per-room keys
 
@@ -70,7 +71,7 @@ Created by `defaultState()`, loaded by `loadState()` → `normalizeState()`, wri
 | `paintings` | 9 paintings from `defaultPaintings()` | `{ id, wall, along, span, name }`; currently not drawn on the map |
 | `showPaintings` | `false` | dormant (its button is not in `index.html`) |
 | `selectedPainting` | `null` | dormant |
-| `bookingsText` | `""` | old free-text bookings box (max 4000 chars); the textarea is gone, field kept |
+| `bookingsText` | `""` | old free-text bookings box. The textarea is gone and `normalizeState()` now always sets it to `""` ("the old pasted list is not kept any more"); it is not shared. |
 | `bookingOrder` | `DEFAULT_BOOKING_ORDER` = `"3, 6, 5, 8, 10, 9, 11, 7, 2, 4"` | «Prioritet» for [[Auto seating]] (max 120 chars) |
 | `overflow` | `"redeck"` | when Spisestua is full: `"redeck"` («Dekk om et bord (↻)») or `"domino"` («Bruk Domino») |
 | `sitMinutes` | `60` | minutes before a table can be laid again; clamped 15–300 |
@@ -127,7 +128,7 @@ If the printout needs something new, bake it here rather than teaching `print.ht
 
 ### Loading and migration: normalizeState()
 
-`normalizeState(parsed)` is pure and runs BEFORE `state` exists (at `let state = loadState()`) and again for every remote update and for «Angre». No tables → `defaultState()`. Otherwise: defaults spread under the saved fields, Domino fixtures always reset, paintings normalized, the sidebord moved to the bottom wall once (`migrateFurniture()`), `dims` via `mergeDims()`, booleans forced, `bookingsText` ≤ 4000, `bookingOrder` ≤ 120 (empty → default), a plan older than dims v10 with no oval table gets one (a round table 16 on the floor becomes the oval and a copy of it goes to the tray; otherwise an oval is added to the tray), and per table: plate sizes turned into `"long"`, unknown sizes into `"small"`, `kind` recomputed, `ends` forced to 0/1/2, `custom` clamped, `plates = null`, `gapPlates` filtered; a group of one is dissolved and the first table in each group loses its `gapPlates`.
+`normalizeState(parsed)` is pure and runs BEFORE `state` exists (at `let state = loadState()`) and again for every remote update and for «Angre». No tables → `defaultState()`. Otherwise: defaults spread under the saved fields, Domino fixtures always reset, paintings normalized, the sidebord moved to the bottom wall once (`migrateFurniture()`), `dims` via `mergeDims()`, booleans forced, `bookingsText` emptied, `bookingOrder` ≤ 120 (empty → default), a plan older than dims v10 with no oval table gets one (a round table 16 on the floor becomes the oval and a copy of it goes to the tray; otherwise an oval is added to the tray), and per table: plate sizes turned into `"long"`, unknown sizes into `"small"`, `kind` recomputed, `ends` forced to 0/1/2, `custom` clamped, `plates = null`, `gapPlates` filtered; a group of one is dissolved and the first table in each group loses its `gapPlates`.
 
 Any exception inside returns `defaultState()`, which silently wipes the layout. That is why it must not call anything that reads `state` (`room()`, `centerCm()`, `orderGroup()` …); the comment in the code says so. See the TDZ section on [[Render loop]].
 
@@ -180,7 +181,9 @@ Pattern for any change: mutate `guests`, then `saveGuests()`, then `save()` (cha
 `connectShare()` runs at load. Without `window.claude?.use` it does nothing and storage stays local. In the hosted copy it opens the shared store (`window.claude.use("db")`) and listens to the doc `SHARED_DOC` (`plan/current` or `plan/domino`).
 
 - Doc body: `{ plan: <JSON string>, writer: CLIENT_ID, at: <ms> }`. `CLIENT_ID` is random per page load.
-- Only `SHARED_KEYS` are shared: `tables`, `fixtures`, `furniture`, `dims`, `paintings`, `bookingsText`, `bookingOrder`. `norsken-guests-v1` is never shared, but typed table names and chair names/notes/marks are inside `tables` and so are shared.
+- Only `SHARED_KEYS` are shared: `tables`, `fixtures`, `furniture`, `dims`, `paintings`, `bookingOrder`. `norsken-guests-v1` is never shared.
+- `sharedPayload()` sends `layoutOnly(state.tables)`: a copy of the tables with every `GUEST_FIELDS` entry removed (`name`, `booked`, `redeck`, `redeckPax`, `seatNames`, `seatNotes`, `seatMarks`, `seatFromGuest`, `seatBefore`, `seatsRender`) plus `guests`, and with a booking's chair count swapped back to the table's own (`seatBefore`). So typed names, chair notes and allergy marks stay on the device.
+- `applyRemote()` runs the incoming tables through `layoutOnly()` too, then copies this device's own guest fields back onto tables with the same `id` (and its booking-given `seatCount`), and drops any `bookingsText`.
 - First snapshot: a plan in the store replaces the local one (`applyRemote()`); an empty store gets this device's plan (`pushShare()`). 10 s without an answer → keep working, status «Ikke lagret – prøver igjen».
 - `scheduleShare()` debounces `pushShare()` by 700 ms. Nothing is pushed while a drag is running, or if the body equals the last one sent. A permission error sets `share.canWrite = false` («Kun visning»); other errors retry after 4 s.
 - Later snapshots from other writers are applied unless a drag is running. `applyRemote()` keeps this device's `lang`, `showGrid`, `showMeasure`, `withChairs`, `brush`, `showPaintings`, `selectedPainting`, and `selected` if that table still exists.
