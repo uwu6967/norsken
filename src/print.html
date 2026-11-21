@@ -543,14 +543,32 @@
     </div>
     <p class="no-print"><button type="button" id="print">Skriv ut / lagre som PDF</button></p>
     <script>
-      const ROOM_NAMES = { spisestua: { no: "Spisestua", en: "Dining room" }, domino: { no: "Domino", en: "Domino" } };
+      // every room with a table map (same ids as ROOM_DEFS in app.js)
+      const ROOM_NAMES = {
+        spisestua: { no: "Spisestua", en: "Dining room" },
+        domino: { no: "Domino", en: "Domino" },
+        bar: { no: "Bar", en: "Bar" },
+        toddy: { no: "Toddy", en: "Toddy" },
+        danske: { no: "Danske kjelleret", en: "Danske kjelleret" },
+        arneberg: { no: "Arneberg", en: "Arneberg" },
+        moterom: { no: "Møterom", en: "Meeting room" },
+        kristiania: { no: "Kristiania", en: "Kristiania" },
+        atheneum: { no: "Atheneum", en: "Atheneum" },
+        bibliotek: { no: "Bibliotek", en: "Library" },
+        r1818: { no: "1818", en: "1818" },
+        r1814: { no: "1814", en: "1814" },
+        r1772: { no: "1772", en: "1772" },
+      };
+      const roomKey = (id) => (id === "spisestua" ? "norsken-layout-v3" : id === "domino" ? "norsken-layout-domino-v1" : `norsken-layout-${id}-v1`);
       // The sheet is always Spisestua (Domino goes beside it when it is in use).
       // print.html?room=domino&embed=1 draws just the Domino map, for that corner.
       const PARAMS = new URLSearchParams(location.search);
       const EMBED = PARAMS.get("embed") === "1";
       let ROOM_ID = window.__NORSKEN_ROOM__ || (ROOM_NAMES[PARAMS.get("room")] ? PARAMS.get("room") : "spisestua");
+      if (!ROOM_NAMES[ROOM_ID]) ROOM_ID = "spisestua";
+      const IS_SALON = ROOM_ID !== "spisestua" && ROOM_ID !== "domino"; // a salon prints its map only
       if (EMBED) document.documentElement.classList.add("embed");
-      const STORAGE_KEY = ROOM_ID === "domino" ? "norsken-layout-domino-v1" : "norsken-layout-v3";
+      const STORAGE_KEY = roomKey(ROOM_ID);
       const SEAT_MARKS = [
         { key: "gluten", color: "#2a78d6", code: "G", no: "Gluten", en: "Gluten" },
         { key: "laktose", color: "#eb6834", code: "L", no: "Laktose", en: "Lactose" },
@@ -631,11 +649,11 @@
       const uiLang = state.lang === "en" ? "en" : "no";
       let otherPlan = null;
       try {
-        otherPlan = JSON.parse(localStorage.getItem(OTHER === "domino" ? "norsken-layout-domino-v1" : "norsken-layout-v3") || "null");
+        if (!IS_SALON) otherPlan = JSON.parse(localStorage.getItem(roomKey(OTHER)) || "null");
       } catch {}
       let guestStore = null;
       try {
-        guestStore = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
+        if (!IS_SALON) guestStore = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
       } catch {}
       // only the shift chosen in the app: Lunsj, Middag or Arrangement (app.js inShift)
       let SHIFT = window.__NORSKEN_SHIFT__;
