@@ -46,7 +46,7 @@ jobs:
             echo "- **LES-MEG.txt**: bruksanvisning + ResDiary-bokmerkene som tekst (kopier og lim inn)."
             echo
             echo "## Endringer"
-            if [ -n "$PREV" ]; then
+            if [ -n "$PREV" ] && git merge-base --is-ancestor "$PREV" HEAD 2>/dev/null; then
               git log --no-merges --reverse --format='- **%s**%n%n%w(0,2,2)%b' $RANGE | cat -s
             else
               echo "- Alt fra før er samlet i denne versjonen."
