@@ -17,6 +17,10 @@ for. If a rule here and the code disagree, the rule wins and the code is a bug.
   shared plan (`state`), never sent anywhere. See [[Storage and data]] and [[ResDiary import]].
 - The ResDiary buttons read only time, party size, surname, comment, area and ResDiary's table –
   never phone or e-mail.
+- Guest data never goes in a URL (not even after `#`) – browsers keep visited addresses in their
+  history. Hand data between pages in memory (`postMessage` with a checked origin).
+- Anything shared or synced (the hosted copy's shared plan) carries the **layout only**: strip
+  `GUEST_FIELDS` and booking-set chairs first (`layoutOnly()` in `src/app.js`).
 
 ## Git and releases
 - Finished work goes **straight to `main`**. The other branches on GitHub are kept as they are.
