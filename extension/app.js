@@ -730,16 +730,20 @@ let resQuery = ""; // the search box in Reservasjoner
 const SHIFT_KEY = "norsken-shift";
 const LUNCH_ENDS = 15 * 60;
 const EVENT_WORDS = /fast meny|meny for alle|selskap|arrangement|julebord|bankett|\bkurs\b|\bevent\b|konferanse/i;
+// Lunsj and Middag are the ordinary guests; Arrangement is the event's guests;
+// «Middag + Arrangement» is both (shown only on a day that has an event).
 const SHIFTS = [
   { key: "lunsj", no: "Lunsj", en: "Lunch", icon: "☀️", floor: "lunch" },
   { key: "middag", no: "Middag", en: "Dinner", icon: "🌙", floor: "usual" },
   { key: "arrangement", no: "Arrangement", en: "Event", icon: "★", floor: null },
+  { key: "middag+arrangement", no: "Middag + Arrangement", en: "Dinner + Event", short: "Middag+★", shortEn: "Dinner+★", icon: "🌙★", floor: "usual", combo: true },
+  { key: "lunsj+arrangement", no: "Lunsj + Arrangement", en: "Lunch + Event", short: "Lunsj+★", shortEn: "Lunch+★", icon: "☀️★", floor: "lunch", combo: true },
 ];
 const TOOLS_KEY = "norsken-tools";
 let SHIFT = (() => {
   try {
     const v = localStorage.getItem(SHIFT_KEY) || "";
-    return ["lunsj", "middag", "arrangement"].includes(v) ? v : "";
+    return ["lunsj", "middag", "arrangement", "middag+arrangement", "lunsj+arrangement"].includes(v) ? v : "";
   } catch {
     return "";
   }
@@ -6333,8 +6337,7 @@ function placeGroup(groupKey, table) {
 // Bookings before 15:00 are lunch, from 15:00 dinner. An arrangement is found
 // from Område («Fast meny i Spisestue», «Selskap» …) or the comment (fast meny,
 // selskap, arrangement, julebord, kurs …); the boss can mark or unmark it by
-// hand (★). An arrangement booking is still in Lunsj/Middag by its time, so
-// nobody disappears from the room they sit in.
+// hand (★). On an event day pick «Middag + Arrangement» to have both.
 function isEvent(g) {
   if (g.event === true) return true;
   if (g.event === false) return false;
@@ -6347,14 +6350,23 @@ function shiftOfTime(g) {
 }
 function inShift(g, shift = SHIFT) {
   if (!shift) return true;
-  if (shift === "arrangement") return isEvent(g);
-  return shiftOfTime(g) === shift;
+  // «middag+arrangement»: in if any part fits. Lunsj/Middag alone are the
+  // ordinary guests – the event's guests come with Arrangement.
+  return shift.split("+").some((part) => (part === "arrangement" ? isEvent(g) : !isEvent(g) && shiftOfTime(g) === part));
+}
+// a combined card only on a day that has both parts
+function shiftShown(sh, counts) {
+  if (!sh.combo) return sh.key !== "arrangement" || counts.arrangement.b > 0;
+  // «Lunsj + Arrangement» only when the event is at lunch, and so on
+  const [base] = sh.key.split("+");
+  return counts[base].b > 0 && guests.list.some((g) => isEvent(g) && shiftOfTime(g) === base);
 }
 function shiftCounts() {
-  const out = { lunsj: { b: 0, p: 0 }, middag: { b: 0, p: 0 }, arrangement: { b: 0, p: 0 }, "": { b: 0, p: 0 } };
+  const keys = [...SHIFTS.map((sh) => sh.key), ""];
+  const out = Object.fromEntries(keys.map((k) => [k, { b: 0, p: 0 }]));
   for (const g of guests.list) {
     const p = Number(g.pax) || 0;
-    for (const k of ["lunsj", "middag", "arrangement", ""]) {
+    for (const k of keys) {
       if (inShift(g, k)) {
         out[k].b += 1;
         out[k].p += p;
@@ -6406,13 +6418,13 @@ function renderShell() {
   const counts = shiftCounts();
   const nav = document.getElementById("shift-switch");
   if (nav) {
-    const items = SHIFTS.filter((sh) => sh.key !== "arrangement" || counts.arrangement.b || SHIFT === "arrangement");
+    const items = SHIFTS.filter((sh) => shiftShown(sh, counts) || SHIFT === sh.key);
     nav.innerHTML =
       items
         .map(
           (sh) =>
-            `<button type="button" class="shift-tab${SHIFT === sh.key ? " on" : ""}" data-shift="${sh.key}" aria-pressed="${SHIFT === sh.key}"><span class="st-name">${sh.icon} ${en ? sh.en : sh.no}</span>${
-              guests.list.length ? `<span class="st-count">${counts[sh.key].p} ${en ? "ppl" : "pers"}</span>` : ""
+            `<button type="button" class="shift-tab${SHIFT === sh.key ? " on" : ""}${sh.combo ? " combo" : ""}" data-shift="${sh.key}" aria-pressed="${SHIFT === sh.key}" title="${en ? sh.en : sh.no}"><span class="st-name">${sh.combo ? (en ? sh.shortEn : sh.short) : `<span class="st-icon">${sh.icon} </span>${en ? sh.en : sh.no}`}</span>${
+              guests.list.length ? `<span class="st-count">${counts[sh.key].p}<span class="st-word"> ${en ? "ppl" : "pers"}</span></span>` : ""
             }</button>`,
         )
         .join("") +
@@ -6521,7 +6533,10 @@ function renderToday() {
   document.getElementById("today-step-3").classList.toggle("off", !n);
   const counts = shiftCounts();
   const box = document.getElementById("today-shifts");
-  box.innerHTML = SHIFTS.map((sh) => {
+  const eventDay = counts.arrangement.b > 0;
+  const cards = SHIFTS.filter((sh) => !sh.combo || shiftShown(sh, counts));
+  cards.sort((a, b) => Number(Boolean(b.combo)) - Number(Boolean(a.combo)));
+  box.innerHTML = cards.map((sh) => {
     const c = counts[sh.key];
     const empty = !c.b;
     const floorNote = sh.floor
@@ -6529,11 +6544,20 @@ function renderToday() {
         ? en ? "Lunch setup" : "Lunsj-oppsett"
         : en ? "Usual setup" : "Vanlig oppsett"
       : en ? "Keeps the floor as it is" : "Beholder gulvet som det er";
-    return `<button type="button" class="shift-card${SHIFT === sh.key ? " on" : ""}${empty ? " empty" : ""}" data-choose="${sh.key}" ${empty ? "disabled" : ""}>
+    return `<button type="button" class="shift-card${SHIFT === sh.key ? " on" : ""}${empty ? " empty" : ""}${sh.combo ? " wide" : ""}" data-choose="${sh.key}" ${empty ? "disabled" : ""}>
+      ${sh.combo ? `<span class="sc-badge">${en ? "Recommended today" : "Anbefalt i dag"}</span>` : ""}
       <span class="sc-icon">${sh.icon}</span>
       <span class="sc-name">${en ? sh.en : sh.no}</span>
       <span class="sc-count">${empty ? (en ? "No bookings" : "Ingen bookinger") : `${c.b} ${bookingWord(c.b, en)} · ${c.p} ${en ? "guests" : "gjester"}`}</span>
-      <span class="sc-note">${sh.key === "lunsj" ? (en ? "before 15:00" : "før 15:00") : sh.key === "middag" ? (en ? "from 15:00" : "fra 15:00") : en ? "fixed menu, private party …" : "fast meny, selskap …"} · ${floorNote}</span>
+      <span class="sc-note">${
+        sh.combo
+          ? en ? "everyone in both" : "alle i begge"
+          : sh.key === "lunsj"
+            ? (en ? "before 15:00" : "før 15:00") + (eventDay ? (en ? ", not the event" : ", uten arrangementet") : "")
+            : sh.key === "middag"
+              ? (en ? "from 15:00" : "fra 15:00") + (eventDay ? (en ? ", not the event" : ", uten arrangementet") : "")
+              : en ? "fixed menu, private party …" : "fast meny, selskap …"
+      } · ${floorNote}</span>
     </button>`;
   }).join("");
 }

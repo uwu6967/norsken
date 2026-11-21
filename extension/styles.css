@@ -3476,3 +3476,137 @@ body.tools-off .board > .tray {
 .topbar .brand {
   flex: 0 0 auto;
 }
+.shift-tab.combo .st-name {
+  font-size: 0.86rem;
+}
+/* the combined card on an event day: first, full width */
+.shift-card.wide {
+  grid-column: 1 / -1;
+  grid-template-columns: auto 1fr;
+  column-gap: 14px;
+  align-items: center;
+  border-color: #c4a574;
+  background: linear-gradient(135deg, #fff6e2, #fffaf2);
+}
+.shift-card.wide .sc-icon {
+  grid-row: 1 / span 4;
+  font-size: 2.2rem;
+}
+.shift-card .sc-badge {
+  justify-self: start;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #2f4a3c;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.shift-card {
+  padding: 12px 14px;
+}
+.shift-card .sc-name {
+  font-size: 1.35rem;
+}
+.today-card {
+  padding: 22px 24px 24px;
+}
+.today-head h2 {
+  font-size: 2.1rem;
+}
+.today-steps {
+  margin-top: 12px;
+  gap: 10px;
+}
+.today-step {
+  padding: 12px 14px;
+}
+/* laptop: the shift tabs drop the icons and the word «pers» */
+@media (max-width: 1599px) {
+  .shift-tab .st-icon,
+  .shift-tab .st-word {
+    display: none;
+  }
+  .shift-tab {
+    padding: 5px 9px;
+  }
+  .topbar .room-switch .room-tab {
+    padding: 6px 10px;
+  }
+}
+@media (max-width: 1599px) {
+  .topbar .room-switch .room-tab {
+    min-width: 0;
+  }
+}
+/* the small buttons keep only their icon until the screen is very wide */
+@media (max-width: 2099px) {
+  .topbar-actions #house-btn-text,
+  .topbar-actions #tools-btn-text,
+  .topbar-actions #mine-btn-text,
+  .topbar-actions #settings-btn-text {
+    display: none;
+  }
+}
+@media (max-width: 1365px) {
+  .topbar {
+    gap: 6px;
+    padding: 8px 10px;
+  }
+  .topbar .brand h1 {
+    font-size: 1.35rem;
+  }
+  .shift-tab {
+    padding: 4px 7px;
+  }
+  .shift-tab .st-name {
+    font-size: 0.86rem;
+  }
+  .topbar-actions {
+    gap: 4px;
+  }
+  .topbar-actions .chip.big {
+    padding: 7px 9px;
+  }
+  .topbar .room-switch .room-tab {
+    padding: 5px 9px;
+    font-size: 0.86rem;
+  }
+}
+@media (min-width: 1600px) and (max-width: 1799px) {
+  .shift-tab .st-icon,
+  .shift-tab .st-word {
+    display: none;
+  }
+}
+/* small laptops: the shift tabs get their own row */
+@media (max-width: 1279px) {
+  .topbar,
+  .topbar .topbar-actions {
+    flex-wrap: wrap;
+  }
+  .shift-switch {
+    order: 5;
+    width: 100%;
+    justify-content: space-between;
+  }
+  .shift-tab {
+    flex: 1 1 0;
+  }
+}
+@media (min-width: 1600px) and (max-width: 1799px) {
+  .shift-tab {
+    min-width: 0;
+    padding: 5px 10px;
+  }
+  .topbar .room-switch .room-tab {
+    min-width: 0;
+    padding: 6px 14px;
+  }
+  .topbar-actions .chip.big {
+    padding: 8px 12px;
+  }
+  .print-chairs .pc-text {
+    display: none;
+  }
+}
