@@ -9,21 +9,30 @@ og skriv ut – med noen få trykk.
 
 ## Hver dag – tre trykk
 
+Første gang på denne PC-en? Gjør **Første gang** lenger ned først.
+
 | | Slik gjør du |
 |---|---|
-| **1** | I **ResDiary**: gå til **Diary → Print**, og trykk **🍽 Til Norsken** på bokmerkelinja. Norsken åpner med dagens bookinger. |
-| **2** | Trykk **Lunsj**, **Middag** eller **Arrangement** (på arrangementsdager også **Middag + Arrangement**). Bordene blir lagt ut og gjestene får bord. |
-| **3** | Trykk **🖨 Skriv ut**. Du får kartet til venstre og gjestelista til høyre, med en rute å krysse av når de kommer. |
+| **1** | I **ResDiary**: trykk **Diary** og så **Print** (sjekk at datoen er riktig). Trykk så **🍽 Til Norsken** på bokmerkelinja – raden øverst i nettleseren, rett under nettadressen. Norsken åpner med dagens bookinger og et vindu med tre steg. |
+| **2** | I det vinduet: trykk **Lunsj**, **Middag** eller **Arrangement**. Er det arrangement i dag, ta valget merket **Anbefalt i dag**. Bordene blir lagt ut og gjestene får bord. (Lukket vinduet? Trykk **☀ I dag** øverst.) |
+| **3** | Trykk **🖨 Skriv ut**. Utskriftsvinduet kommer opp av seg selv – trykk **Skriv ut** der også. Du får kartet til venstre og gjestelista til høyre, med en rute å krysse av når de kommer. |
 
 Ferdig! Resten er bare hvis du vil endre noe.
+
+**Hvis det stopper opp**
+- **Ingen 🍽 Til Norsken-knapp** (ny PC eller annen nettleser): gjør **Første gang** rett under. Det tar ett minutt.
+- **«Fant ingen bookinger her»**: du er ikke på utskriftssiden. Trykk **Diary** og **Print** i ResDiary, og trykk knappen igjen.
+- **Meldingen nederst sier «… uten bord»**: dra de navnene fra **Uten bord** (fanen **Reservasjoner**) til et ledig bord før du skriver ut.
 
 ---
 
 ## Første gang (én gang per PC)
 
-1. **Lagre Norsken som bokmerke:** åpne https://uwu6967.github.io/norsken/ og trykk ☆ i adressefeltet.
-2. **Få ResDiary-knappen:** åpne https://uwu6967.github.io/norsken/bokmerke.html og dra den grønne
-   knappen **🍽 Til Norsken** opp til bokmerkelinja. (Ser du ikke bokmerkelinja? Trykk `Ctrl` + `Shift` + `B`.)
+1. **Lagre Norsken som bokmerke:** åpne https://uwu6967.github.io/norsken/ og trykk `Ctrl` + `D`
+   (eller stjernen ☆ helt til høyre der nettadressen står). Trykk **Ferdig**.
+2. **Få ResDiary-knappen:** åpne https://uwu6967.github.io/norsken/bokmerke.html.
+   Ser du ikke bokmerkelinja (raden rett under nettadressen)? Trykk `Ctrl` + `Shift` + `B`.
+   Hold musa nede på den grønne knappen **🍽 Til Norsken**, dra den opp til bokmerkelinja og slipp. Ikke klikk – dra.
 
 Det er alt. Ingenting å installere.
 
@@ -34,28 +43,28 @@ Det er alt. Ingenting å installere.
 | Jeg vil … | Gjør slik |
 |---|---|
 | flytte gjester til et annet bord | Dra navnet til det nye bordet. |
-| ta gjester av bordet | Dra navnet tilbake til lista til venstre. |
-| krysse av at gjestene har kommet | Trykk **✓** ved navnet under **Reservasjoner**. Bordet blir grønt. |
+| ta gjester av bordet | Trykk **✕** ved navnet, eller dra navnet tilbake til **Uten bord**. |
+| krysse av at gjestene har kommet | Trykk **✓** ved navnet under fanen **Reservasjoner** til venstre. Bordet får en grønn ring når alle ved bordet er kommet. |
 | se allergier | Ord som *glutenfri*, *nøtter* og *gravid* i ResDiary-kommentaren blir fargekoder (G, N, Gr …). |
 | sette en hel gruppe sammen | Dra overskriften (f.eks. **Onsdagsklubben**) fra «Uten bord» til et bord. |
-| skrive ut uten stoler | Trykk **🪑** ved siden av **Skriv ut**. |
-| se hele huset | Trykk **🏠 Norsken**: rommene får farge etter hvor mange som er booket der. |
-| flytte bord, legge til bord, bordplater | Trykk **🧰 Verktøy**. |
-| angre | Trykk **↶ Angre** i meldingen nederst. |
-| begynne på en ny dag | Trykk **☀ I dag**. |
+| skrive ut uten stoler | Trykk **med stoler** ved siden av **Skriv ut**, så det står **uten stoler**. |
+| se hele huset | Trykk knappen **🏠 Norsken** øverst: rommene får farge etter hvor mange som er booket der. |
+| hente bord fra lageret, legge til bord, bordplater | Trykk **🧰 Verktøy**. (Bord på kartet kan du dra rett dit du vil.) |
+| angre | Trykk **↶ Angre** i meldingen nederst – rett etterpå, før den forsvinner. |
+| begynne på en ny dag | Trykk **🍽 Til Norsken** i ResDiary igjen – den nye lista erstatter den gamle. |
 
 ---
 
 ## 🔒 Gjestene blir på PC-en
 
-- Knappen i ResDiary leser bare **tid, antall, etternavn, kommentar og område** – aldri telefon eller e-post.
+- Knappen i ResDiary leser bare **tid, antall, etternavn, kommentar, område og bordnummer** – aldri telefon eller e-post.
 - Lista sendes **ikke** til noen server, ikke til GitHub og ikke til noen andre. Den lagres bare i nettleseren på den PC-en.
-- Ingen gjestenavn, telefonnumre, e-poster eller bilder legges i denne repoen.
+- Ingen gjestenavn, telefonnumre, e-poster eller bilder legges ut her på GitHub.
 
 ---
 
 <details>
-<summary><b>Som utvidelse i Chrome / Edge (valgfritt)</b></summary>
+<summary><b>Som utvidelse i Chrome / Edge (valgfritt – de fleste trenger ikke dette)</b></summary>
 
 Last ned **Norsken.zip** fra [siste versjon](https://github.com/uwu6967/norsken/releases/latest).
 
@@ -66,7 +75,7 @@ Last ned **Norsken.zip** fra [siste versjon](https://github.com/uwu6967/norsken/
 5. Fest Norsken-ikonet (puslespillbrikken øverst til høyre) og klikk det for å åpne bordplanen.
 
 Ny versjon: pakk ut den nye zip-fila i den samme mappa og trykk ↻ på Norsken i `chrome://extensions`.
-Ikke trykk **Fjern** – da slettes planene.
+Ikke trykk **Fjern** – da slettes planene. Merk: **🍽 Til Norsken** åpner alltid nettsiden, ikke utvidelsen.
 
 Uten installering: pakk ut zip-fila og dobbeltklikk **`index.html`**.
 </details>
@@ -75,9 +84,9 @@ Uten installering: pakk ut zip-fila og dobbeltklikk **`index.html`**.
 <summary><b>For den som endrer koden</b></summary>
 
 - Kildekoden ligger i `src/` (`index.html`, `app.js`, `styles.css`, `print.html`) og ResDiary-knappene i `resdiary/`.
-- Etter endringer: `python3 tools/build.py` – den lager `index.html`, `print.html`, `bokmerke.html`, `extension/` og `LES-MEG.txt`.
+- Etter endringer: `python3 tools/build.py` – den lager `index.html`, `print.html`, `bokmerke.html`, `extension/`, `LES-MEG.txt` og bokmerkekodene i `resdiary/README.md`.
 - Bokmerkekodene som tekst står i [resdiary/README.md](resdiary/README.md).
-- Regler: se [CONTRIBUTING.md](CONTRIBUTING.md).
+- Regler: se [CONTRIBUTING.md](CONTRIBUTING.md). Notatboka for prosjektet ligger i [`notater/`](notater/Start%20here.md) (kan åpnes i Obsidian).
 </details>
 
 ---
