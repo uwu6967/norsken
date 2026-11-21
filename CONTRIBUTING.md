@@ -11,3 +11,7 @@
   Den som bruker appen skal aldri trenge å bygge noe.
 - `extension/` er Chrome/Edge-utvidelsen (Manifest V3: ingen skript inne i HTML-en, derfor egne
   `app.js` og `print.js`). Zip-fila har filene rett i roten og virker også ved å dobbeltklikke `index.html`.
+- Notatboka `notater/` (kan åpnes i Obsidian) er prosjektets felles hukommelse. Les
+  `notater/Start here.md` før du endrer noe. Etter en endring: skriv en linje i
+  `notater/06 Log/Change log.md`, oppdater siden for funksjonen, og skriv nye beslutninger i
+  `notater/04 Rules and decisions/Decisions.md`. Ingen gjestenavn der heller.
