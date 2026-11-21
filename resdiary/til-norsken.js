@@ -18,7 +18,7 @@ var a=ai>=0?r.cells[ai].textContent.replace(/\s+/g," ").trim():"",b=bi>=0?r.cell
 out.push([tm,g,n,k,a,b].join("\t"));});
 });
 var txt=out.join("\n");
-if(!txt){alert("Fant ingen bookinger her.");return;}
+if(!txt){alert("Fant ingen bookinger her. Gå til Diary → Print (utskriften) i ResDiary, og trykk knappen igjen.");return;}
 var url="https:/"+"/uwu6967.github.io/norsken/#import="+encodeURIComponent(txt);
 var w=window.open(url,"norsken");
 if(!w){location.href=url;}

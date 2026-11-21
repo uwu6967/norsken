@@ -6523,6 +6523,7 @@ function renderToday() {
         : "Raskest: trykk bokmerket «Til Norsken» på ResDiary-utskriften. Eller kopier med «Til bordplan» og trykk knappen under.",
   );
   set("today-paste-text", en ? "Paste from ResDiary" : "Lim inn fra ResDiary");
+  set("today-setup-text", en ? "Get the ResDiary button (once per PC)" : "Få ResDiary-knappen (gjøres én gang per PC)");
   set("today-file-text", en ? "Open file" : "Åpne fil");
   set("today-s2-title", en ? "Choose" : "Velg");
   set("today-s3-title", en ? "Print" : "Skriv ut");

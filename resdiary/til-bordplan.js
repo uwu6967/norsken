@@ -18,7 +18,7 @@ var a=ai>=0?r.cells[ai].textContent.replace(/\s+/g," ").trim():"",b=bi>=0?r.cell
 out.push([tm,g,n,k,a,b].join("\t"));});
 });
 var txt=out.join("\n");
-if(!txt){alert("Fant ingen bookinger her.");return;}
+if(!txt){alert("Fant ingen bookinger her. Gå til Diary → Print (utskriften) i ResDiary, og trykk knappen igjen.");return;}
 var done=function(){alert(out.length+" bookinger kopiert (tid, antall, etternavn, kommentar, område). Trykk «Lim inn fra ResDiary» i Bordplan → Reservasjoner.");};
 if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done,function(){prompt("Kopier:",txt);});}else{prompt("Kopier:",txt);}
 })();

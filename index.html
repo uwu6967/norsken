@@ -3624,6 +3624,14 @@ body.tools-off .board > .tray {
     display: none;
   }
 }
+.step-link {
+  display: inline-block;
+  margin: 0 0 10px;
+  color: #2f4a3c;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 </style>
   </head>
@@ -3680,6 +3688,7 @@ body.tools-off .board > .tray {
               <div class="step-body">
                 <p class="step-title" id="today-s1-title">Hent dagens bookinger</p>
                 <p class="step-note" id="today-s1-note"></p>
+                <a class="step-link" id="today-setup" href="https://uwu6967.github.io/norsken/bokmerke.html" target="_blank" rel="noopener">🔧 <span id="today-setup-text">Få ResDiary-knappen (gjøres én gang)</span></a>
                 <div class="step-actions">
                   <button type="button" class="chip big primary" id="today-paste">📋 <span id="today-paste-text">Lim inn fra ResDiary</span></button>
                   <label class="chip big">
@@ -10467,6 +10476,7 @@ function renderToday() {
         : "Raskest: trykk bokmerket «Til Norsken» på ResDiary-utskriften. Eller kopier med «Til bordplan» og trykk knappen under.",
   );
   set("today-paste-text", en ? "Paste from ResDiary" : "Lim inn fra ResDiary");
+  set("today-setup-text", en ? "Get the ResDiary button (once per PC)" : "Få ResDiary-knappen (gjøres én gang per PC)");
   set("today-file-text", en ? "Open file" : "Åpne fil");
   set("today-s2-title", en ? "Choose" : "Velg");
   set("today-s3-title", en ? "Print" : "Skriv ut");
