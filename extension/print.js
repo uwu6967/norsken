@@ -134,14 +134,23 @@
       const aperoOf = (id) => (AP && AP.placed && AP.placed[id] && AP.label && AP.label[id]) || "";
       const guestRoomOf = (x) => (guestStore && guestStore.room && guestStore.room[x.id]) || "spisestua";
       const placedIds = new Set();
+      // same as app.js sitKey(): a party that joined another, or that had its aperitif, sits with them
+      const sitKey = (x) => {
+        const joined = guestStore.sat && guestStore.sat[x.id];
+        if (joined && joined.t === guestStore.placed[x.id]) return joined.k;
+        if (AP && AP.placed && AP.placed[x.id] && !(guestStore.redeck && guestStore.redeck[x.id])) return AP.pling;
+        return x.time || "";
+      };
       const partyName = (people) => {
         const byTime = new Map();
         for (const x of people.slice().sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))) {
-          if (!byTime.has(x.time || "")) byTime.set(x.time || "", []);
-          byTime.get(x.time || "").push(x);
+          const key = sitKey(x);
+          if (!byTime.has(key)) byTime.set(key, []);
+          byTime.get(key).push(x);
         }
-        return [...byTime.entries()]
-          .map(([time, list]) => {
+        return [...byTime.values()]
+          .map((list) => {
+            const time = list[0].time || "";
             const re = list.some((x) => guestStore.redeck && guestStore.redeck[x.id]) ? "↻ " : "";
             const areas = new Set(list.map((x) => x.area || "spisestua"));
             const pax = list.reduce((sum, x) => sum + (Number(x.pax) || 0), 0);

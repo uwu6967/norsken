@@ -9,6 +9,9 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-21
+- «🔔 Hvem sitter hvor»: a big list for the pling – name, people, table, who they share it with,
+  🥂 salon; sort A–Å, table by table or salon by salon; search; ✓ when they arrive. A party without a
+  table is put on one with two taps; on a table with people it joins them and the chairs add up.
 - «🥂 Aperitiff før pling»: the boss's one press also finds a salon table for each party before the
   pling (biggest first; own table, then extra chairs, then a shared place; never a reserved table). Change
   a place by hand in Reservasjoner; «– ingen –» keeps a party out. Printout shows «🥂 Bar 3» under the

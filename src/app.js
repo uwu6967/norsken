@@ -4807,6 +4807,7 @@ function loadGuests() {
         redeck: g.redeck && typeof g.redeck === "object" ? g.redeck : {},
         redeckHint: g.redeckHint && typeof g.redeckHint === "object" ? g.redeckHint : {},
         arrived: g.arrived && typeof g.arrived === "object" ? g.arrived : {},
+        sat: g.sat && typeof g.sat === "object" ? g.sat : {}, // «🔔 Hvem sitter hvor»: joined another party's sitting
         day: String(g.day || ""),
         ap: normalizeAp(g.ap),
       };
@@ -4912,11 +4913,11 @@ function guestsOn(table) {
 function guestSittings(table) {
   const byTime = new Map();
   for (const g of guestsOn(table).sort((p, q) => (p.time || "99").localeCompare(q.time || "99"))) {
-    const key = g.time || "";
+    const key = sitKey(g); // the booked time, or the sitting the party joined (see sitKey)
     if (!byTime.has(key)) byTime.set(key, []);
     byTime.get(key).push(g);
   }
-  return [...byTime.entries()].map(([time, list]) => ({ time, list, pax: list.reduce((sum, g) => sum + (Number(g.pax) || 0), 0) }));
+  return [...byTime.values()].map((list) => ({ time: list[0].time || "", list, pax: list.reduce((sum, g) => sum + (Number(g.pax) || 0), 0) }));
 }
 
 function guestLabel(table) {
@@ -4951,6 +4952,21 @@ function guestDropTable(x, y) {
 function renderGuests() {
   renderReservations();
   renderAperoList();
+  renderGuideButtons();
+}
+
+// «🔔 Hvem sitter hvor» buttons show once there are bookings; an open guide follows every change.
+function renderGuideButtons() {
+  const en = state.lang === "en";
+  const any = !IS_SALON && guests.list.some((g) => inShift(g));
+  for (const id of ["guide-btn", "today-guide"]) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.hidden = !any;
+    const text = el.querySelector("span");
+    if (text) text.textContent = en ? "Who sits where" : "Hvem sitter hvor";
+  }
+  if (document.getElementById("guide")?.hidden === false) renderGuide();
 }
 
 document.getElementById("guest-file")?.addEventListener("change", async (event) => {
@@ -7641,3 +7657,251 @@ document.getElementById("res-apero")?.addEventListener("change", (event) => {
   saveGuests();
   render();
 });
+
+// --- «🔔 Hvem sitter hvor»: where each party sits, for the pling ----------------
+// One big list, phone first: a name → its table. A party without a table (free
+// seating) gets one with two taps; put on a table that already has people, it
+// joins them, and their chairs add up (a mixed table).
+let guideSort = "name";
+let guidePick = null; // id of the booking that is being given a table
+let guideQuery = "";
+
+// Which sitting a booking belongs to at its table (see guestSittings). Parties that
+// had their aperitif sit down together at the pling; a party put «with» others joins them.
+function sitKey(g) {
+  const joined = guests.sat?.[g.id];
+  if (joined && joined.t === guests.placed[g.id]) return joined.k;
+  const ap = guests.ap;
+  if (ap?.on && ap.placed?.[g.id] && !guests.redeck?.[g.id]) return ap.pling;
+  return g.time || "";
+}
+
+// Where a booking goes: { label, table, room, mates } – or { label: "" } with no table yet.
+function guideWhere(g, en) {
+  const area = g.area || "spisestua";
+  if (area.startsWith("other:")) return { label: g.areaLabel || area.slice(6), other: true };
+  const room = guestRoom(g);
+  const id = guests.placed[g.id];
+  if (!id) return { label: "" };
+  if (room !== ROOM_ID) {
+    const plan = readRoomPlan(room);
+    const t = plan?.tables?.find((x) => x.id === id && x.zone === "room");
+    if (!t) return { label: "" };
+    return { label: `${ROOMS[room]?.[en ? "en" : "no"] || room} · ${en ? "table" : "bord"} ${t.label || ""}`.trim(), room };
+  }
+  const t = guestTable(g);
+  if (!t) return { label: "" };
+  const sitting = guestSittings(t).find((s) => s.list.some((x) => x.id === g.id));
+  const mates = sitting ? sitting.list.filter((x) => x.id !== g.id) : [];
+  return { label: `${en ? "Table" : "Bord"} ${t.label}`, table: t, room, mates };
+}
+
+function guideList(en) {
+  const list = guests.list.filter((g) => inShift(g));
+  const q = guideQuery.trim().toLowerCase();
+  const rows = list
+    .map((g) => ({ g, where: guideWhere(g, en), ap: guests.ap?.on ? guests.ap.label?.[g.id] || "" : "" }))
+    .filter(({ g, where, ap }) => !q || [g.name, g.time, where.label, ap].some((v) => String(v || "").toLowerCase().includes(q)) || (where.table && String(where.table.label).toLowerCase() === q));
+  const byName = (a, b) => String(a.g.name || "").localeCompare(String(b.g.name || ""), "nb");
+  if (guideSort === "table") {
+    rows.sort((a, b) => {
+      const ta = a.where.table ? 0 : a.where.label ? 1 : 2;
+      const tb = b.where.table ? 0 : b.where.label ? 1 : 2;
+      if (ta !== tb) return ta - tb;
+      if (a.where.table && b.where.table) return byLabel(a.where.table, b.where.table) || byName(a, b);
+      return a.where.label.localeCompare(b.where.label, "nb") || byName(a, b);
+    });
+  } else if (guideSort === "apero") {
+    rows.sort((a, b) => (a.ap ? 0 : 1) - (b.ap ? 0 : 1) || a.ap.localeCompare(b.ap, "nb", { numeric: true }) || byName(a, b));
+  } else rows.sort(byName);
+  return rows;
+}
+
+function renderGuide() {
+  const box = document.getElementById("guide-list");
+  if (!box) return;
+  const en = state.lang === "en";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const apOn = Boolean(guests.ap?.on);
+  if (guideSort === "apero" && !apOn) guideSort = "name";
+  set("guide-title", en ? "🔔 Who sits where" : "🔔 Hvem sitter hvor");
+  const search = document.getElementById("guide-search");
+  if (search) {
+    search.placeholder = en ? "🔍 Name or table" : "🔍 Navn eller bord";
+    if (search.value !== guideQuery) search.value = guideQuery;
+  }
+  const sorts = [["name", en ? "A–Z" : "A–Å"], ["table", en ? "By table" : "Bord for bord"]].concat(apOn ? [["apero", en ? "🥂 By salon" : "🥂 Salong for salong"]] : []);
+  const sortBox = document.getElementById("guide-sort");
+  if (sortBox) sortBox.innerHTML = sorts.map(([k, text]) => `<button type="button" class="chip${guideSort === k ? " active" : ""}" data-guide-sort="${k}">${text}</button>`).join("");
+
+  const pick = guidePick ? guests.list.find((g) => g.id === guidePick) : null;
+  if (guidePick && !pick) guidePick = null;
+  const all = guests.list.filter((g) => inShift(g));
+  const people = (arr) => arr.reduce((n, g) => n + (Number(g.pax) || 0), 0);
+  const came = all.filter((g) => guests.arrived?.[g.id]);
+  set(
+    "guide-note",
+    pick
+      ? ""
+      : all.length
+        ? en
+          ? `✓ ${came.length} of ${all.length} parties here (${people(came)} of ${people(all)} guests).${apOn ? ` Pling ${guests.ap.pling}.` : ""}`
+          : `✓ ${came.length} av ${all.length} selskap er her (${people(came)} av ${people(all)} gjester).${apOn ? ` Pling ${guests.ap.pling}.` : ""}`
+        : en
+          ? "No bookings in this shift yet."
+          : "Ingen bookinger i denne vakta ennå.",
+  );
+  if (sortBox) sortBox.hidden = Boolean(pick);
+  if (search) search.hidden = Boolean(pick);
+
+  if (pick) {
+    // big buttons, one per table on the floor, with who is there already
+    const tables = roomTables().filter((t) => t.lead !== false && t.label && t.kind !== "plate").sort(byLabel);
+    const mine = guestTable(pick);
+    box.innerHTML = `<li class="guide-pick">
+        <p class="guide-pick-q">${en ? "Where does" : "Hvor sitter"} <b>${esc(pick.name || "–")}</b>${pick.pax ? ` (${pick.pax})` : ""}${en ? " sit?" : "?"}</p>
+        <div class="guide-tables">${tables
+          .map((t) => {
+            const here = guestsOn(t).filter((g) => g.id !== pick.id);
+            const n = people(here);
+            return `<button type="button" class="guide-table${mine && mine.id === t.id ? " on" : ""}${here.length ? " busy" : ""}" data-guide-put="${t.id}"><b>${esc(t.label)}</b><small>${
+              here.length ? `${esc(here.map((g) => g.name).filter(Boolean).join(", ").slice(0, 28))} · ${n}` : en ? "free" : "ledig"
+            }</small></button>`;
+          })
+          .join("")}</div>
+        <div class="guide-pick-actions">
+          ${mine ? `<button type="button" class="status-btn" data-guide-off="${pick.id}">${en ? "No table" : "Ikke ved bord"}</button>` : ""}
+          <button type="button" class="status-btn active" data-guide-cancel>${en ? "Back" : "Tilbake"}</button>
+        </div>
+      </li>`;
+    return;
+  }
+
+  const rows = guideList(en);
+  box.innerHTML = rows.length
+    ? rows
+        .map(({ g, where, ap }) => {
+          const here = Boolean(guests.arrived?.[g.id]);
+          const mates = where.mates?.length
+            ? `<span class="guide-mates">${en ? "with" : "med"} ${esc(where.mates.map((m) => `${m.name || "–"}${m.pax ? ` (${m.pax})` : ""}`).join(", "))}</span>`
+            : "";
+          const dest = where.label
+            ? `<span class="guide-dest">→ ${esc(where.label)}</span>`
+            : `<span class="guide-dest none">${en ? "no table yet" : "ikke bord ennå"}</span>`;
+          const canPut = !IS_SALON && !where.other && (!where.room || where.room === ROOM_ID);
+          const put = canPut
+            ? `<button type="button" class="chip big${where.label ? "" : " primary"}" data-guide-pick="${g.id}">${where.label ? (en ? "Move" : "Flytt") : en ? "Seat at a table" : "Sett ved bord"}</button>`
+            : "";
+          return `<li class="guide-row${here ? " here" : ""}">
+              <button type="button" class="guide-tick${here ? " on" : ""}" data-guide-here="${g.id}" aria-pressed="${here}" aria-label="${en ? "Arrived" : "Kommet"}">✓</button>
+              <div class="guide-main">
+                <p class="guide-line"><b class="guide-name">${esc(g.name || "–")}</b>${g.pax ? `<span class="guide-pax">${g.pax} ${en ? "ppl" : "pers"}</span>` : ""}${dest}</p>
+                <p class="guide-sub"><span class="guide-time">${esc(g.time || "")}</span>${mates}${ap ? `<span class="guide-ap">🥂 ${esc(ap)}</span>` : ""}${dietChips(g.note)}</p>
+              </div>
+              ${put}
+            </li>`;
+        })
+        .join("")
+    : `<li class="guide-empty">${guideQuery ? (en ? "Nobody found." : "Fant ingen.") : ""}</li>`;
+}
+
+function openGuide() {
+  guidePick = null;
+  guideQuery = "";
+  renderGuide();
+  document.getElementById("guide").hidden = false;
+  document.getElementById("guide-search")?.focus({ preventScroll: true });
+}
+function closeGuide() {
+  guidePick = null;
+  document.getElementById("guide").hidden = true;
+}
+
+// Put a party on a table from the guide. It joins whoever sits there now (one
+// sitting, the chairs add up) – never a swap like a drag on the map.
+function guidePut(id, table) {
+  const g = guests.list.find((x) => x.id === id);
+  if (!g || !table || IS_SALON) return;
+  if (table.lead === false && table.group) table = roomTables().find((t) => t.group === table.group && t.lead !== false) || table;
+  const before = guestSnapshot();
+  const from = guestTable(g);
+  if (from && from.id === table.id) return;
+  const others = guestsOn(table).filter((x) => x.id !== id);
+  if (!guests.room) guests.room = {};
+  if (!guests.sat) guests.sat = {};
+  guests.placed[id] = table.id;
+  guests.room[id] = ROOM_ID;
+  if (guests.redeck) delete guests.redeck[id];
+  if (guests.redeckHint) delete guests.redeckHint[id];
+  if (others.length) {
+    // join the sitting of the party that is there (the latest one when there are several)
+    const sittings = guestSittings(table).filter((s) => s.list.some((x) => x.id !== id));
+    const last = sittings[sittings.length - 1];
+    const k = last ? sitKey(last.list.find((x) => x.id !== id)) : g.time || "";
+    guests.sat[id] = { t: table.id, k };
+  } else delete guests.sat[id];
+  saveGuests();
+  if (from) guestSeats(from);
+  guestSeats(table);
+  save();
+  guidePick = null;
+  render();
+  const en = state.lang === "en";
+  showToast(
+    en
+      ? `${g.name || "–"} → table ${table.label}${others.length ? ` (with ${others.map((x) => x.name).filter(Boolean).join(", ")})` : ""}.`
+      : `${g.name || "–"} → bord ${table.label}${others.length ? ` (med ${others.map((x) => x.name).filter(Boolean).join(", ")})` : ""}.`,
+    6000,
+    () => restoreGuests(before),
+  );
+}
+
+document.getElementById("guide-close")?.addEventListener("click", closeGuide);
+document.getElementById("guide-search")?.addEventListener("input", (event) => {
+  guideQuery = event.target.value;
+  renderGuide();
+});
+document.getElementById("guide")?.addEventListener("click", (event) => {
+  if (event.target.id === "guide") return closeGuide(); // the dark backdrop
+  const el = event.target.closest("[data-guide-sort],[data-guide-pick],[data-guide-put],[data-guide-off],[data-guide-cancel],[data-guide-here]");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.guideSort) guideSort = d.guideSort;
+  else if (d.guidePick) guidePick = d.guidePick;
+  else if (d.guidePut) return guidePut(guidePick, getTable(d.guidePut));
+  else if (d.guideOff) {
+    const before = guestSnapshot();
+    const g = guests.list.find((x) => x.id === d.guideOff);
+    guidePick = null;
+    if (guests.sat) delete guests.sat[d.guideOff];
+    unplaceGuest(d.guideOff);
+    showToast(state.lang === "en" ? `${g?.name || "–"}: no table.` : `${g?.name || "–"}: ikke ved bord.`, 6000, () => restoreGuests(before));
+    return;
+  } else if ("guideCancel" in d) guidePick = null;
+  else if (d.guideHere) {
+    if (!guests.arrived) guests.arrived = {};
+    if (guests.arrived[d.guideHere]) delete guests.arrived[d.guideHere];
+    else guests.arrived[d.guideHere] = true;
+    saveGuests();
+    render();
+    return;
+  }
+  renderGuide();
+  if ("guideCancel" in d || d.guideSort) document.getElementById("guide-list")?.scrollIntoView?.({ block: "nearest" });
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || document.getElementById("guide")?.hidden) return;
+  if (guidePick) {
+    guidePick = null;
+    renderGuide();
+  } else closeGuide();
+});
+for (const id of ["guide-btn", "today-guide"]) {
+  document.getElementById(id)?.addEventListener("click", () => {
+    if (id === "today-guide") closeToday();
+    openGuide();
+  });
+}

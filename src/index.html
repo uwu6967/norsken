@@ -92,10 +92,23 @@
                 <div class="step-actions">
                   <button type="button" class="chip big primary" id="today-print">🖨 <span id="today-print-text">Skriv ut</span></button>
                   <button type="button" class="chip big" id="today-look">👀 <span id="today-look-text">Se på kartet først</span></button>
+                  <button type="button" class="chip big guide-open" id="today-guide" aria-haspopup="dialog" aria-controls="guide" hidden>🔔 <span>Hvem sitter hvor</span></button>
                 </div>
               </div>
             </li>
           </ol>
+        </div>
+      </div>
+      <div class="guide" id="guide" role="dialog" aria-modal="true" aria-labelledby="guide-title" hidden>
+        <div class="guide-card">
+          <div class="guide-head">
+            <h2 id="guide-title">🔔 Hvem sitter hvor</h2>
+            <button type="button" class="icon-btn settings-close" id="guide-close" aria-label="Lukk">✕</button>
+          </div>
+          <input type="search" class="guide-search" id="guide-search" autocomplete="off" placeholder="🔍 Navn eller bord" aria-label="Søk" />
+          <div class="guide-sort" id="guide-sort"></div>
+          <p class="guide-note" id="guide-note"></p>
+          <ul class="guide-list" id="guide-list"></ul>
         </div>
       </div>
       <div class="house" id="house" role="dialog" aria-modal="true" aria-labelledby="house-title" hidden>
@@ -246,6 +259,7 @@
             <input type="file" id="guest-file" accept=".csv,.txt,text/csv,text/plain" hidden />
             <span id="guest-open">Åpne fil</span>
           </label>
+          <button type="button" class="chip big guide-open" id="guide-btn" aria-haspopup="dialog" aria-controls="guide" hidden>🔔 <span>Hvem sitter hvor</span></button>
         </div>
         <p class="brush-note" id="res-note"></p>
         <input type="search" class="res-search" id="res-search" autocomplete="off" placeholder="🔍 Søk navn eller bord" aria-label="Søk" hidden />

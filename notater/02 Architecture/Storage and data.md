@@ -168,6 +168,7 @@ Any exception inside returns `defaultState()`, which silently wipes the layout o
   redeck: {},     // guestId -> true: a second sitting at a table already used («↻»)
   redeckHint: {}, // guestId -> table label: waiting in «Uten bord» for that table to be laid again
   arrived: {},    // guestId -> true: ticked «✓» when they came
+  sat: {},        // guestId -> { t: tableId, k: sitting key }: joined that table's sitting («🔔 Hvem sitter hvor»); only counts while placed on t
   ap: {           // aperitif before the pling (normalizeAp(); see [[Aperitif]])
     on: false, suggested: false, // suggested = words like aperitiff/hummeraften seen at import
     who: "all",   // "all" or "event" (only arrangement guests)

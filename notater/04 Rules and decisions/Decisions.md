@@ -9,6 +9,10 @@ What was decided, and why. Newest first. When something here changes, write the 
 on top and say what it replaces – don't delete the old one.
 
 ## 2026-11-21
+- **Mixed tables**: a party put on a table from «🔔 Hvem sitter hvor» **joins** the party there (one
+  sitting, chairs add up) – it is never a swap like a drag on the map. Stored as `guests.sat`. Parties
+  that had an aperitif place also count as one sitting at their dinner table (they sit down together at
+  the pling); the table still shows the earliest booked time. Same rule on the printout.
 - **How aperitif places are given** (`assignAperitif()` in `src/app.js`): it runs inside the boss's
   one press when «🥂 Aperitiff» is on (switched on by itself when a comment or Område says aperitiff,
   velkomstdrink, hummer-/krepseaften). Only Spisestua/Domino bookings that arrive **before the pling**

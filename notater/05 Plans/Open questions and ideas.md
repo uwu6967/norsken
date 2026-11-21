@@ -27,9 +27,8 @@ Marked «ANSLAG» in the app until someone measures them (change under «Mål»)
 
 ## Ideas
 - Aperitif counts per room in «🏠 Norsken»; a print sheet per salon.
-- **Guiding guests at the pling** (Danny, 2026-11-21): when everyone streams into Spisestua, show who sits
-  where – name, how many, chair by chair – also on free-seating nights, and keep track of mixed tables
-  (a table set for 6 that gets 3 from one group and 2 from another). Next feature after the aperitif.
+- **Guiding guests at the pling**: first version built – see [[Pling guide]]. Still open: chair by chair,
+  and colouring a mixed table's chairs per party on the map.
 - A bigger-text option for older colleagues.
 - Show Domino's chairs on the printout before Domino has been opened once (today it shows the
   people count only). See [[Printing]].
