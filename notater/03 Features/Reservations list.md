@@ -16,8 +16,8 @@ see [[Storage and data]].
 
 ## Where it is and what is on it
 
-Tab button `data-tab="book"` («Reservasjoner»), pane `data-pane="book"`, section `#booking-panel` in
-`src/index.html`. The open tab is remembered in localStorage `norsken-tab`; `importBookings()` switches
+Tab button `data-tab="book"` («Reservasjoner», «Bookings» in English; label set by `renderTabs()`), pane
+`data-pane="book"`, section `#booking-panel` in `src/index.html`. The open tab is remembered in localStorage `norsken-tab`; `importBookings()` switches
 to this tab after a new list. Top to bottom:
 
 | Element | Id | What |
@@ -43,12 +43,14 @@ Ctrl+V).» (A variable `guestMsg` can override the line, but nothing sets it tod
 
 - `resQuery` holds the box's text. Typing calls `renderReservations()` only (not a full render). Escape
   in the box clears it. When the list becomes empty, the search is cleared too.
-- `guestMatches(g)`: case-insensitive substring match on the booking's `name`, `time`, `note` (the
-  comment) or `areaLabel`. Empty query = everything matches.
-- «Uten bord» shows only matching bookings (and the group counts are of the matching ones).
-- «Bordene» shows a table when its label **equals** the query (so «6» finds table 6, not 16), or any
-  booking at it matches, or its typed name (`table.name`) contains the query. Nothing found: «Ingen bord
-  passer søket.»
+- `guestMatches(g)`: case-insensitive substring match (query trimmed) on the booking's `name`, `time`,
+  `note` (the comment) or `areaLabel`. Empty query = everything matches.
+- «Uten bord» shows only matching bookings (and the group counts are of the matching ones). If the
+  search hides every unplaced booking, the list is simply empty: the texts «Alle har bord.» / «Ingen
+  liste ennå.» only show when the shift has no unplaced bookings at all.
+- «Bordene» shows a table when its label **equals** the query (case-insensitive, so «6» finds table 6,
+  not 16), or any booking at it matches, or its typed name (`table.name`) contains the query. Nothing
+  found: «Ingen bord passer søket.» (With no search and no tables on the floor: «Ingen bord ute ennå.»)
 - The tables found also light up on the map: class `found` on `#room .table` (gold outline `#e0a63a`).
 
 ## «Uten bord» – bookings without a table
@@ -63,11 +65,12 @@ Ctrl+V).» (A variable `guestMsg` can override the line, but nothing sets it tod
 **Order and groups**: sorted by rank, then `areaLabel`, then time. Rank 0 = this room's area
 (`ROOM_ID`), 1 = the other of Spisestua/Domino, 2 = `other:` rooms. A heading (`li.res-group`) starts each
 area: «Spisestua · 12 bookinger, 31 personer»; for an `other:` room «Møterom · 2 bookinger, 9 personer –
-eget rom, ikke på våre bord» (class `other`, purple). People = sum of `pax` (unknown = 0). The heading's
+eget rom, ikke på våre bord» (class `other`, purple `#5b4e7a`). One booking reads «1 booking»
+(`bookingWord()`). People = sum of `pax` (unknown = 0). The heading's
 name is `areaLabel`, else the room's name from `ROOMS`, else «Spisestua». Areas come from `areaOf()`
 ([[ResDiary import]]).
 
-**Each booking** (`li.guest-item`): time («–» if none), name, «Np» (when `pax` is known), the ★ button,
+**Each booking** (`li.guest-item`): time («–» if none), name («–» if none), «Np» (when `pax` is known), the ★ button,
 the double-booking chip, the diet chips, and the comment. If auto seating left it waiting for a re-set
 table (`guests.redeckHint[id]`), the item gets class `redeck` and a line «↻ Dekk om · bord N blir
 ledig først» ([[Auto seating]]). The ★, double and diet chips are explained on
@@ -81,8 +84,9 @@ Empty list: «Alle har bord.» (there is a list) or «Ingen liste ennå.».
 « ⠿» after the text, title «Dra til et bord for å sette hele gruppen der»). Dropping it on a table (on the
 map or a row in «Bordene») calls `placeGroup(groupKey, table)`: **every** unplaced booking of that area
 goes to that one table (a langbord half hands over to its lead half), `guests.room` = the open room,
-re-set hints cleared, chairs updated with `guestSeats()`. Toast (8 s) with «↶ Angre»: «Møterom (9 pers)
-ved bord 7.» `placeGroup()` does not filter by shift. Headings of Spisestua and Domino are not draggable
+re-set hints (`guests.redeckHint`) cleared, chairs on that table updated with `guestSeats()`. Toast (8 s)
+with «↶ Angre»: «Møterom (9 pers) ved bord 7.» `placeGroup()` filters neither by shift nor by the search
+box. Headings of Spisestua and Domino are not draggable
 (that would put a whole room on one table; see [[Decisions]]).
 
 ## «Bordene» – the tables
@@ -97,18 +101,21 @@ bookings: `booked` = tables with bookings here (`guestsOn(t).length`), `inside` 
 **Each row** (`li.res-row`, `data-table=<id>`):
 - the table number;
 - the booking chips (sorted by time), or the table's own typed name, or the button «ledig ✎»;
-- meta: «N stoler» (`seatsOf(seatOwner(t)).length`) and `markSummary(t)` – the chair-mark chips with
-  «×n», and «✱» for chair notes ([[Chairs and plates]]);
-- actions: «✎» (change name) when there is a booking or a typed name, and «Flytt» when the table has
-  bookings, a typed name or chair marks.
-- Classes: `free` (nothing on it), `moving-from`, `move-target` (during «Flytt»).
+- meta: «N stoler» (`seatsOf(seatOwner(t)).length`, left out when 0) and `markSummary(t)` – one chip per
+  chair mark with «×n» when n > 1, and «✱» (also with «×n») for chair notes ([[Chairs and plates]]);
+- actions: «✎» (change name) when there is a booking or a typed name – on a table with bookings it edits
+  the earliest booking's name – and «Flytt» when the table has bookings, a typed name or chair marks.
+- Classes: `free` (no bookings, no typed name, no chair marks; chair notes alone do not count),
+  `moving-from`, `move-target` (during «Flytt»).
 
 **A booking chip** (`guestChip()`, `span.res-guest`): the «✓» arrived button, «↻» if it is a second
-sitting (`guests.redeck[id]`), time, name (click to edit), «Np», ★, double chip, diet chips, «✕» («Ta av
-bordet», sends this booking back to «Uten bord» with `unplaceGuest()`), and the comment.
+sitting (`guests.redeck[id]`), time, name («uten navn» if empty; click to edit), «Np», ★, double chip,
+diet chips, «✕» (aria-label «Ta av bordet»; sends this booking back to «Uten bord» with
+`unplaceGuest()`), and the comment.
 
 **Which bookings show at a table**: `guestsOn(table)` – placed at it, in the open room, table on the
-floor, and in the chosen shift. A table used only by another shift shows as free.
+floor, and in the chosen shift. A table used only by another shift shows «ledig ✎» (its bookings are
+hidden).
 
 ## «✓ kommet» – ticking arrivals
 
@@ -117,23 +124,24 @@ floor, and in the chosen shift. A table used only by another shift shows as free
   Titles: «Trykk når de kommer» / «Kommet – trykk for å angre».
 - Ticked: the box turns green (`#2f7a4f`), the name is struck through.
 - `tableArrived(table)`: a table counts as arrived when it has bookings and **all** of them are ticked.
-  Then the table on the map gets a green ring and a «✓» badge, and its name label beside the map fades
-  (opacity 0.6) with a green border and a green number (`.arrived`).
+  Then the table on the map gets a green ring and a «✓» badge (`#room .table.arrived`), and its name
+  label beside the map fades (opacity 0.6) with a green border and its number on green (`.callout.arrived`).
 - The printout shows ticked bookings with a «✓» in their box ([[Printing]]).
 - A new import starts with no ticks.
 
 ## Changing a name by hand
 
 - Click a booking's name (`data-edit-name`) or the row's «✎» → `startResEdit(kind, id)` opens an input in
-  place (`resEdit = { kind, id, orig }`). Not while «Flytt» is waiting.
+  place (`resEdit = { kind, id, orig }`). Not while «Flytt» is waiting. The «✎» on a row with bookings
+  edits the earliest booking (`kind: "guest"`); on a row with only a typed name it edits the table.
 - `kind: "guest"`: changes the booking's `name` (cut to 40 characters, not trimmed) in `guests`, then
   `saveGuests()`.
 - `kind: "table"`: for a table without a booking. Sets `table.name` (trimmed, max 28 characters, empty =
   `null`) and `table.booked = false` (a typed name, so «Fjern navn» / a new list leave it alone). This
   name lives on the table in the room's plan (`state`), not in the guest list.
 - A free table shows «ledig ✎»; clicking it starts typing a name onto that table.
-- Every key press updates the map at once (`liveRedrawMap()` = `renderRoom()` + `renderCallouts()`);
-  the list is not redrawn, so the typing position stays put.
+- Every key press updates the map at once (`liveRedrawMap()` = `renderRoom()`, then `renderCallouts()` on
+  the next animation frame); the list is not redrawn, so the typing position stays put.
 - Enter = done. Escape = put back the original (`orig`). Leaving the field = done (if focus moves to
   another control inside `#res-tables`, editing just ends and that click goes through).
 
@@ -146,31 +154,39 @@ floor, and in the chosen shift. A table used only by another shift shows as free
    its lead half) → `moveParty(from, target)`.
 3. Cancel: «Avbryt» (on the row or in the note) or Escape.
 
-`moveParty(from, to)`: all bookings at `from` go to `to`; if `to` had bookings, they go to `from` – the
-two **swap**. The guest-related table data swaps with them: `seatMarks`, `seatNotes`, `seatNames`, `name`,
+While waiting, pressing «Flytt» on *another* row does not finish the move: the click handler checks
+`[data-move]` before the row, so that row becomes the new source (`startMove()` again).
+
+`moveParty(from, to)`: all bookings at `from` (as `guestsOn()` sees them, so only the chosen shift) go
+to `to`; if `to` had bookings, they go to `from` – the two **swap**. The guest-related table data swaps with them: `seatMarks`, `seatNotes`, `seatNames`, `name`,
 `booked`. The tables themselves stay where they are. Chairs are recounted on both. Toast (5 s): «Flyttet
 fra bord 6 til 9.» or «Bord 6 og 9 byttet gjester.». There is no «Angre» for «Flytt» (doing it again
-moves them back).
+moves them back). The swap toast is chosen only by whether `to` had bookings; a typed name or chair
+marks on `to` still swap, but the toast then says «Flyttet …».
 
 ## Dragging
 
-All drags use the shared drag system (`startDrag()` → `onMove()` → `finishDrag()`; see [[Render loop]]).
-A drag starts after the pointer has moved 6 px; a ghost copy of the item follows the pointer. The click
-that follows a drag is ignored (`markDragEnded()` / `dragJustEnded`).
+All drags use the shared drag system (`startDrag()` on pointerdown, `onMove()` on the window's
+pointermove, `onUp()` → `finishDrag()` on release; see [[Render loop]]). A drag starts after the pointer
+has moved 6 px; a ghost copy of the item (class `drag-ghost`) follows the pointer. The click that follows
+a drag is ignored by the «Bordene» list and the map's name labels (`markDragEnded()` / `dragJustEnded`).
 
 ### A booking onto a table
 - From «Uten bord» (an item) or from «Bordene» (a booking chip; not when pressing ✕, ✓, ★ or the name
   input). Drag kind `"guest"`.
 - Target: a table on the map (`guestDropTable()`; a langbord half hands over to its lead half) or a row in
-  «Bordene» (`resRowTable()`). The table under the pointer gets class `guest-target`.
-- Near the top or bottom edge (60 px) of the left pane the list scrolls by itself (14 px per move).
+  «Bordene» (`resRowTable()`). The target table **on the map** gets class `guest-target` (outline in
+  `--pine`), also while the pointer is over its row; the row itself is not highlighted.
+- Near the top or bottom edge (60 px) of the open left pane (`.leftcol .tab-pane:not([hidden])`) the list
+  scrolls by itself (14 px per move). This also applies to group-heading drags.
 - Drop → `placeGuest(id, table)`:
   - already at that table: nothing;
   - the booking was the **only** party at its old table: `moveParty()` – everything goes with it, and if
     the new table had guests the two swap;
   - otherwise it is placed (`guests.placed`, `guests.room` = open room). If the table already has other
-    bookings and auto seating had marked it as waiting for a re-set (`redeckHint`), it becomes a second
-    sitting (`guests.redeck[id] = true`, «↻»). The hint is cleared. Chairs are recounted on both tables.
+    bookings **and this booking** carries a re-set hint from auto seating (`guests.redeckHint[id]`), it
+    becomes a second sitting (`guests.redeck[id] = true`, «↻»); otherwise any old `guests.redeck[id]` is
+    removed. The hint is cleared. Chairs are recounted on both tables.
   - No toast and no «Angre».
 
 ### Back to the list
@@ -178,23 +194,29 @@ that follows a drag is ignored (`markDragEnded()` / `dragJustEnded`).
   «✕». Both call `unplaceGuest(id)`: placement, room and second-sitting flag are removed, chairs
   recounted. No toast, no «Angre».
 - **A whole table's guests, from the map**: drag the table itself, or its name label beside the map (not
-  a chair's name label), onto the left column. This works only when the table has bookings in view
-  (`dropBackTable()`). While hovering, the left column gets a dashed gold outline
+  a chair's name label), onto the left column (`#leftcol`). This works only when the table has bookings in
+  view, i.e. `guestsOn()` is not empty (`dropBackTable()`). While hovering, the left column gets a dashed gold outline
   (`.leftcol.drop-back`, `#d8b46a`). On drop, `sendBackToList(table)` takes every booking at that table
   back to «Uten bord»; the table stays where it is and gets its own chairs back. Toast (8 s) with
   «↶ Angre»: «Testa, Testb er tilbake i listen (bord 6 er ledig).»
 
 ## The three buttons
 
-- **«Fordel bord automatisk»** (`#book-run`): seats the shift's bookings without a table. All rules are
-  on [[Auto seating]].
+- **«Fordel bord automatisk»** (`#book-run`): first reads the «Prioritet» field (`#book-order`, into
+  `state.bookingOrder`), then `assignBookings()` seats the bookings without a table that belong to the
+  open room's area (`area === ROOM_ID`) and the chosen shift. Result toast (7 s), no «Angre». With no
+  tables on the floor: «Ingen bord ute ennå – velg et oppsett under ★ Oppsett først.» All rules are on
+  [[Auto seating]].
 - **«Ta alle av bordene»** (`#book-clear`): hidden unless some booking is placed. Asks with a second tap
-  «Sikker? Trykk igjen» (4 s). Takes every booking in the open room off its table (in Spisestua also the
-  ones placed in Domino), clears booking names from tables, recounts chairs. Toast «Alle er tatt av
+  «Sikker? Trykk igjen» (`armed()`, 4 s). Takes every booking placed in the open room off its table (in
+  Spisestua also the ones placed in Domino) – **not** filtered by shift. Then `clearBookedNames()` clears
+  booking names (`booked: true`) and re-set marks from the tables (in Spisestua also
+  `clearDominoBooked()`), chairs are recounted and `bookingResult` is reset. Toast «Alle er tatt av
   bordene.» (12 s) with «↶ Angre».
-- **«Tøm lista»** (`#guest-clear`): hidden when there is no list. Second tap «Sikker? Trykk igjen».
+- **«Tøm lista»** (`#guest-clear`): hidden when there is no list. Second tap «Sikker? Trykk igjen» (4 s).
   Empties the whole guest list (`guests = { file: "", list: [], placed: {}, room: {}, redeck: {} }`),
-  gives tables in both rooms their own chairs back. Toast «Lista er tømt.» (12 s) with «↶ Angre».
+  gives tables in this room (`guestSeats()`) and in the other of Spisestua/Domino
+  (`releaseOtherRoomSeats()`) their own chairs back. Toast «Lista er tømt.» (12 s) with «↶ Angre».
 
 ## Undo at a glance
 
@@ -205,10 +227,11 @@ that follows a drag is ignored (`markDragEnded()` / `dragJustEnded`).
 | «Ta alle av bordene», «Tøm lista» | yes, 12 s |
 | Picking a shift on «☀ I dag» | yes, 10 s (floor and guests) |
 | `placeGuest()`, `unplaceGuest()` / ✕, «Flytt», ✓, ★, name edits | no |
-| a new import | no – it replaces the list |
+| «Fordel bord automatisk» | no |
+| a new import | no – it replaces the list («📋 Lim inn fra ResDiary» asks «Bytte ut dagens liste? Trykk igjen» first when some booking is placed) |
 
-`guestSnapshot()` is a deep copy of `guests`; `restoreGuests(snap)` puts it back, recounts chairs on
-every table and shows «Tilbake som før.»
+`guestSnapshot()` is a deep copy of `guests`; `restoreGuests(snap)` puts it back, saves, recounts chairs
+on every table on the floor and shows «Tilbake som før.» (4 s).
 
 ## Related
 - [[ResDiary import]]
