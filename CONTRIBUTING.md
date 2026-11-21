@@ -7,7 +7,7 @@
 - Forfatter og committer på hver commit: `uwu6967 <22033341+uwu6967@users.noreply.github.com>`.
 - Taushetsplikt: aldri gjestenavn, telefonnumre, e-poster eller bilder i repoen.
 - Endrer du noe i `src/` eller `resdiary/`, kjør `python3 tools/build.py` og ta med alt den lager
-  (`index.html`, `print.html`, `extension/`, `LES-MEG.txt`, bokmerkekodene i README-ene).
+  (`index.html`, `print.html`, `extension/`, `LES-MEG.txt`, bokmerkekodene i `resdiary/README.md`, og `bokmerke.html`).
   Den som bruker appen skal aldri trenge å bygge noe.
 - `extension/` er Chrome/Edge-utvidelsen (Manifest V3: ingen skript inne i HTML-en, derfor egne
   `app.js` og `print.js`). Zip-fila har filene rett i roten og virker også ved å dobbeltklikke `index.html`.

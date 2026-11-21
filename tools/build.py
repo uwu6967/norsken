@@ -18,7 +18,7 @@ open(out,'w').write(idx); print('wrote', os.path.normpath(out), len(idx), 'bytes
 open(os.path.join(d, '..', 'print.html'),'w').write(prn); print('wrote print.html')
 
 # ResDiary bookmarks as PLAIN TEXT (copy/paste as the bookmark's address):
-# written into README.md (between the BOKMERKER markers), resdiary/README.md
+# written into resdiary/README.md (between the BOKMERKER markers)
 # and LES-MEG.txt (the instructions file in the download). Source: resdiary/*.js.
 import re
 root = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')
@@ -41,7 +41,7 @@ def put(path):
     new = re.sub(r'(<!-- BOKMERKER -->).*?(<!-- /BOKMERKER -->)', lambda m: m.group(1) + '\n' + md + '\n' + m.group(2), text, flags=re.S)
     assert '<!-- BOKMERKER -->' in text, path
     open(full, 'w', encoding='utf-8').write(new)
-put('README.md'); put(os.path.join('resdiary', 'README.md'))
+put(os.path.join('resdiary', 'README.md'))  # the main README links to bokmerke.html instead
 txt = ['Norsken - bordplan for Spisestua', '',
        'Norsken.zip kan brukes på to måter:',
        ' - som utvidelse i Chrome/Edge (se nederst), eller',
@@ -106,7 +106,7 @@ page = """<!DOCTYPE html>
 """
 open(os.path.join(root, 'bokmerke.html'), 'w', encoding='utf-8').write(page.replace('__CODE__', _html.escape(_code, quote=True)))
 print('wrote bokmerke.html')
-print('wrote bookmarks into README.md, resdiary/README.md, LES-MEG.txt')
+print('wrote bookmarks into resdiary/README.md, LES-MEG.txt')
 
 # ---------------------------------------------------------------------------
 # Chrome / Edge extension (extension/): the same planner as its own full page,
