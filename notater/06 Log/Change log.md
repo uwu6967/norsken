@@ -9,6 +9,8 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-21
+- Phone: a finger sliding off the map no longer sends a table to storage; «Til lager» and a drag to
+  storage can be undone; «Hummeraften» no longer shows the shellfish code.
 - Privacy: list handed over between tabs (not in the address); shared plan = layout only; old shared
   data deleted; clipboard emptied after paste; table number escaped.
 - Shared notebook `notater/` (this vault).
