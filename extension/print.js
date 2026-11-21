@@ -428,6 +428,7 @@
         const el = document.createElement("div");
         const cm = tableCm(table);
         el.className = `table ${isPlate(normSize(table)) ? "plate" : normSize(table) === "oval" ? "oval" : normSize(table) === "rect" ? "rect" : "round"}`;
+        el.dataset.id = table.id;
         el.style.left = `${table.x}%`;
         el.style.top = `${table.y}%`;
         el.style.width = `${(cm.w / r.w) * 100}%`;
@@ -465,6 +466,33 @@
         }
         room.appendChild(el);
       }
+
+      // a langbord with no plate is one table (app.js joinLangbord)
+      (function joinLangbord() {
+        const groups = new Map();
+        for (const t of tables) if (t.group) groups.set(t.group, [...(groups.get(t.group) || []), t]);
+        for (const members of groups.values()) {
+          if (members.length < 2 || members.some((m) => !isPlate(normSize(m)) || (Array.isArray(m.gapPlates) && m.gapPlates.length))) continue;
+          const xs = members.map((m) => m.x);
+          const ys = members.map((m) => m.y);
+          const axis = Math.max(...ys) - Math.min(...ys) >= Math.max(...xs) - Math.min(...xs) ? "y" : "x";
+          members.sort((a, b) => (axis === "y" ? a.y - b.y : a.x - b.x));
+          members.forEach((m, i) => {
+            const node = room.querySelector(`.table[data-id="${m.id}"]`);
+            if (!node) return;
+            const edge = (side) => {
+              node.style[`border${side}Color`] = "transparent";
+            };
+            if (axis === "y") {
+              if (i > 0) { node.style.borderTopLeftRadius = node.style.borderTopRightRadius = "0"; edge("Top"); }
+              if (i < members.length - 1) { node.style.borderBottomLeftRadius = node.style.borderBottomRightRadius = "0"; edge("Bottom"); }
+            } else {
+              if (i > 0) { node.style.borderTopLeftRadius = node.style.borderBottomLeftRadius = "0"; edge("Left"); }
+              if (i < members.length - 1) { node.style.borderTopRightRadius = node.style.borderBottomRightRadius = "0"; edge("Right"); }
+            }
+          });
+        }
+      })();
 
       function fitNames() {
         for (const el of room.querySelectorAll(".table.named")) {

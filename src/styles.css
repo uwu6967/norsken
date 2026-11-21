@@ -3087,3 +3087,46 @@ a[hidden] {
 .house-side .set-title + .set-title {
   margin-top: 10px;
 }
+
+/* the oval in the store */
+.tray .table.oval {
+  width: 46px;
+  height: 84px;
+}
+.tray .table.oval .size-tag {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+/* a langbord with no plate: one table, not two */
+#room .table.joined-y.join-after {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom-color: transparent;
+}
+#room .table.joined-y.join-before {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-top-color: transparent;
+}
+#room .table.joined-x.join-after {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-color: transparent;
+}
+#room .table.joined-x.join-before {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-color: transparent;
+}
+#room .table.joined {
+  box-shadow: none;
+}
+.res-group.draggable {
+  cursor: grab;
+  touch-action: none;
+}
+.res-group.draggable::after {
+  content: " ⠿";
+  opacity: 0.6;
+}
