@@ -9,6 +9,8 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-21
+- Room maps: 19 fixes from a review (salon shows only the table map; Angre covers drags; no stray oval
+  from a map link; new tables never stack; a smaller room keeps tables inside; and more).
 - Toddy suggestion (sofa groups 4+3, small table, grand piano); «Ekstra stoler»; furniture that is not
   a table («🎹 Flygel»); Domino laid out as Danny walks in from Spisestua.
 - Rooms «innover»: every room of the club has its own table map; the «Innover ▾» button and «🏠 Norsken»

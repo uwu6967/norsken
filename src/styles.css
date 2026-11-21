@@ -3804,3 +3804,26 @@ body.rig #toast {
   top: calc(var(--rig-head, 56px) + 8px);
   bottom: auto;
 }
+/* 8. the editor on a wide screen: the map sits between the top line and the buttons */
+body.rig .board > .stage {
+  height: auto !important;
+  min-height: 0 !important;
+}
+/* 14. the editor's buttons never wrap; the rows do */
+.rig-btn {
+  white-space: nowrap;
+}
+.rig-row {
+  flex-wrap: wrap;
+}
+.rig-head .rig-btn {
+  padding: 8px 11px;
+}
+@media (max-width: 480px) {
+  .rig-head .rig-word {
+    display: none;
+  }
+  .rig-head .rig-name {
+    font-size: 1.05rem;
+  }
+}

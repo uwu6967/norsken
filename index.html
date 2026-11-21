@@ -3818,6 +3818,29 @@ body.rig #toast {
   top: calc(var(--rig-head, 56px) + 8px);
   bottom: auto;
 }
+/* 8. the editor on a wide screen: the map sits between the top line and the buttons */
+body.rig .board > .stage {
+  height: auto !important;
+  min-height: 0 !important;
+}
+/* 14. the editor's buttons never wrap; the rows do */
+.rig-btn {
+  white-space: nowrap;
+}
+.rig-row {
+  flex-wrap: wrap;
+}
+.rig-head .rig-btn {
+  padding: 8px 11px;
+}
+@media (max-width: 480px) {
+  .rig-head .rig-word {
+    display: none;
+  }
+  .rig-head .rig-name {
+    font-size: 1.05rem;
+  }
+}
 
 </style>
   </head>
@@ -4820,7 +4843,7 @@ function normalizeState(parsed) {
     next.showMeasure = parsed.showMeasure === true;
     next.bookingsText = ""; // the old pasted list is not kept any more
     next.bookingOrder = typeof parsed.bookingOrder === "string" && parsed.bookingOrder.trim() ? parsed.bookingOrder.slice(0, 120) : DEFAULT_BOOKING_ORDER;
-    if ((Number(parsed.dims?.v) || 0) < 10 && !next.tables.some((t) => t.size === "oval")) {
+    if (ROOM_ID === "spisestua" && (Number(parsed.dims?.v) || 0) < 10 && !next.tables.some((t) => t.size === "oval")) {
       const sixteen = next.tables.find((t) => t.zone === "room" && t.label === "16" && (t.size === "small" || t.size === "big"));
       if (sixteen) {
         next.tables.push({ ...sixteen, id: uid(), zone: "tray", label: "", x: 50, y: 50, name: null, seatMarks: null, seatCount: undefined });
@@ -5220,7 +5243,7 @@ function save() {
 const SHARED_DOC = ROOMS[ROOM_ID].doc;
 // Only the layout is shared: tables, fixtures, sizes. Guest fields (names, chair
 // notes, allergy marks, chairs set by a booking) stay on this device.
-const SHARED_KEYS = ["tables", "fixtures", "furniture", "dims", "paintings", "bookingOrder"];
+const SHARED_KEYS = ["tables", "fixtures", "furniture", "dims", "paintings", "bookingOrder", "apero", "sized"];
 const CLIENT_ID = Math.random().toString(36).slice(2);
 const share = { db: null, ready: false, timer: null, lastSent: "", canWrite: true, status: "local", at: null };
 
@@ -5978,7 +6001,7 @@ function assignBookings() {
     : guests.list
         .filter((g) => !guests.placed[g.id] && g.area === "domino" && inShift(g))
         .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), area: "domino" }));
-  if (!domino) overflowToDomino([...dominoArea, ...rows.filter((row) => !row.table && !row.redeckAt)]); // «Bruk Domino», or the last fallback
+  if (ROOM_ID === "spisestua") overflowToDomino([...dominoArea, ...rows.filter((row) => !row.table && !row.redeckAt)]); // «Bruk Domino», or the last fallback
   rows.push(...dominoArea);
   saveGuests(); // the Domino placements too
   rows.sort((p, q) => (p.time || "99").localeCompare(q.time || "99") || p.index - q.index);
@@ -7137,7 +7160,7 @@ function onMove(event) {
   drag.lastY = event.clientY;
   const dist = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
   if (!drag.moved && dist < 6) return;
-  if (drag.kind === "table" && getTable(drag.id)?.fixed) return; // «🔒 Står fast»
+  if (drag.kind === "table" && normalizeLead(getTable(drag.id))?.fixed) return; // «🔒 Står fast»
   event.preventDefault();
   if (drag.kind === "seat") {
     // the chair itself follows the pointer around its table (no ghost)
@@ -7238,6 +7261,7 @@ function finishDrag(clientX, clientY) {
     cleanupDrag();
     if (!current.moved || !Number.isFinite(current.angle)) return; // a plain click: marks / names
     const table = getTable(current.id);
+    if (table && RIG) rigSnapshot();
     if (table) {
       if (!table.seatAngles) table.seatAngles = {};
       table.seatAngles[current.size] = Math.round(current.angle * 10) / 10;
@@ -7342,6 +7366,7 @@ function finishDrag(clientX, clientY) {
     return;
   }
   const onFloor = table.zone === "room";
+  if (RIG) rigSnapshot();
   if (RIG && onFloor && !pointIn(document.getElementById("room"), clientX, clientY)) {
     const box = document.getElementById("room").getBoundingClientRect();
     clientX = Math.min(box.right - 4, Math.max(box.left + 4, clientX));
@@ -7570,6 +7595,10 @@ function renderChrome() {
   });
 
   if (lunchBtn) lunchBtn.hidden = ROOM_ID !== "spisestua";
+  const presetBtnEl = document.getElementById("preset-btn");
+  if (presetBtnEl) presetBtnEl.hidden = IS_SALON;
+  const resetBtnEl = document.getElementById("reset-btn");
+  if (resetBtnEl) resetBtnEl.hidden = IS_SALON;
   const julBtn = document.getElementById("jul-btn");
   if (julBtn) {
     julBtn.hidden = ROOM_ID !== "spisestua";
@@ -8248,6 +8277,7 @@ document.getElementById("book-order")?.addEventListener("change", (event) => {
   render();
 });
 document.getElementById("book-run")?.addEventListener("click", () => {
+  if (IS_SALON) return;
   const en = state.lang === "en";
   const order = document.getElementById("book-order");
   if (order) state.bookingOrder = order.value.slice(0, 120) || DEFAULT_BOOKING_ORDER;
@@ -8283,11 +8313,12 @@ document.getElementById("book-run")?.addEventListener("click", () => {
   );
 });
 document.getElementById("book-clear")?.addEventListener("click", (event) => {
+  if (IS_SALON) return;
   if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
   const before = guestSnapshot();
   const seated = roomTables().filter((t) => guestsOn(t).length);
   for (const g of guests.list) {
-    if (guestRoom(g) === ROOM_ID || (ROOM_ID === "spisestua" && guestRoom(g) === "domino")) {
+    if (guestRoom(g) === ROOM_ID || ROOM_ID === "spisestua") {
       delete guests.placed[g.id];
       delete guests.room[g.id];
       if (guests.redeck) delete guests.redeck[g.id];
@@ -8808,6 +8839,7 @@ function dominoLayout() {
 }
 
 function presetLayout(kind = "usual") {
+  if (IS_SALON) return; // a salon is drawn in the room editor
   rememberFloor({ usual: "Vanlig oppsett", lunch: "Lunsj-oppsett", jul: "Jul-oppsett" }[kind] || "Oppsett");
   if (ROOM_ID === "domino") return dominoLayout();
   const r = room();
@@ -9093,6 +9125,7 @@ document.getElementById("guest-file")?.addEventListener("change", async (event) 
 });
 
 document.getElementById("guest-clear")?.addEventListener("click", (event) => {
+  if (IS_SALON) return;
   if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
   const before = guestSnapshot();
   const seated = roomTables().filter((t) => guestsOn(t).length);
@@ -9620,6 +9653,7 @@ function oneScreen() {
 }
 function renderTabs() {
   const en = state.lang === "en";
+  if (IS_SALON) activeTab = "table"; // the dinner tools are not used in a salon
   const names = { table: en ? "Table" : "Bord", book: en ? "Bookings" : "Reservasjoner", marks: en ? "Marks" : "Merking" };
   document.querySelectorAll(".tabs .tab").forEach((tab) => {
     const on = tab.dataset.tab === activeTab;
@@ -9733,6 +9767,7 @@ document.getElementById("res-paste")?.addEventListener("click", async (event) =>
 document.addEventListener("paste", (event) => {
   const target = event.target;
   if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+  if (IS_SALON) return; // a list is pasted in Spisestua
   if (!pasteArmed && activeTab !== "book") return;
   const text = event.clipboardData?.getData("text") || "";
   if (!text.trim()) return;
@@ -9780,6 +9815,7 @@ function moveParty(from, to) {
 }
 
 function placeGuest(id, table) {
+  if (IS_SALON) return; // dinner tables are in Spisestua and Domino
   const g = guests.list.find((x) => x.id === id);
   if (!g || !table) return;
   if (table.lead === false && table.group) table = roomTables().find((t) => t.group === table.group && t.lead !== false) || table;
@@ -10408,7 +10444,8 @@ const HOUSE_ROOMS = ROOM_DEFS.map((r) => ({ ...r, name: r.no }));
 
 // which room of the house a booking is in: where it sits, else its Område
 function houseRoomOf(g) {
-  if (guests.placed[g.id] && guests.room?.[g.id]) return guests.room[g.id] === "domino" ? "domino" : "spisestua";
+  const seatedIn = guests.room?.[g.id];
+  if (guests.placed[g.id] && seatedIn) return ROOMS[seatedIn] ? seatedIn : "spisestua";
   const area = String(g.area || "spisestua");
   if (area === "spisestua" || area === "domino") return area;
   const label = String(g.areaLabel || area.replace(/^other:/, "")).toLowerCase();
@@ -10929,7 +10966,7 @@ function importFromHash() {
   return true;
 }
 window.addEventListener("hashchange", importFromHash);
-if (!importFromHash()) {
+if (!importFromHash() && !(location.hash || "").startsWith("#kart=")) {
   // a new day (or no list yet): start on «I dag»
   if (!IS_SALON && (!guests.list.length || guests.day !== dayKey())) openToday();
 }
@@ -11048,10 +11085,8 @@ function rigAdd(size) {
     }
     t.zone = "room";
   }
-  // in the middle, a little to the side when something already stands there
-  const taken = roomTables().filter((x) => x !== t).length;
-  const off = ((taken % 5) - 2) * 40;
-  setCenterCm(t, { x: r.w / 2 + off, y: r.h / 2 + off });
+  // the first free spot, from the middle outwards
+  setCenterCm(t, freeSpot(t));
   state.selected = t.id;
   relabelRoom();
   save();
@@ -11068,23 +11103,27 @@ function rigRemove() {
   const t = rigTable();
   if (!t) return;
   if (!IS_SALON) {
+    rigSnapshot();
     document.getElementById("to-tray-btn")?.click(); // the usual «Til lager», with its Angre
     return;
   }
   rigSnapshot();
+  if (!t.piece) t.manual = t.manual || t.label || nextTableNumber();
   t.home = { ...centerCm(t), rotated: Boolean(t.rotated) };
   t.zone = "tray";
   state.selected = null;
   relabelRoom();
   save();
   render();
-  showToast(en ? `Table ${t.manual} is in the store – tap it there to put it back.` : `Bord ${t.manual} er tatt bort – trykk på det nederst for å sette det tilbake.`, 6000);
+  const what = t.piece ? PIECES[t.piece]?.[en ? "en" : "no"] || "" : `${en ? "Table" : "Bord"} ${t.manual}`;
+  showToast(en ? `${what} is taken away – tap it at the bottom to put it back.` : `${what} er tatt bort – trykk på det nederst for å sette det tilbake.`, 6000);
 }
 
 function rigPutBack(id) {
   const t = getTable(id);
   if (!t) return;
   rigSnapshot();
+  if (IS_SALON && !t.piece && roomTables().some((x) => x !== t && (x.manual || x.label) === t.manual)) t.manual = nextTableNumber();
   t.zone = "room";
   if (t.home) {
     t.rotated = t.home.rotated;
@@ -11112,7 +11151,7 @@ function renderRig() {
   const nxt = IS_SALON ? nextSalon() : null;
   head.innerHTML = `<button type="button" class="rig-btn" data-rig="done">‹ ${en ? "Done" : "Ferdig"}</button>
     <strong class="rig-name">${esc(name)}</strong>
-    <button type="button" class="rig-btn" data-rig="undo" ${rigUndo.length ? "" : "disabled"}>↶ ${en ? "Undo" : "Angre"}</button>
+    <button type="button" class="rig-btn" data-rig="undo" aria-label="${en ? "Undo" : "Angre"}" ${rigUndo.length ? "" : "disabled"}>↶<span class="rig-word"> ${en ? "Undo" : "Angre"}</span></button>
     ${nxt ? `<button type="button" class="rig-btn" data-rig="next" title="${esc(nxt[en ? "en" : "no"])}">${en ? "Next" : "Neste"} ›</button>` : ""}`;
   const t = rigTable();
   const r = room();
@@ -11131,7 +11170,7 @@ function renderRig() {
         t.piece
           ? `<div class="rig-row"><button type="button" class="rig-btn" data-rig="turn">⟳ ${en ? "Turn" : "Snu"}</button></div>`
           : `<div class="rig-row"><span class="rig-label">${en ? "Seats" : "Plasser"}</span><button type="button" class="rig-btn big" data-rig="seat-">−</button><strong class="rig-val">${n}</strong><button type="button" class="rig-btn big" data-rig="seat+">+</button>
-        ${t.kind === "round" ? "" : `<button type="button" class="rig-btn" data-rig="turn">⟳ ${en ? "Turn" : "Snu"}</button>`}</div>
+        ${t.kind === "round" || t.group ? "" : `<button type="button" class="rig-btn" data-rig="turn">⟳ ${en ? "Turn" : "Snu"}</button>`}</div>
         ${IS_SALON ? `<div class="rig-row"><span class="rig-label">${en ? "Extra chairs" : "Ekstra stoler"}</span><button type="button" class="rig-btn big" data-rig="extra-">−</button><strong class="rig-val">${Number(t.extraSeats) || 0}</strong><button type="button" class="rig-btn big" data-rig="extra+">+</button></div>` : ""}`
       }
       <div class="rig-row arrows"><button type="button" class="rig-btn big" data-rig="left" aria-label="←">←</button><button type="button" class="rig-btn big" data-rig="up" aria-label="↑">↑</button><button type="button" class="rig-btn big" data-rig="down" aria-label="↓">↓</button><button type="button" class="rig-btn big" data-rig="right" aria-label="→">→</button></div>
@@ -11148,7 +11187,7 @@ function renderRig() {
       ${
         stored.length
           ? `<div class="rig-row wrap store"><span class="rig-label">${en ? "Taken away:" : "Tatt bort:"}</span>${stored
-              .map((x) => `<button type="button" class="rig-btn" data-rig-back="${x.id}">↩ ${en ? "Table" : "Bord"} ${esc(x.manual || "")}</button>`)
+              .map((x) => `<button type="button" class="rig-btn" data-rig-back="${x.id}">↩ ${x.piece ? esc(PIECES[x.piece]?.[en ? "en" : "no"] || "") : `${en ? "Table" : "Bord"} ${esc(x.manual || x.label || "")}`}</button>`)
               .join("")}</div>`
           : ""
       }
@@ -11185,7 +11224,13 @@ function rigAction(action) {
     case "h+": {
       rigSnapshot();
       const k = action[0] === "w" ? "w" : "h";
+      const before = { ...state.dims.room };
+      const cms = roomTables().map((x) => [x, centerCm(x)]);
       state.dims.room[k] = Math.min(3000, Math.max(200, (state.dims.room[k] || 500) + (action[1] === "+" ? 50 : -50)));
+      // the tables stay where they stand in cm, pushed inside if the wall came closer
+      for (const [x, c] of cms) setCenterCm(x, c, false);
+      for (const g of new Set(roomTables().map((x) => x.group).filter(Boolean))) fitGroupInRoom(g);
+      void before;
       break;
     }
     case "sized":
@@ -11208,8 +11253,7 @@ function rigAction(action) {
       return rigRemove();
     case "starter": {
       rigSnapshot();
-      const keep = state.tables.filter((x) => x.zone !== "room");
-      state.tables = [...roomStarter(ROOM_ID), ...keep];
+      state.tables = roomStarter(ROOM_ID);
       state.dims.room = { ...ROOMS[ROOM_ID].size };
       state.sized = true;
       state.selected = null;
@@ -11234,8 +11278,10 @@ function rigAction(action) {
         const c = centerCm(t);
         const dx = action === "left" ? -step : action === "right" ? step : 0;
         const dy = action === "up" ? -step : action === "down" ? step : 0;
-        if (t.group) moveGroupBy(t.group, dx, dy);
-        else setCenterCm(t, { x: c.x + dx, y: c.y + dy }, false);
+        if (t.group) {
+          moveGroupBy(t.group, dx, dy);
+          fitGroupInRoom(t.group);
+        } else setCenterCm(t, { x: c.x + dx, y: c.y + dy }, false);
       }
     }
   }
@@ -11359,7 +11405,7 @@ async function importMapsFromHash() {
       plan = JSON.parse(backup[key] || "null") || {};
     } catch {}
     plan.tables = layoutOnly(map.tables);
-    plan.dims = { ...(plan.dims || {}), room: { w: Number(map.room?.w) || 500, h: Number(map.room?.h) || 500 } };
+    plan.dims = { ...(plan.dims || {}), v: plan.dims?.v || DIMS_VERSION, room: { w: Number(map.room?.w) || 500, h: Number(map.room?.h) || 500 } };
     plan.apero = map.apero !== false;
     plan.sized = true;
     try {
@@ -11373,8 +11419,10 @@ async function importMapsFromHash() {
       state = normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) || "null"));
     } catch {}
     relabelRoom();
+    save();
     render();
   };
+  closeToday();
   reloadHere();
   showToast(
     names.length ? (en ? `Table maps received: ${names.join(", ")}.` : `Bordkart er hentet: ${names.join(", ")}.`) : en ? "The link had no table maps." : "Lenken hadde ingen bordkart.",
@@ -11402,7 +11450,17 @@ window.addEventListener("hashchange", importMapsFromHash);
     pending = sessionStorage.getItem("norsken-pending-shift");
     sessionStorage.removeItem("norsken-pending-shift");
   } catch {}
-  if (pending && !IS_SALON && SHIFTS.some((x) => x.key === pending)) chooseShift(pending);
+  if (!pending || IS_SALON || !SHIFTS.some((x) => x.key === pending)) return;
+  if (!window.claude?.use) return chooseShift(pending);
+  // the hosted copy: wait until the shared plan has arrived, so it does not undo the seating
+  let tries = 0;
+  const wait = setInterval(() => {
+    tries += 1;
+    if (share.ready || tries > 60) {
+      clearInterval(wait);
+      chooseShift(pending);
+    }
+  }, 250);
 })();
 
 // the button in the house map's side panel: open that room's table map
@@ -11415,7 +11473,7 @@ function roomMapButton(id, en) {
   let n = 0;
   try {
     const plan = id === ROOM_ID ? state : JSON.parse(localStorage.getItem(r.key) || "null");
-    n = (plan?.tables || []).filter((t) => t.zone === "room").length;
+    n = (plan?.tables || []).filter((t) => t.zone === "room" && !t.piece).length;
   } catch {}
   return `<button type="button" class="chip big primary house-go" data-go-room="${id}">✏️ ${
     n ? (en ? `Table map for ${r.en} · ${n} tables` : `Bordkart for ${r.no} · ${n} bord`) : en ? `Draw the tables in ${r.en}` : `Lag bordkart for ${r.no}`
@@ -11448,6 +11506,38 @@ function roomStarter(id) {
     put("rect", { w: 150, l: 200 }, { x: r.w - 210, y: r.h - 140 }, { piece: "flygel", rotated: true, fixed: true }),
   ];
 }
+
+// the first free spot for a new table: the middle, then rings around it
+function freeSpot(t) {
+  const r = room();
+  const me = tableCm(t);
+  const others = roomTables().filter((x) => x !== t).map((x) => ({ c: centerCm(x), s: tableCm(x) }));
+  const fits = (p) =>
+    others.every((o) => Math.abs(o.c.x - p.x) * 2 >= o.s.w + me.w + 20 || Math.abs(o.c.y - p.y) * 2 >= o.s.h + me.h + 20);
+  const step = Math.max(me.w, me.h) / 2 + 30;
+  for (let ring = 0; ring < 12; ring += 1) {
+    const n = ring === 0 ? 1 : ring * 8;
+    for (let i = 0; i < n; i += 1) {
+      const a = (i / n) * Math.PI * 2;
+      const p = { x: r.w / 2 + Math.cos(a) * ring * step, y: r.h / 2 + Math.sin(a) * ring * step };
+      if (p.x < me.w / 2 || p.y < me.h / 2 || p.x > r.w - me.w / 2 || p.y > r.h - me.h / 2) continue;
+      if (fits(p)) return p;
+    }
+  }
+  return { x: r.w / 2, y: r.h / 2 };
+}
+
+// 17. another tab changed this room (a map link, the editor): take it over instead of writing over it
+window.addEventListener("storage", (event) => {
+  if (event.key !== STORAGE_KEY || !event.newValue || drag) return;
+  try {
+    state = normalizeState(JSON.parse(event.newValue));
+  } catch {
+    return;
+  }
+  relabelRoom();
+  render();
+});
 
 </script>
   </body>
