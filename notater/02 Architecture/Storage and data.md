@@ -26,6 +26,7 @@ Found by searching `src/app.js` and `src/print.html` for `localStorage` and for 
 | `norsken-layout-domino-v1` (`ROOMS.domino.key`) | Domino's whole `state` as JSON | `save()` / `applyRemote()` in Domino; from Spisestua: `clearDominoBooked()`, `overflowToDomino()`, `releaseOtherRoomSeats()` | `loadState()`, `readRoomPlan("domino")`, `print.html` (also its `dominoInUse()`) |
 | `norsken-layout-<id>-v1` (salons, e.g. `norsken-layout-bar-v1`, `norsken-layout-r1818-v1`) | that salon's whole `state` as JSON | `save()` / `applyRemote()` in that salon; `importMapsFromHash()` (a `#kart=` link), and the «Angre» on its toast | `loadState()`, `packMaps()`, `roomMapButton()`, `print.html?room=<id>` |
 | `norsken-guests-v1` (`GUESTS_KEY`) | the `guests` object (below) | `saveGuests()` | `loadGuests()`, `print.html` (also its `dominoInUse()`) |
+| `norsken-pling` (`PLING_KEY`) | the last pling time used for the aperitif, `"HH:MM"` (default `"18:00"`) | `aperoAction("pling-")` / `("pling+")` | `normalizeAp()` |
 | `norsken-shift` (`SHIFT_KEY`) | `""` (whole day), `"lunsj"`, `"middag"`, `"arrangement"`, `"middag+arrangement"` or `"lunsj+arrangement"`. Anything else is read as `""`. | `setShift()`, `chooseShift()` | the `SHIFT` IIFE, `print.html` |
 | `norsken-tools` (`TOOLS_KEY`) | `"1"` = «🧰 Verktøy» on (store, plates, measures shown); `"0"` or missing = off (`renderShell()` sets `body.tools-off`) | `#tools-btn` click | `toolsOn()` |
 | `norsken-tab` | left-column tab: `"table"` («Bord»), `"book"` («Reservasjoner») or `"marks"` («Merking»). Default `"table"`. | the `.tabs` click handler | the `activeTab` IIFE |
@@ -167,8 +168,20 @@ Any exception inside returns `defaultState()`, which silently wipes the layout o
   redeck: {},     // guestId -> true: a second sitting at a table already used («↻»)
   redeckHint: {}, // guestId -> table label: waiting in «Uten bord» for that table to be laid again
   arrived: {},    // guestId -> true: ticked «✓» when they came
+  ap: {           // aperitif before the pling (normalizeAp(); see [[Aperitif]])
+    on: false, suggested: false, // suggested = words like aperitiff/hummeraften seen at import
+    who: "all",   // "all" or "event" (only arrangement guests)
+    pling: "18:00",
+    placed: {},   // guestId -> "<salon id>:<table id>", e.g. "toddy:t3"
+    label: {},    // guestId -> "Toddy 1" (what the list and the printout show)
+    skip: {},     // guestId -> true: «– ingen –» chosen, never given a place
+  },
 }
 ```
+
+The aperitif tables are read from the salons' own plans (`aperoTables()`): every table in the room that is
+not furniture (`piece`) and has a label; `share` = «🔗 Kan deles», `reserved` = «⛔ Reservert», capacity =
+`seatCount` (or the size's seats) plus `extraSeats`. A salon whose plan has `apero: false` is skipped.
 
 Salons hide «Reservasjoner», «Merking», the shift switch and «☀ I dag» (`body.salon` in `src/styles.css`), so placements are made in Spisestua or Domino.
 

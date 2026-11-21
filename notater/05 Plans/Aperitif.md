@@ -6,7 +6,8 @@ updated: 2026-11-21
 # Aperitif
 
 The next big feature: seating parties for the **aperitif** in the other rooms of the club before they
-go to their dinner table. Status: **step 0 done, step 1 next** – see the chosen plan below.
+go to their dinner table. Status: **steps 0–3 built** (2026-11-21). Next: guiding guests at the pling (see
+[[Open questions and ideas]]).
 
 ## What Danny described
 - On arrangement days (any arrangement – a lobster evening, julebord, courses, private parties …)
@@ -25,7 +26,7 @@ the small design, with the phone editor of the boss-simplicity design.
 **Step 0 – phone safety (done):** a finger sliding off the map no longer stores a table; «Til lager»
 and drag-to-store have «↶ Angre»; «Hummeraften» no longer lights the shellfish code.
 
-**Step 1 – a table map for every room «innover»**
+**Step 1 – a table map for every room «innover» (done)**
 - `ROOM_DEFS` at the top of `src/app.js` replaces the two-entry `ROOMS` and the late `HOUSE_ROOMS`
   (same ids as the house map: `bar`, `bibliotek`, `r1772`, `r1814`, `r1818`, `moterom`, `atheneum`,
   `kristiania`, `arneberg`, `danske`, `toddy`). Profiles: Spisestua `home`, Domino `domino`, the rest
@@ -41,10 +42,11 @@ and drag-to-store have «↶ Angre»; «Hummeraften» no longer lights the shell
 - Getting the maps to the boss's PC (each browser has its own storage): «📤 Send bordkart» (a link or
   the setup file; the maps hold no guest data).
 
-**Step 2 – a second place per booking:** `guests.ap` (aperitif table + room), next to the dinner place
-(`guests.placed`/`guests.room` stay the dinner table). On a salon page the app reads and writes `ap`.
+**Step 2 – a second place per booking (done):** `guests.ap` (aperitif table + room), next to the dinner place
+(`guests.placed`/`guests.room` stay the dinner table). Built as `guests.ap = {on, suggested, who,
+pling, placed: {booking: "salon:table"}, label: {booking: "Toddy 1"}, skip}` – in the browser only.
 
-**Step 3 – auto seating + print:** `assignAperitif()` runs inside the boss's one press (Middag,
+**Step 3 – auto seating + print (done):** `assignAperitif()` runs inside the boss's one press (Middag,
 Arrangement, Middag + Arrangement) when «🥂 Aperitiff før pling 18:00» is on (suggested by words like
 aperitiff, velkomstdrink, hummer-/krepseaften). Parties sharing a dinner table drink together. The A4
 sheet stays one page; each row gets «🥂 Bar 3» under the dinner table, the title «· pling 18:00».
@@ -65,14 +67,22 @@ sheet stays one page; each row gets «🥂 Bar 3» under the dinner table, the t
 - «Fordel bord» rules and placements per booking (see [[Auto seating]]).
 - Shifts, including Arrangement (see [[Shifts and start screen]]).
 
-## Open design questions
-- Which rooms count as «salongen» for aperitif (all rooms in «🏠 Norsken» except Spisestua, or a chosen
-  few)?
-- Is the aperitif spot per party (a reserved table) or just a room?
-- Default aperitif window and «pling» time – fixed 18:00, or per arrangement?
-- Do ordinary dinner guests ever get an aperitif spot, or only arrangement guests?
-- On the printout: one sheet with both places per party («Aperitiff: Bibliotek bord 2 → Middag: bord 6»),
-  or a separate aperitif sheet?
+## How it works now
+- «☀ I dag»: the «🥂 Aperitiff før pling» switch, the pling time (− / +) and «Alle før pling /
+  Bare arrangementet».
+  Then one press (Middag, Arrangement, Middag + Arrangement) seats dinner **and** aperitif.
+- Reservasjoner (Spisestua) has a «🥂 Aperitiff» list: «Fordel aperitiff», «Tøm», «Slå av», and a
+  menu per party to move it or choose «– ingen –».
+- Room editor: «🔗 Kan deles» (more parties may share, e.g. a fireplace) and «⛔ Reservert» (never
+  given out).
+- Room editor, per room: «🥂 Brukes til aperitiff: ja/nei». Starts as «nei» for Bibliotek,
+  1772/1814/1818 and Danske; a map saved before this setting existed follows that default.
+- Only salons that have a table map count. Spisestua and Domino are never used.
+
+## Answered questions
+- Rooms: see [[Decisions]] (2026-11-21). Spot: a table per party, shared only where marked.
+- Pling: 18:00 by default, changeable, remembered. Who: the boss picks «Alle» or «Bare arrangement».
+- Printout: one sheet, «🥂 Bar 3» under the dinner table.
 
 ## Related
 [[Open questions and ideas]] · [[House map]] · [[Auto seating]] · [[Decisions]]

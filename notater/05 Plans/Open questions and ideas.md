@@ -9,7 +9,8 @@ Things that are not decided yet, and ideas worth trying. Move an item to [[Decis
 settled, or to [[Change log]] when it is built.
 
 ## Waiting for Danny
-- Which rooms are «salongen» for the aperitif, and the usual «pling» time? See [[Aperitif]].
+- How the other rooms look (Bar, Arneberg, Kristiania, Atheneum, Møterom), so they can get a ready
+  suggestion like Toddy.
 - Is one room on the floor plan really called «Danske kjelleret»? The name must match ResDiary's
   Område for the colours in «🏠 Norsken» to work.
 - Should the downstairs rooms (Thorvald M, Billiard) be on the «🏠 Norsken» map as a small
@@ -25,6 +26,7 @@ Marked «ANSLAG» in the app until someone measures them (change under «Mål»)
 - the side table length, the old small chairs
 
 ## Ideas
+- Aperitif counts per room in «🏠 Norsken»; a print sheet per salon.
 - **Guiding guests at the pling** (Danny, 2026-11-21): when everyone streams into Spisestua, show who sits
   where – name, how many, chair by chair – also on free-seating nights, and keep track of mixed tables
   (a table set for 6 that gets 3 from one group and 2 from another). Next feature after the aperitif.

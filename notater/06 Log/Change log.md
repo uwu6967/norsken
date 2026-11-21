@@ -9,6 +9,10 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-21
+- «🥂 Aperitiff før pling»: the boss's one press also finds a salon table for each party before the
+  pling (biggest first; own table, then extra chairs, then a shared place; never a reserved table). Change
+  a place by hand in Reservasjoner; «– ingen –» keeps a party out. Printout shows «🥂 Bar 3» under the
+  dinner table and the pling time in the title. In the room editor: «🔗 Kan deles» and «⛔ Reservert».
 - Room maps: 19 fixes from a review (salon shows only the table map; Angre covers drags; no stray oval
   from a map link; new tables never stack; a smaller room keeps tables inside; and more).
 - Toddy suggestion (sofa groups 4+3, small table, grand piano); «Ekstra stoler»; furniture that is not

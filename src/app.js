@@ -752,6 +752,7 @@ let activeTab = (() => {
 })();
 // Dagens liste: guest names, local to this browser only (see renderGuests).
 const GUESTS_KEY = "norsken-guests-v1";
+const PLING_KEY = "norsken-pling"; // the usual pling time (aperitif)
 let guests = loadGuests();
 let guestMsg = "";
 let moveFrom = null; // table id while «Flytt» waits for the target table
@@ -792,6 +793,8 @@ let rigUndo = [];
 let houseHint = false; // «Innover» opened the house map: tell what to tap
 // Pieces of furniture that are not tables (salons): they take space, never get a number or guests
 const PIECES = { flygel: { no: "🎹 Flygel", en: "🎹 Grand piano" } };
+// Aperitif evenings: words in Område or a comment that suggest the switch
+const APERO_WORDS = /aperitiff|ap[ée]ritif|velkomstdrink|hummer\s?(aften|kveld|fest)|krepse\s?(aften|kveld|fest|lag)/i;
 // the table types in the room editor
 const RIG_SIZES = [
   { size: "small", no: "Lite rundt", en: "Small round", seats: 4 },
@@ -2933,7 +2936,7 @@ function tableButton(table, inTray) {
   const extra = Number(table.extraSeats) || 0;
   const floorTag = table.piece
     ? PIECES[table.piece]?.[state.lang === "en" ? "en" : "no"] || ""
-    : [IS_SALON ? "" : sizeName, seatN ? `${seatN}${extra ? `+${extra}` : ""}p` : ""].filter(Boolean).join(" · ");
+    : [IS_SALON ? "" : sizeName, seatN ? `${seatN}${extra ? `+${extra}` : ""}p` : "", table.share ? "🔗" : "", table.reserved ? "⛔" : ""].filter(Boolean).join(" · ");
   // Wide screen: names sit beside the map with a line to the table
   // (renderCallouts), so the table itself only shows its number.
   const shownName = calloutMode() ? "" : [tableTitle(table), table.redeck ? `↻ ${table.redeck}` : ""].filter(Boolean).join(" · ");
@@ -4805,10 +4808,11 @@ function loadGuests() {
         redeckHint: g.redeckHint && typeof g.redeckHint === "object" ? g.redeckHint : {},
         arrived: g.arrived && typeof g.arrived === "object" ? g.arrived : {},
         day: String(g.day || ""),
+        ap: normalizeAp(g.ap),
       };
     }
   } catch {}
-  return { file: "", list: [], placed: {}, room: {}, redeck: {} };
+  return { file: "", list: [], placed: {}, room: {}, redeck: {}, ap: normalizeAp(null) };
 }
 
 function guestRoom(guest) {
@@ -4946,6 +4950,7 @@ function guestDropTable(x, y) {
 
 function renderGuests() {
   renderReservations();
+  renderAperoList();
 }
 
 document.getElementById("guest-file")?.addEventListener("change", async (event) => {
@@ -5568,7 +5573,8 @@ function importBookings(text, source) {
   }
   const seated = roomTables().filter((t) => guestsOn(t).length);
   clearBookedNames();
-  guests = { file: source || "", day: dayKey(), list: list.sort((p, q) => (p.time || "99").localeCompare(q.time || "99")), placed: {}, room: {}, redeck: {} };
+  guests = { file: source || "", day: dayKey(), list: list.sort((p, q) => (p.time || "99").localeCompare(q.time || "99")), placed: {}, room: {}, redeck: {}, ap: normalizeAp(null) };
+  guests.ap.suggested = guests.ap.on = list.some((g) => APERO_WORDS.test(`${g.areaLabel || ""} ${g.note || ""}`));
   saveGuests();
   for (const t of seated) guestSeats(t);
   releaseOtherRoomSeats();
@@ -6625,6 +6631,7 @@ function chooseShift(key) {
   }
   for (const t of roomTables()) guestSeats(t);
   assignBookings();
+  const apRes = apOf().on && key !== "lunsj" ? assignAperitif() : null;
   save();
   render();
   closeToday();
@@ -6634,8 +6641,8 @@ function chooseShift(key) {
   const name = sh ? (en ? sh.en : sh.no) : "";
   showToast(
     en
-      ? `${name}: ${placed} bookings on tables${waiting ? `, ${waiting} without a table` : ""}${floorChanged ? " (new setup)" : ""}. Ready to print.`
-      : `${name}: ${placed} bookinger ved bord${waiting ? `, ${waiting} uten bord` : ""}${floorChanged ? " (nytt oppsett)" : ""}. Klar til utskrift.`,
+      ? `${name}: ${placed} bookings on tables${waiting ? `, ${waiting} without a table` : ""}${floorChanged ? " (new setup)" : ""}. Ready to print.${apRes ? ` ${aperoSummary(apRes, en)}` : ""}`
+      : `${name}: ${placed} bookinger ved bord${waiting ? `, ${waiting} uten bord` : ""}${floorChanged ? " (nytt oppsett)" : ""}. Klar til utskrift.${apRes ? ` ${aperoSummary(apRes, en)}` : ""}`,
     10000,
     () => {
       if (floorChanged) undoFloor();
@@ -6676,6 +6683,7 @@ function renderToday() {
   document.getElementById("today-step-1").classList.toggle("done", Boolean(n));
   document.getElementById("today-step-2").classList.toggle("off", !n);
   document.getElementById("today-step-3").classList.toggle("off", !n);
+  renderAperoSwitch(en);
   const counts = shiftCounts();
   const box = document.getElementById("today-shifts");
   const eventDay = counts.arrangement.b > 0;
@@ -7005,6 +7013,7 @@ function renderRig() {
         ${IS_SALON ? `<div class="rig-row"><span class="rig-label">${en ? "Extra chairs" : "Ekstra stoler"}</span><button type="button" class="rig-btn big" data-rig="extra-">−</button><strong class="rig-val">${Number(t.extraSeats) || 0}</strong><button type="button" class="rig-btn big" data-rig="extra+">+</button></div>` : ""}`
       }
       <div class="rig-row arrows"><button type="button" class="rig-btn big" data-rig="left" aria-label="←">←</button><button type="button" class="rig-btn big" data-rig="up" aria-label="↑">↑</button><button type="button" class="rig-btn big" data-rig="down" aria-label="↓">↓</button><button type="button" class="rig-btn big" data-rig="right" aria-label="→">→</button></div>
+      ${IS_SALON && !t.piece ? `<div class="rig-row"><button type="button" class="rig-btn${t.share ? " on" : ""}" data-rig="share">🔗 ${en ? "Can be shared" : "Kan deles"}</button><button type="button" class="rig-btn${t.reserved ? " on" : ""}" data-rig="reserved">⛔ ${en ? "Reserved" : "Reservert"}</button></div>` : ""}
       <div class="rig-row"><button type="button" class="rig-btn${t.fixed ? " on" : ""}" data-rig="fixed">🔒 ${en ? "Fixed" : "Står fast"}</button><button type="button" class="rig-btn danger" data-rig="remove">${en ? "Take away" : "Ta bort"}</button><button type="button" class="rig-btn primary" data-rig="deselect">✓ ${en ? "Done" : "Ferdig"}</button></div>`;
   } else {
     const stored = state.tables.filter((x) => x.zone === "tray" && (IS_SALON || x.home));
@@ -7103,6 +7112,10 @@ function rigAction(action) {
         setCenterCm(t, centerCm(t), false);
       } else if (action === "fixed") {
         t.fixed = !t.fixed;
+      } else if (action === "share") {
+        t.share = !t.share;
+      } else if (action === "reserved") {
+        t.reserved = !t.reserved;
       } else if (action === "extra-" || action === "extra+") {
         t.extraSeats = Math.max(0, Math.min(8, (Number(t.extraSeats) || 0) + (action === "extra+" ? 1 : -1)));
       } else if (["left", "right", "up", "down"].includes(action)) {
@@ -7172,7 +7185,7 @@ async function packMaps() {
       plan = r.id === ROOM_ID ? state : JSON.parse(localStorage.getItem(ROOMS[r.id].key) || "null");
     } catch {}
     if (!plan || !Array.isArray(plan.tables) || !plan.tables.length) continue;
-    maps[r.id] = { tables: layoutOnly(plan.tables), room: plan.dims?.room, apero: plan.apero !== false };
+    maps[r.id] = { tables: layoutOnly(plan.tables), room: plan.dims?.room, apero: (plan.apero ?? r.apero) !== false };
   }
   const json = JSON.stringify({ norskenMaps: 1, maps });
   const raw = new TextEncoder().encode(json);
@@ -7367,5 +7380,264 @@ window.addEventListener("storage", (event) => {
     return;
   }
   relabelRoom();
+  render();
+});
+
+// --- 🥂 Aperitiff: a second place for each party, in the rooms «innover» ----------
+// On aperitif evenings the guests first sit in the salons (Bar, Toddy,
+// Arneberg …) and go to their dinner table at the pling. guests.ap holds that
+// second place next to the dinner place (guests.placed / guests.room), only in
+// this browser like the rest of the guest list. The salon maps say how many
+// can sit at each table («Plasser» + «Ekstra stoler»), which tables can be
+// shared («🔗 Kan deles») and which are kept free («⛔ Reservert»).
+function normalizeAp(ap) {
+  let pling = "18:00";
+  try {
+    pling = localStorage.getItem(PLING_KEY) || pling;
+  } catch {}
+  const out = { on: false, suggested: false, who: "all", pling, placed: {}, label: {}, skip: {} };
+  if (!ap || typeof ap !== "object") return out;
+  out.on = ap.on === true;
+  out.suggested = ap.suggested === true;
+  out.who = ap.who === "event" ? "event" : "all";
+  if (/^\d{1,2}:\d{2}$/.test(String(ap.pling || ""))) out.pling = ap.pling;
+  for (const k of ["placed", "label", "skip"]) if (ap[k] && typeof ap[k] === "object") out[k] = ap[k];
+  return out;
+}
+function apOf() {
+  if (!guests.ap) guests.ap = normalizeAp(null);
+  return guests.ap;
+}
+
+// every aperitif table in the salons, read from their saved maps
+function aperoTables() {
+  const out = [];
+  for (const r of ROOM_DEFS) {
+    if (r.profile !== "salong") continue;
+    let plan = null;
+    try {
+      plan = r.id === ROOM_ID ? state : JSON.parse(localStorage.getItem(ROOMS[r.id].key) || "null");
+    } catch {}
+    if (!plan || (plan.apero ?? r.apero) === false || !Array.isArray(plan.tables)) continue; // old maps: the room's default
+    for (const t of plan.tables) {
+      if (t.zone !== "room" || t.piece || t.lead === false) continue;
+      const label = String(t.manual || t.label || "");
+      if (!label) continue;
+      const def = RIG_SIZES.find((x) => x.size === t.size);
+      const cap = Number.isFinite(t.seatCount) && t.seatCount > 0 ? t.seatCount : def ? def.seats : 4;
+      out.push({ id: `${r.id}:${t.id}`, room: r.id, roomName: r.no, label, cap, extra: Number(t.extraSeats) || 0, share: t.share === true, reserved: t.reserved === true });
+    }
+  }
+  return out;
+}
+function apName(t) {
+  return `${t.roomName} ${t.label}`;
+}
+
+// who gets an aperitif place: dinner guests (Spisestua/Domino) in the chosen
+// part of the day, booked before the pling. «Bare arrangementet»: only ★ guests.
+function wantsApero(g) {
+  const ap = apOf();
+  if (ap.skip[g.id]) return false;
+  const area = g.area || "spisestua";
+  if (area !== "spisestua" && area !== "domino") return false; // a booking in its own room stays there
+  if (!inShift(g)) return false;
+  const m = minutesOf(g.time);
+  const pling = minutesOf(ap.pling);
+  if (m != null && pling != null && m >= pling) return false; // comes at or after the pling: straight to the table
+  if (ap.who === "event" && !isEvent(g)) return false;
+  return true;
+}
+
+// Give out the aperitif places: the biggest party first; a table that fits
+// without extra chairs, then with them, then a shared place; a hand-moved
+// party keeps its table. Parties at the same dinner table drink together.
+function assignAperitif() {
+  const ap = apOf();
+  const tables = aperoTables();
+  const byId = new Map(tables.map((t) => [t.id, t]));
+  // forget places whose table is gone
+  for (const [gid, tid] of Object.entries(ap.placed)) if (!byId.has(tid)) delete ap.placed[gid];
+  const want = guests.list.filter(wantsApero);
+  // units: same dinner table (and time) = one party
+  const units = new Map();
+  for (const g of want) {
+    const key = guests.placed[g.id] ? `${guests.room?.[g.id] || "spisestua"}:${guests.placed[g.id]}:${g.time || ""}` : `solo:${g.id}`;
+    if (!units.has(key)) units.set(key, []);
+    units.get(key).push(g);
+  }
+  const used = new Map(); // table id -> people
+  const busy = new Set(); // tables taken by a party (not shareable)
+  const list = [...units.values()].map((members) => ({ members, pax: members.reduce((n, g) => n + (Number(g.pax) || 0), 0) || members.length }));
+  // keep what is already placed (by hand or earlier)
+  for (const u of list) {
+    const tid = u.members.map((g) => ap.placed[g.id]).find(Boolean);
+    if (!tid) continue;
+    for (const g of u.members) ap.placed[g.id] = tid;
+    used.set(tid, (used.get(tid) || 0) + u.pax);
+    if (!byId.get(tid).share) busy.add(tid);
+    u.done = true;
+  }
+  list.sort((p, q) => q.pax - p.pax || (p.members[0].time || "99").localeCompare(q.members[0].time || "99"));
+  const free = (t) => !t.reserved && !busy.has(t.id) && !(used.get(t.id) && !t.share);
+  const room = (t, max) => max - (used.get(t.id) || 0);
+  let placed = 0;
+  let waiting = 0;
+  for (const u of list) {
+    if (u.done) {
+      placed += 1;
+      continue;
+    }
+    const pick = (fn) => tables.filter((t) => free(t) && fn(t)).sort((p, q) => p.cap - q.cap)[0];
+    const t =
+      pick((t) => !t.share && !used.get(t.id) && t.cap >= u.pax) || // a table of its own that fits
+      pick((t) => !t.share && !used.get(t.id) && t.cap + t.extra >= u.pax) || // … with extra chairs
+      pick((t) => t.share && room(t, t.cap + t.extra) >= u.pax); // a shared place with room left
+    if (!t) {
+      waiting += 1;
+      for (const g of u.members) delete ap.placed[g.id];
+      continue;
+    }
+    for (const g of u.members) ap.placed[g.id] = t.id;
+    used.set(t.id, (used.get(t.id) || 0) + u.pax);
+    if (!t.share) busy.add(t.id);
+    placed += 1;
+  }
+  // the words for the list and the printout
+  ap.label = {};
+  for (const [gid, tid] of Object.entries(ap.placed)) if (byId.has(tid)) ap.label[gid] = apName(byId.get(tid));
+  saveGuests();
+  const perRoom = {};
+  for (const tid of new Set(Object.values(ap.placed))) {
+    const t = byId.get(tid);
+    if (t) perRoom[t.roomName] = (perRoom[t.roomName] || 0) + guests.list.filter((g) => ap.placed[g.id] === tid).reduce((n, g) => n + (Number(g.pax) || 0), 0);
+  }
+  return { placed, waiting, tables: tables.length, perRoom };
+}
+
+function aperoSummary(res, en) {
+  if (!res.tables) return en ? "🥂 No salon has tables yet – draw them under «Innover»." : "🥂 Ingen salong har bord ennå – tegn dem under «Innover».";
+  const rooms = Object.entries(res.perRoom).map(([n, p]) => `${n} ${p}`).join(", ");
+  return en
+    ? `🥂 ${res.placed} parties have an aperitif place${rooms ? ` (${rooms})` : ""}${res.waiting ? `, ${res.waiting} without` : ""}.`
+    : `🥂 ${res.placed} selskap har aperitiffplass${rooms ? ` (${rooms})` : ""}${res.waiting ? `, ${res.waiting} uten` : ""}.`;
+}
+
+// the switch on «☀ I dag»: on/off, the pling, and who gets a place
+function renderAperoSwitch(en) {
+  const box = document.getElementById("today-apero");
+  if (!box) return;
+  if (!guests.list.length || IS_SALON) {
+    box.innerHTML = "";
+    return;
+  }
+  const ap = apOf();
+  box.innerHTML = `<div class="apero-row">
+      <button type="button" class="apero-toggle${ap.on ? " on" : ""}" data-ap="toggle" aria-pressed="${ap.on}">🥂 ${en ? "Aperitif before the pling" : "Aperitiff før pling"}: <b>${ap.on ? (en ? "yes" : "ja") : en ? "no" : "nei"}</b>${ap.suggested ? ` <span class="sc-badge">${en ? "Suggested today" : "Foreslått i dag"}</span>` : ""}</button>
+      ${
+        ap.on
+          ? `<span class="apero-pling"><button type="button" class="rig-btn" data-ap="pling-" aria-label="−15 min">−</button><b>${esc(ap.pling)}</b><button type="button" class="rig-btn" data-ap="pling+" aria-label="+15 min">+</button></span>
+             <span class="apero-who"><button type="button" class="chip${ap.who === "all" ? " active" : ""}" data-ap="who-all">${en ? "Everyone before the pling" : "Alle før pling"}</button><button type="button" class="chip${ap.who === "event" ? " active" : ""}" data-ap="who-event">${en ? "Only the event" : "Bare arrangementet"}</button></span>`
+          : ""
+      }
+    </div>`;
+}
+
+function aperoAction(action) {
+  const ap = apOf();
+  if (action === "toggle") ap.on = !ap.on;
+  else if (action === "pling-" || action === "pling+") {
+    const m = (minutesOf(ap.pling) ?? 18 * 60) + (action === "pling+" ? 15 : -15);
+    const c = Math.max(11 * 60, Math.min(23 * 60, m));
+    ap.pling = `${String(Math.floor(c / 60)).padStart(2, "0")}:${String(c % 60).padStart(2, "0")}`;
+    try {
+      localStorage.setItem(PLING_KEY, ap.pling);
+    } catch {}
+  } else if (action === "who-all") ap.who = "all";
+  else if (action === "who-event") ap.who = "event";
+  else if (action === "run") {
+    const before = guestSnapshot();
+    const res = assignAperitif();
+    render();
+    showToast(aperoSummary(res, state.lang === "en"), 8000, () => restoreGuests(before));
+    return;
+  } else if (action === "clear") {
+    const before = guestSnapshot();
+    ap.placed = {};
+    ap.label = {};
+    ap.skip = {};
+    saveGuests();
+    render();
+    showToast(state.lang === "en" ? "All aperitif places are cleared." : "Alle aperitiffplasser er tatt bort.", 8000, () => restoreGuests(before));
+    return;
+  }
+  saveGuests();
+  render();
+}
+for (const id of ["today", "res-apero"]) {
+  document.getElementById(id)?.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-ap]");
+    if (!btn) return;
+    event.stopPropagation();
+    aperoAction(btn.dataset.ap);
+  });
+}
+
+// Reservasjoner (Spisestua): who sits where before the pling, and a menu to move a party
+function renderAperoList() {
+  const box = document.getElementById("res-apero");
+  if (!box) return;
+  const ap = apOf();
+  const en = state.lang === "en";
+  if (IS_SALON || !guests.list.length) {
+    box.innerHTML = "";
+    return;
+  }
+  if (!ap.on) {
+    box.innerHTML = `<button type="button" class="chip apero-off" data-ap="toggle">🥂 ${en ? "Aperitif before the pling" : "Aperitiff før pling"}…</button>`;
+    return;
+  }
+  const tables = aperoTables();
+  const byId = new Map(tables.map((t) => [t.id, t]));
+  const people = (tid) => guests.list.filter((g) => ap.placed[g.id] === tid).reduce((n, g) => n + (Number(g.pax) || 0), 0);
+  const rows = guests.list
+    .filter((g) => wantsApero(g) || ap.placed[g.id] || ap.skip[g.id])
+    .sort((p, q) => (Number(q.pax) || 0) - (Number(p.pax) || 0) || (p.time || "99").localeCompare(q.time || "99"));
+  const option = (t, g) => {
+    const n = people(t.id) - (ap.placed[g.id] === t.id ? Number(g.pax) || 0 : 0);
+    const mark = t.reserved ? " ⛔" : t.share ? " 🔗" : "";
+    return `<option value="${esc(t.id)}"${ap.placed[g.id] === t.id ? " selected" : ""}>${esc(apName(t))}${mark} · ${n}/${t.cap}${t.extra ? `+${t.extra}` : ""}</option>`;
+  };
+  const placed = rows.filter((g) => ap.placed[g.id]).length;
+  box.innerHTML = `<p class="set-title">🥂 ${en ? "Aperitif" : "Aperitiff"} · pling ${esc(ap.pling)} · ${placed}/${rows.length} ${en ? "placed" : "har plass"}</p>
+    <div class="apero-actions"><button type="button" class="chip" data-ap="run">🥂 ${en ? "Give out places" : "Fordel aperitiff"}</button><button type="button" class="chip" data-ap="clear">${en ? "Clear" : "Tøm"}</button><button type="button" class="chip" data-ap="toggle">${en ? "Turn off" : "Slå av"}</button></div>
+    ${
+      tables.length
+        ? `<ul class="apero-list">${rows
+            .map(
+              (g) => `<li class="apero-item${ap.placed[g.id] ? "" : " none"}"><span class="g-time">${esc(g.time || "–")}</span> <b>${esc(g.name || "–")}</b> <span class="g-pax">${g.pax || ""}p</span>
+            <select data-ap-gid="${g.id}" aria-label="${en ? "Aperitif place" : "Aperitiffplass"}"><option value="">${en ? "– none –" : "– ingen –"}</option>${tables.map((t) => option(t, g)).join("")}</select></li>`,
+            )
+            .join("")}</ul>`
+        : `<p class="house-empty">${en ? "No salon has tables yet. Draw them under «Innover ▾»." : "Ingen salong har bord ennå. Tegn dem under «Innover ▾»."}</p>`
+    }`;
+  void byId;
+}
+document.getElementById("res-apero")?.addEventListener("change", (event) => {
+  const sel = event.target.closest("select[data-ap-gid]");
+  if (!sel) return;
+  const ap = apOf();
+  const gid = sel.dataset.apGid;
+  const t = aperoTables().find((x) => x.id === sel.value);
+  if (t) {
+    ap.placed[gid] = t.id;
+    ap.label[gid] = apName(t);
+    delete ap.skip[gid];
+  } else {
+    delete ap.placed[gid];
+    delete ap.label[gid];
+    ap.skip[gid] = true; // «– ingen –»: the boss chose no place for this party
+  }
+  saveGuests();
   render();
 });

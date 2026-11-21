@@ -129,6 +129,9 @@
         return SHIFT.split("+").some((part) => (part === "arrangement" ? isEvent(g) : !isEvent(g) && (part === "lunsj" ? lunch : !lunch)));
       };
       const guestList = (guestStore && Array.isArray(guestStore.list) ? guestStore.list : []).filter(inShift);
+      // 🥂 the aperitif place (app.js assignAperitif), when the evening has one
+      const AP = guestStore && guestStore.ap && guestStore.ap.on ? guestStore.ap : null;
+      const aperoOf = (id) => (AP && AP.placed && AP.placed[id] && AP.label && AP.label[id]) || "";
       const guestRoomOf = (x) => (guestStore && guestStore.room && guestStore.room[x.id]) || "spisestua";
       const placedIds = new Set();
       const partyName = (people) => {
@@ -163,6 +166,8 @@
               area: x.area || "",
               areaLabel: x.areaLabel || "",
               arrived: Boolean(guestStore.arrived && guestStore.arrived[x.id]),
+          ap: aperoOf(x.id),
+              ap: aperoOf(x.id),
               table,
               room: roomId,
               redeck: Boolean(guestStore.redeck && guestStore.redeck[x.id]),
@@ -626,7 +631,7 @@
           "middag+arrangement": en ? "Dinner + Event" : "Middag + Arrangement",
           "lunsj+arrangement": en ? "Lunch + Event" : "Lunsj + Arrangement",
         }[SHIFT];
-        document.getElementById("list-title").textContent = (en ? "Arrivals" : "Ankomster") + (shiftName ? ` · ${shiftName}` : "");
+        document.getElementById("list-title").textContent = (en ? "Arrivals" : "Ankomster") + (shiftName ? ` · ${shiftName}` : "") + (AP ? ` · 🥂 pling ${AP.pling || "18:00"}` : "");
         arrivals.sort(
           (a, b) =>
             (a.time || "99").localeCompare(b.time || "99") ||
@@ -708,6 +713,7 @@
               : a.group.key.startsWith("other:") && (!a.where || a.where === a.group.label)
                 ? "–" // their own room: no table of ours
                 : escHtml(a.where || (en ? "no table" : "uten bord"));
+            const apLine = a.ap ? `<small class="ap">🥂 ${escHtml(a.ap)}</small>` : "";
             const marks = !a.table || marksDone.has(a.table.id) ? "" : marksAt(a.table);
             if (a.table) marksDone.add(a.table.id);
             const note = [doubleNote(a), a.redeck ? `↻ ${en ? "re-set" : "dekk om"}` : "", escHtml(a.note || "")].filter(Boolean).join(" · ");
@@ -716,7 +722,7 @@
               .filter(Boolean)
               .map((m) => `<span class="k" style="background:${m.color};color:${inkOn(m.color)}">${m.code}</span>`)
               .join(" ");
-            return `${head}<tr${clashes(a).close.length ? ' class="dbl"' : ""}><td class="c"><span class="box">${a.arrived ? "✓" : ""}</span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}</td><td class="note">${[diet, marks].filter(Boolean).join(" ")}${(diet || marks) && note ? " " : ""}${note}</td></tr>`;
+            return `${head}<tr${clashes(a).close.length ? ' class="dbl"' : ""}><td class="c"><span class="box">${a.arrived ? "✓" : ""}</span></td><td class="t">${escHtml(a.time || "–")}</td><td class="nm">${escHtml(a.name || "–")}</td><td class="p">${a.pax || ""}</td><td class="b">${where}${apLine}</td><td class="note">${[diet, marks].filter(Boolean).join(" ")}${(diet || marks) && note ? " " : ""}${note}</td></tr>`;
           })
           .join("");
         const seated = arrivals.filter((a) => a.table);
