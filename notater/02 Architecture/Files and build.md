@@ -15,7 +15,7 @@ Norsken has no framework, no npm and no bundler. The real code is four files in 
 | `src/app.js` | The whole app: one classic script (not a module), about 6650 lines. See [[Render loop]] and [[Storage and data]]. |
 | `src/styles.css` | All screen CSS. Colours are custom properties on `:root` (`--ink`, `--paper`, `--pine`, `--gold` …). `body.tools-off` hides the tray when «🧰 Verktøy» is off. |
 | `src/print.html` | The printout. Self-contained: its own CSS in `<style>` and exactly ONE `<script>`. It reads localStorage itself (see [[Storage and data]]) and copies a few things from `app.js` (`SEAT_MARKS`, `DEFAULT_DIMS`, `EVENT_WORDS`, the shift filter `inShift`). If you change one of those in `app.js`, change `print.html` too. See [[Printing]]. |
-| `resdiary/til-norsken.js` | Bookmark «Til Norsken (ett trykk)»: opens Norsken with the list after `#import=`. |
+| `resdiary/til-norsken.js` | Bookmark «Til Norsken (ett trykk)»: opens `…/norsken/#fra-resdiary` and hands the list over with `postMessage` (every 250 ms, up to 80 tries, until Norsken answers `"norsken-ok"`). Nothing goes in the address. |
 | `resdiary/til-bordplan.js` | Bookmark «Til bordplan»: copies the list (tab-separated) to the clipboard. |
 | `resdiary/rydd-liste.js` | Bookmark «Rydd liste»: removes empty rows and the phone/e-mail/booked/customer-code/pre-order columns on the ResDiary print page. |
 | `resdiary/last-ned-liste.js` | Bookmark «Last ned liste»: saves the list as `resdiary-YYYY-MM-DD_HHMM.csv` in Downloads. |
@@ -61,7 +61,7 @@ It can run from any folder (all paths are worked out from the script's own locat
 6. **Inlines the JS**: replaces `<script src="app.js?v=24"></script>` with `<script>window.__NORSKEN_PRINT_SRC__ = "<base64>";</script>` followed by `<script>…app…</script>` (asserted). **If you bump the `?v=` numbers in `src/index.html`, change the two strings in `build.py` as well**, or the build fails.
 7. **Writes** root `index.html` and root `print.html`.
 8. **Bookmarks** with `bm(name)`: reads `resdiary/<name>`, **drops line 1** (the comment header), strips each remaining line and **joins them with nothing**, asserts there is no `//` other than `://`, and returns `javascript:` + the code. Because lines are glued together:
-   - a `//` comment would swallow everything after it, hence the assert (and why `til-norsken.js` writes the URL as `"https:/"+"/uwu6967.github.io/norsken/#import="`);
+   - a `//` comment would swallow everything after it, hence the assert (and why `til-norsken.js` writes its origin as `var O="https:/"+"/uwu6967.github.io";`);
    - every statement needs its own `;`.
    The four items, in this order, with title and Norwegian description: `til-norsken.js` «Til Norsken (ett trykk)», `rydd-liste.js` «Rydd liste», `til-bordplan.js` «Til bordplan», `last-ned-liste.js` «Last ned liste». A Markdown block (how-to line, then a `###` heading, description and code block per bookmark) replaces the text between the markers in `resdiary/README.md` (asserted: the marker must exist). The main `README.md` is not touched; it links to `bokmerke.html`.
 9. **`LES-MEG.txt`**: title, the two ways to use `Norsken.zip` (extension, or double-click `index.html`), every bookmark (`--- title ---`, description, code), and the extension install/update steps. Written with `newline='\r\n'`.
