@@ -175,7 +175,6 @@
               area: x.area || "",
               areaLabel: x.areaLabel || "",
               arrived: Boolean(guestStore.arrived && guestStore.arrived[x.id]),
-          ap: aperoOf(x.id),
               ap: aperoOf(x.id),
               table,
               room: roomId,
@@ -224,6 +223,7 @@
           room,
           where,
           redeck: Boolean(hint || (guestStore.redeck && guestStore.redeck[x.id])),
+          ap: aperoOf(x.id),
         });
       }
       const lang = state.lang === "en" ? "en" : "no";

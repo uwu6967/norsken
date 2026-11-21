@@ -176,6 +176,7 @@ Any exception inside returns `defaultState()`, which silently wipes the layout o
     placed: {},   // guestId -> "<salon id>:<table id>", e.g. "toddy:t3"
     label: {},    // guestId -> "Toddy 1" (what the list and the printout show)
     skip: {},     // guestId -> true: «– ingen –» chosen, never given a place
+    hand: {},     // guestId -> true: place chosen in the menu; kept by assignAperitif(), the rest is redone
   },
 }
 ```

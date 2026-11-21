@@ -19,9 +19,17 @@ on top and say what it replaces – don't delete the old one.
   (default 18:00, set with − / + in 15-minute steps). «Alle før pling» or «Bare arrangementet». Bookings on the same
   dinner table at the same time drink together. **Biggest party first**; each gets the smallest own table
   that fits, then a table with extra chairs, then a «🔗 Kan deles» table in a room that has one. A
-  «⛔ Reservert» table (Arneberg's first fireplace for the board) is never given out. A place set by
-  hand is kept on the next run; «– ingen –» keeps a party out. Shown on the printout under the dinner
+  «⛔ Reservert» table (Arneberg's first fireplace for the board) is never given out automatically. A place
+  set by hand is kept on the next run; «– ingen –» keeps a party out. Shown on the printout under the dinner
   table – still one A4 page.
+- **Aperitif, after a review** (same day): every run starts again from the places chosen **by hand**
+  (`ap.hand`); the automatic places are given out fresh, so a party never keeps a place it no longer
+  qualifies for (pling moved, other shift) and two parties never end up on one table. A hand choice
+  moves the **whole party** (same dinner table, same time) and pushes an automatic party off that table.
+  Changing the pling or «Alle / Bare arrangementet» gives the places out again. «Lunsj» and «Lunsj +
+  Arrangement» never run it. A booking without a time gets no place. A table with 0 chairs counts as 0.
+  Names on the list and paper follow the salon maps (renamed table → new name; gone → no place), unless
+  this browser has no salon maps at all.
 - **Aperitif rooms** (Danny): every room except Spisestua, Domino, Bibliotek, the card rooms 1772/1814/1818
   and Danske kjelleret (no seating). The boss chooses who gets a spot; **biggest parties first**. Pling
   around 18:00. One party per table, except shared places such as **the fireplace in Arneberg** – and the

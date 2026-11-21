@@ -72,7 +72,9 @@ sheet stays one page; each row gets «🥂 Bar 3» under the dinner table, the t
   Bare arrangementet».
   Then one press (Middag, Arrangement, Middag + Arrangement) seats dinner **and** aperitif.
 - Reservasjoner (Spisestua) has a «🥂 Aperitiff» list: «Fordel aperitiff», «Tøm», «Slå av», and a
-  menu per party to move it or choose «– ingen –».
+  menu per party to move it or choose «– ingen –». A menu choice is «by hand»: kept on every new run,
+  moves the whole party, and can be undone. «Slå av» keeps the places (undo switches it on again).
+- Each run: hand places stay, all other places are given out fresh (see [[Decisions]]).
 - Room editor: «🔗 Kan deles» (more parties may share, e.g. a fireplace) and «⛔ Reservert» (never
   given out).
 - Room editor, per room: «🥂 Brukes til aperitiff: ja/nei». Starts as «nei» for Bibliotek,

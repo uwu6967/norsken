@@ -9,6 +9,10 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-21
+- Aperitif fixes from a review: no two parties on one table after changing shift; a moved pling
+  takes away places that no longer fit; a hand choice moves the whole party and can be undone;
+  «Slå av» can be undone; guests without a dinner table show their 🥂 place on paper; renamed salon
+  tables show the new name; a table with 0 chairs is not used; lunch never gets aperitif places.
 - «🔔 Hvem sitter hvor»: a big list for the pling – name, people, table, who they share it with,
   🥂 salon; sort A–Å, table by table or salon by salon; search; ✓ when they arrive. A party without a
   table is put on one with two taps; on a table with people it joins them and the chairs add up.

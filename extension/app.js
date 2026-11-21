@@ -6647,7 +6647,7 @@ function chooseShift(key) {
   }
   for (const t of roomTables()) guestSeats(t);
   assignBookings();
-  const apRes = apOf().on && key !== "lunsj" ? assignAperitif() : null;
+  const apRes = apOf().on && !key.startsWith("lunsj") ? assignAperitif() : null;
   save();
   render();
   closeToday();
@@ -7411,17 +7411,18 @@ function normalizeAp(ap) {
   try {
     pling = localStorage.getItem(PLING_KEY) || pling;
   } catch {}
-  const out = { on: false, suggested: false, who: "all", pling, placed: {}, label: {}, skip: {} };
+  const out = { on: false, suggested: false, who: "all", pling, placed: {}, label: {}, skip: {}, hand: {} };
   if (!ap || typeof ap !== "object") return out;
   out.on = ap.on === true;
   out.suggested = ap.suggested === true;
   out.who = ap.who === "event" ? "event" : "all";
   if (/^\d{1,2}:\d{2}$/.test(String(ap.pling || ""))) out.pling = ap.pling;
-  for (const k of ["placed", "label", "skip"]) if (ap[k] && typeof ap[k] === "object") out[k] = ap[k];
+  for (const k of ["placed", "label", "skip", "hand"]) if (ap[k] && typeof ap[k] === "object") out[k] = ap[k];
   return out;
 }
 function apOf() {
   if (!guests.ap) guests.ap = normalizeAp(null);
+  if (!guests.ap.hand) guests.ap.hand = {};
   return guests.ap;
 }
 
@@ -7440,14 +7441,21 @@ function aperoTables() {
       const label = String(t.manual || t.label || "");
       if (!label) continue;
       const def = RIG_SIZES.find((x) => x.size === t.size);
-      const cap = Number.isFinite(t.seatCount) && t.seatCount > 0 ? t.seatCount : def ? def.seats : 4;
-      out.push({ id: `${r.id}:${t.id}`, room: r.id, roomName: r.no, label, cap, extra: Number(t.extraSeats) || 0, share: t.share === true, reserved: t.reserved === true });
+      const cap = Number.isFinite(t.seatCount) ? Math.max(0, t.seatCount) : def ? def.seats : 4;
+      const extra = Math.max(0, Number(t.extraSeats) || 0);
+      if (cap + extra <= 0) continue; // no chairs at all: nobody can sit there
+      out.push({ id: `${r.id}:${t.id}`, room: r.id, roomName: r.no, label, cap, extra, share: t.share === true, reserved: t.reserved === true });
     }
   }
   return out;
 }
 function apName(t) {
   return `${t.roomName} ${t.label}`;
+}
+
+// the party a booking drinks with: everyone on the same dinner table at the same time
+function apUnitKey(g) {
+  return guests.placed[g.id] ? `${guests.room?.[g.id] || "spisestua"}:${guests.placed[g.id]}:${g.time || ""}` : `solo:${g.id}`;
 }
 
 // who gets an aperitif place: dinner guests (Spisestua/Domino) in the chosen
@@ -7460,7 +7468,7 @@ function wantsApero(g) {
   if (!inShift(g)) return false;
   const m = minutesOf(g.time);
   const pling = minutesOf(ap.pling);
-  if (m != null && pling != null && m >= pling) return false; // comes at or after the pling: straight to the table
+  if (m == null || pling == null || m >= pling) return false; // at or after the pling (or no time): straight to the table
   if (ap.who === "event" && !isEvent(g)) return false;
   return true;
 }
@@ -7472,29 +7480,47 @@ function assignAperitif() {
   const ap = apOf();
   const tables = aperoTables();
   const byId = new Map(tables.map((t) => [t.id, t]));
-  // forget places whose table is gone
-  for (const [gid, tid] of Object.entries(ap.placed)) if (!byId.has(tid)) delete ap.placed[gid];
+  // no salon maps in this browser: nothing can be checked, so nothing is touched
+  if (!tables.length) return { placed: 0, waiting: 0, tables: 0, perRoom: {} };
+  const ids = new Set(guests.list.map((g) => g.id));
+  // Start again from the places chosen by hand. A party that no longer qualifies
+  // (the pling moved, another shift, «– ingen –»), or whose table is gone, loses its place.
+  for (const gid of Object.keys(ap.placed)) {
+    const g = ids.has(gid) ? guests.list.find((x) => x.id === gid) : null;
+    if (!g || !ap.hand[gid] || !byId.has(ap.placed[gid]) || !wantsApero(g)) {
+      delete ap.placed[gid];
+      delete ap.hand[gid];
+    }
+  }
   const want = guests.list.filter(wantsApero);
   // units: same dinner table (and time) = one party
   const units = new Map();
   for (const g of want) {
-    const key = guests.placed[g.id] ? `${guests.room?.[g.id] || "spisestua"}:${guests.placed[g.id]}:${g.time || ""}` : `solo:${g.id}`;
+    const key = apUnitKey(g);
     if (!units.has(key)) units.set(key, []);
     units.get(key).push(g);
   }
   const used = new Map(); // table id -> people
   const busy = new Set(); // tables taken by a party (not shareable)
   const list = [...units.values()].map((members) => ({ members, pax: members.reduce((n, g) => n + (Number(g.pax) || 0), 0) || members.length }));
-  // keep what is already placed (by hand or earlier)
+  // the places chosen by hand stay; each member keeps its own
   for (const u of list) {
-    const tid = u.members.map((g) => ap.placed[g.id]).find(Boolean);
-    if (!tid) continue;
-    for (const g of u.members) ap.placed[g.id] = tid;
-    used.set(tid, (used.get(tid) || 0) + u.pax);
-    if (!byId.get(tid).share) busy.add(tid);
+    const own = u.members.filter((g) => ap.placed[g.id]);
+    if (!own.length) continue;
+    for (const g of own) {
+      const tid = ap.placed[g.id];
+      used.set(tid, (used.get(tid) || 0) + (Number(g.pax) || 1));
+      if (!byId.get(tid).share) busy.add(tid);
+    }
+    // the rest of the party (if any) goes with the first one
+    for (const g of u.members) if (!ap.placed[g.id]) {
+      ap.placed[g.id] = ap.placed[own[0].id];
+      used.set(ap.placed[g.id], (used.get(ap.placed[g.id]) || 0) + (Number(g.pax) || 1));
+    }
     u.done = true;
   }
-  list.sort((p, q) => q.pax - p.pax || (p.members[0].time || "99").localeCompare(q.members[0].time || "99"));
+  const at = (u) => minutesOf(u.members[0].time) ?? 24 * 60;
+  list.sort((p, q) => q.pax - p.pax || at(p) - at(q));
   const free = (t) => !t.reserved && !busy.has(t.id) && !(used.get(t.id) && !t.share);
   const room = (t, max) => max - (used.get(t.id) || 0);
   let placed = 0;
@@ -7561,8 +7587,16 @@ function renderAperoSwitch(en) {
 
 function aperoAction(action) {
   const ap = apOf();
-  if (action === "toggle") ap.on = !ap.on;
-  else if (action === "pling-" || action === "pling+") {
+  const en = state.lang === "en";
+  if (action === "toggle") {
+    ap.on = !ap.on;
+    if (!ap.on && Object.keys(ap.placed).length) {
+      saveGuests();
+      render();
+      showToast(en ? "Aperitif is off. The places are kept if you switch it on again." : "Aperitiff er slått av. Plassene blir husket om du slår den på igjen.", 8000, () => aperoAction("toggle"));
+      return;
+    }
+  } else if (action === "pling-" || action === "pling+") {
     const m = (minutesOf(ap.pling) ?? 18 * 60) + (action === "pling+" ? 15 : -15);
     const c = Math.max(11 * 60, Math.min(23 * 60, m));
     ap.pling = `${String(Math.floor(c / 60)).padStart(2, "0")}:${String(c % 60).padStart(2, "0")}`;
@@ -7571,7 +7605,8 @@ function aperoAction(action) {
     } catch {}
   } else if (action === "who-all") ap.who = "all";
   else if (action === "who-event") ap.who = "event";
-  else if (action === "run") {
+  if (["pling-", "pling+", "who-all", "who-event"].includes(action) && Object.keys(ap.placed).length) assignAperitif(); // who qualifies changed
+  if (action === "run") {
     const before = guestSnapshot();
     const res = assignAperitif();
     render();
@@ -7582,6 +7617,7 @@ function aperoAction(action) {
     ap.placed = {};
     ap.label = {};
     ap.skip = {};
+    ap.hand = {};
     saveGuests();
     render();
     showToast(state.lang === "en" ? "All aperitif places are cleared." : "Alle aperitiffplasser er tatt bort.", 8000, () => restoreGuests(before));
@@ -7613,12 +7649,13 @@ function renderAperoList() {
     box.innerHTML = `<button type="button" class="chip apero-off" data-ap="toggle">🥂 ${en ? "Aperitif before the pling" : "Aperitiff før pling"}…</button>`;
     return;
   }
+  syncAperoLabels();
   const tables = aperoTables();
   const byId = new Map(tables.map((t) => [t.id, t]));
   const people = (tid) => guests.list.filter((g) => ap.placed[g.id] === tid).reduce((n, g) => n + (Number(g.pax) || 0), 0);
   const rows = guests.list
     .filter((g) => wantsApero(g) || ap.placed[g.id] || ap.skip[g.id])
-    .sort((p, q) => (Number(q.pax) || 0) - (Number(p.pax) || 0) || (p.time || "99").localeCompare(q.time || "99"));
+    .sort((p, q) => (Number(q.pax) || 0) - (Number(p.pax) || 0) || (minutesOf(p.time) ?? 1440) - (minutesOf(q.time) ?? 1440));
   const option = (t, g) => {
     const n = people(t.id) - (ap.placed[g.id] === t.id ? Number(g.pax) || 0 : 0);
     const mark = t.reserved ? " ⛔" : t.share ? " 🔗" : "";
@@ -7643,20 +7680,64 @@ document.getElementById("res-apero")?.addEventListener("change", (event) => {
   const sel = event.target.closest("select[data-ap-gid]");
   if (!sel) return;
   const ap = apOf();
-  const gid = sel.dataset.apGid;
+  const g = guests.list.find((x) => x.id === sel.dataset.apGid);
+  if (!g) return;
+  const before = guestSnapshot();
   const t = aperoTables().find((x) => x.id === sel.value);
-  if (t) {
-    ap.placed[gid] = t.id;
-    ap.label[gid] = apName(t);
-    delete ap.skip[gid];
-  } else {
-    delete ap.placed[gid];
-    delete ap.label[gid];
-    ap.skip[gid] = true; // «– ingen –»: the boss chose no place for this party
+  // the whole party moves: everyone on the same dinner table at the same time
+  const key = apUnitKey(g);
+  const party = guests.list.filter((x) => x.id === g.id || (apUnitKey(x) === key && (wantsApero(x) || ap.placed[x.id])));
+  for (const x of party) {
+    if (t) {
+      ap.placed[x.id] = t.id;
+      ap.label[x.id] = apName(t);
+      ap.hand[x.id] = true; // chosen by hand: «Fordel aperitiff» keeps it
+      delete ap.skip[x.id];
+    } else {
+      delete ap.placed[x.id];
+      delete ap.label[x.id];
+      delete ap.hand[x.id];
+      ap.skip[x.id] = true; // «– ingen –»: the boss chose no place for this party
+    }
   }
+  // a table of its own that had another party placed automatically: that party moves on
+  if (t && !t.share && guests.list.some((x) => ap.placed[x.id] === t.id && !party.includes(x) && !ap.hand[x.id])) assignAperitif();
   saveGuests();
   render();
+  const en = state.lang === "en";
+  const names = party.map((x) => x.name || "–").join(", ");
+  showToast(t ? `🥂 ${names} → ${apName(t)}.` : en ? `🥂 ${names}: no aperitif place.` : `🥂 ${names}: ingen aperitiffplass.`, 6000, () => restoreGuests(before));
 });
+
+// The words on the list and the printout follow the salon maps: a renamed table
+// shows its new name, a table that is gone (or a room switched off) loses its
+// parties. Without any salon map in this browser nothing is touched.
+function syncAperoLabels() {
+  const ap = guests.ap;
+  if (!ap || !Object.keys(ap.placed || {}).length) return;
+  const tables = aperoTables();
+  if (!tables.length) return;
+  const byId = new Map(tables.map((t) => [t.id, t]));
+  let changed = false;
+  for (const [gid, tid] of Object.entries(ap.placed)) {
+    const t = byId.get(tid);
+    if (!t) {
+      delete ap.placed[gid];
+      delete ap.label[gid];
+      if (ap.hand) delete ap.hand[gid];
+      changed = true;
+    } else if (ap.label[gid] !== apName(t)) {
+      ap.label[gid] = apName(t);
+      changed = true;
+    }
+  }
+  for (const gid of Object.keys(ap.label)) if (!ap.placed[gid]) {
+    delete ap.label[gid];
+    changed = true;
+  }
+  if (changed) saveGuests();
+}
+document.getElementById("print-btn")?.addEventListener("click", syncAperoLabels, true);
 
 // --- «🔔 Hvem sitter hvor»: where each party sits, for the pling ----------------
 // One big list, phone first: a name → its table. A party without a table (free
