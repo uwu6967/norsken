@@ -32,6 +32,7 @@
         <nav class="room-switch" aria-label="Rom">
           <button type="button" class="room-tab" data-room="domino">Domino</button>
           <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
+          <button type="button" class="room-tab innover" id="room-innover" aria-haspopup="dialog">Innover ▾</button>
         </nav>
         <div class="topbar-actions">
           <button type="button" class="chip big today-btn" id="today-btn" aria-haspopup="dialog" aria-controls="today">☀ <span id="today-btn-text">I dag</span></button>
@@ -134,6 +135,9 @@
           <ul class="mine-list" id="mine-list"></ul>
         </section>
         <section class="set-group">
+          <p class="set-title" id="maps-title">Bordkart for salongene</p>
+          <p class="set-note" id="maps-note">Har du tegnet bordene innover på mobilen? Send dem til PC-en med en lenke. Ingen gjestenavn er med.</p>
+          <button type="button" class="chip big preset-row" id="maps-send">📤 Send bordkart</button>
           <p class="set-title" id="mine-move-title">Til en annen PC</p>
           <p class="set-note" id="mine-move-note">Last ned oppsettene som en fil, og åpne fila på den andre PC-en (nettsiden, utvidelsen eller jobb-PC-en).</p>
           <div class="set-pair">
@@ -197,6 +201,8 @@
 
 
 
+      <div class="rig-head" id="rig-head" hidden></div>
+      <div class="rig-panel" id="rig-panel" hidden></div>
       <div class="board">
         <aside class="leftcol" id="leftcol">
           <div class="tabs" role="tablist" aria-label="Verktøy">
@@ -227,6 +233,7 @@
             <p class="kicker" id="drawer-empty-title">Bord</p>
             <p id="drawer-empty-text">Klikk på et bord for å endre det.</p>
             <button type="button" class="nudge wide chairs-toggle" id="chairs-toggle">Skjul alle stoler</button>
+            <button type="button" class="nudge wide rig-open" id="rig-open">✏️ Flytt bord (stor skjerm)</button>
           </aside>
           </div>
           <div class="tab-pane" data-pane="book" hidden>

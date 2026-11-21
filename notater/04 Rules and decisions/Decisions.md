@@ -9,6 +9,15 @@ What was decided, and why. Newest first. When something here changes, write the 
 on top and say what it replaces – don't delete the old one.
 
 ## 2026-11-21
+- **Aperitif rooms** (Danny): every room except Spisestua, Domino, Bibliotek, the card rooms 1772/1814/1818
+  and Danske kjelleret (no seating). The boss chooses who gets a spot; **biggest parties first**. Pling
+  around 18:00. One party per table, except shared places such as **the fireplace in Arneberg** – and the
+  first fireplace in Arneberg is **reserved for the board** when they are there.
+- **Every room has its own table map** (`ROOM_DEFS`); salons are plain rooms – no presets, no position
+  numbering, a number given at creation is kept. A salon picked in a tab is remembered for that tab only.
+- **The room editor** is full-screen with big buttons; a drop outside the room stops at the wall;
+  «🔒 Står fast» tables cannot be dragged; «Ta bort» remembers the spot.
+- **Salon maps go to another PC by link** («📤 Send bordkart») – layout only, never guests.
 - **The guest list never travels in a web address.** «🍽 Til Norsken» opens the website and hands the
   list over in memory (`postMessage`), accepted only from a ResDiary page; ResDiary gets «norsken-ok»
   back. *Replaces:* the `#import=` address, which a privacy review showed stays in the browser history
