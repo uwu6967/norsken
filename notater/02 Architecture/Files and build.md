@@ -12,7 +12,7 @@ Norsken has no framework, no npm and no bundler. The real code is four files in 
 | Path | What it is |
 |---|---|
 | `src/index.html` | Page skeleton: top bar (shift switch, room switch «Domino / Spisestua», «☀ I dag», «🧰 Verktøy», «🏠 Norsken», «★ Oppsett», «Skriv ut», «🪑 med stoler», «⚙ Innstillinger»), the dialogs, the left column with the tabs «Bord» / «Reservasjoner» / «Merking», the map `#room`, the tray, the toast and the seat editor. Loads `styles.css?v=23` and `app.js?v=24`. |
-| `src/app.js` | The whole app: one classic script (not a module), about 6650 lines. See [[Render loop]] and [[Storage and data]]. |
+| `src/app.js` | The whole app: one classic script (not a module), about 6700 lines. See [[Render loop]] and [[Storage and data]]. |
 | `src/styles.css` | All screen CSS. Colours are custom properties on `:root` (`--ink`, `--paper`, `--pine`, `--gold` …). `body.tools-off` hides the tray when «🧰 Verktøy» is off. |
 | `src/print.html` | The printout. Self-contained: its own CSS in `<style>` and exactly ONE `<script>`. It reads localStorage itself (see [[Storage and data]]) and copies a few things from `app.js` (`SEAT_MARKS`, `DEFAULT_DIMS`, `EVENT_WORDS`, the shift filter `inShift`). If you change one of those in `app.js`, change `print.html` too. See [[Printing]]. |
 | `resdiary/til-norsken.js` | Bookmark «Til Norsken (ett trykk)»: opens `…/norsken/#fra-resdiary` and hands the list over with `postMessage` (every 250 ms, up to 80 tries, until Norsken answers `"norsken-ok"`). Nothing goes in the address. |

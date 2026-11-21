@@ -753,7 +753,7 @@ const DIET_WORDS = [
   ["gluten", /glut[e]?n|c[øo]liaki|coeliac|celiac/i],
   ["laktose", /lakto|lacto|melkeallerg|melkefri|melkeprotein/i],
   ["notter", /n[øo]tt|peanut|pean[øo]tt|mandel|nut allerg|nuts\b/i],
-  ["skalldyr", /skalldyr|skjell|reke|krabbe|hummer|shellfish|bl[øo]tdyr/i],
+  ["skalldyr", /skalldyr|skjell|reke|krabbe|hummer(?!\s?(aften|kveld|fest))|shellfish|bl[øo]tdyr/i],
   ["diabetes", /diabet/i],
   ["gravid", /gravid|pregnan/i],
   ["veganer", /vegan/i],
@@ -2915,6 +2915,7 @@ function startDrag(event, target, el) {
     lastX: event.clientX,
     lastY: event.clientY,
     moved: false,
+    touch: event.pointerType === "touch", // a finger: a slip off the map must not store the table
     el,
   };
 }
@@ -3134,7 +3135,18 @@ function finishDrag(clientX, clientY) {
     selectTable(current.id);
     return;
   }
+  const onFloor = table.zone === "room";
+  const inRoom = pointIn(document.getElementById("room"), clientX, clientY);
+  const onTray = pointIn(document.getElementById("tray"), clientX, clientY);
+  if (onFloor && !inRoom && current.touch && !onTray) {
+    // on a phone a finger easily slides off the map: the table stays where it was
+    showToast(state.lang === "en" ? "The table stayed put. Use «To storage» to take it away." : "Bordet ble stående. Bruk «Til lager» for å ta det bort.", 5000);
+    render();
+    return;
+  }
+  const before = onFloor && !inRoom ? JSON.stringify(state.tables) : null;
   placeTable(table, clientX, clientY);
+  if (before && table.zone === "tray") offerTableUndo(before);
   landedId = table.id;
   setTimeout(() => {
     if (landedId === table.id) landedId = null;
@@ -4203,6 +4215,7 @@ document.getElementById("rotate-btn").addEventListener("click", () => {
 document.getElementById("to-tray-btn").addEventListener("click", () => {
   const table = getTable(state.selected);
   if (!table) return;
+  const before = JSON.stringify(state.tables);
   const leavingGroup = table.group;
   table.zone = "tray";
   table.label = "";
@@ -4225,6 +4238,7 @@ document.getElementById("to-tray-btn").addEventListener("click", () => {
   relabelRoom();
   save();
   render();
+  offerTableUndo(before);
 });
 
 document.getElementById("brush-row").addEventListener("click", (event) => {
@@ -6712,3 +6726,19 @@ document.addEventListener(
   },
   true,
 );
+
+// «↶ Angre» after a table went to the store: number, name, langbord and plates come back
+function offerTableUndo(beforeTables) {
+  const en = state.lang === "en";
+  showToast(en ? "The table went to storage." : "Bordet er satt på lager.", 8000, () => {
+    try {
+      state.tables = JSON.parse(beforeTables);
+    } catch {
+      return;
+    }
+    relabelRoom();
+    save();
+    render();
+    showToast(en ? "The table is back." : "Bordet er tilbake.", 3000);
+  });
+}

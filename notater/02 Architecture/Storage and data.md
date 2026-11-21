@@ -99,7 +99,7 @@ Fields not in `defaultState()`, added later by code:
 |---|---|
 | `id` | `t-<base36 time>-<6 random chars>` from `uid()` |
 | `size` | `"small"`, `"big"`, `"oval"`, `"rect"` or `"long"` (`SIZES`) |
-| `kind` | derived from `SIZE_KINDS`: `round`, `round`, `oval`, `rect`, `plate` (the langbord half is kind `"plate"`, kept for the CSS class); `furniture` for the sidebord |
+| `kind` | derived from `SIZE_KINDS`: small and big → `"round"`, oval → `"oval"`, rect → `"rect"`, long → `"plate"` (the langbord half is kind `"plate"`, a name kept for the CSS class); `"furniture"` for the sidebord |
 | `zone` | `"room"` (on the floor) or `"tray"` (storage) |
 | `x`, `y` | centre in **percent** of room width/height (cm only via `centerCm()`) |
 | `rotated` | boolean |
@@ -109,14 +109,14 @@ Fields not in `defaultState()`, added later by code:
 | `group` | `g-<uid>` shared by the halves of one langbord, else absent/`null` |
 | `gapPlates` | plate sizes dropped in the gap ABOVE this table, e.g. `["plateM","plateS"]`; only grouped floor tables, never the first in the group |
 | `custom` | `{ w, l }` cm for one langbord half (clamped `w` 30–400, `l` 50–900), else `null` |
-| `seatTurn` | degrees the chair ring is turned (45 for round, 30 for oval) |
+| `seatTurn` | degrees the chair ring is turned; `makeTable()` gives 30 to an oval and 45 to everything else; if missing on load, 45 for an unrotated round table, else 0 |
 | `seatCount` | chair count set by hand or by a booking (1–40); absent = default |
 | `seatFromGuest`, `seatBefore` | chairs were set from a booking's size; `seatBefore` is what to go back to |
-| `ends`, `endSide` | end chairs on rectangles (`0`, `1`, `2`) and which end |
+| `ends`, `endSide` | end chairs on rectangles: `ends` is `0`, `1` or `2`; with `1`, `endSide: "end"` means the bottom/right end, anything else the top/left |
 | `seatAngles` | `{ seatIndex: degrees }` chairs dragged by hand |
 | `seatMarks`, `seatNotes`, `seatNames` | objects keyed by seat index: mark key, note text, name on that chair |
 | `name` | a name typed on a table without a booking (max 28 chars) |
-| `booked`, `redeck`, `redeckPax` | older fields: `clearBookedNames()` clears them and `print.html` still reads `redeck`/`redeckPax`, but nothing in today's `src/app.js` sets `booked` to true or sets `redeck` (unclear if still needed) |
+| `booked`, `redeck`, `redeckPax` | older fields: `clearBookedNames()` clears them and `print.html` still reads `redeck`/`redeckPax`, and `tableButton()` / `renderCallouts()` still show `table.redeck`, but nothing in today's `src/app.js` sets `booked` to true or assigns `table.redeck` / `table.redeckPax` (unclear if still needed; the live «↻» state is `guests.redeck` and `guests.redeckHint`) |
 | `plates` | always `null` (old field) |
 
 Baked fields, written so `print.html` never redoes the geometry:
