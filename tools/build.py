@@ -55,6 +55,57 @@ txt += ['index.html trenger ingen installering. Alt blir i nettleseren din.', ''
 txt += ['Som utvidelse i Chrome eller Edge (anbefalt – da virker «Skriv ut» best):', '  1. Last ned Norsken.zip fra siste release.', '  2. Høyreklikk zip-fila -> «Pakk ut alle» og legg mappa et fast sted,', '     f.eks. Dokumenter\\Norsken (ikke i Nedlastinger).', '  3. Skriv chrome://extensions i adressefeltet (Edge: edge://extensions).', '  4. Slå på «Utviklermodus» (Developer mode).', '  5. Trykk «Last inn upakket» (Load unpacked) og velg mappa der manifest.json ligger.', '  6. Chrome: klikk puslespillbrikken øverst til høyre og fest Norsken (nåla).', '     Edge: klikk puslespillbrikken og så øyet (Vis på verktøylinjen).', '     Klikk Norsken-ikonet for å åpne bordplanen.', '  Ny versjon: pakk ut den nye zip-fila og legg filene inn i den samme mappa', '  (erstatt de gamle), og trykk ↻ på Norsken i chrome://extensions.', '  Planene dine blir liggende. Ikke trykk «Fjern» – da slettes planene.', '']
 
 open(os.path.join(root, 'LES-MEG.txt'), 'w', encoding='utf-8', newline='\r\n').write('\n'.join(txt))
+
+# bokmerke.html on the website: ONE big button to drag up to the bookmarks bar,
+# so nobody has to copy code. The page has no script and sends nothing.
+import html as _html
+_code = bm('til-norsken.js')
+page = """<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Norsken – ResDiary-knappen</title>
+    <style>
+      :root { color-scheme: light; }
+      body { margin: 0; font: 20px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: #f6efe3; color: #1d1812; }
+      main { max-width: 760px; margin: 0 auto; padding: 32px 20px 60px; }
+      h1 { font-family: Georgia, serif; font-size: 2.2rem; margin: 0 0 6px; }
+      .lead { font-size: 1.15rem; margin: 0 0 26px; color: #4a3f35; }
+      ol { padding: 0; margin: 0; list-style: none; counter-reset: s; }
+      li { counter-increment: s; position: relative; margin: 0 0 18px; padding: 18px 20px 18px 78px; background: #fff; border-radius: 18px; box-shadow: 0 6px 20px rgba(60,40,20,.08); }
+      li::before { content: counter(s); position: absolute; left: 20px; top: 16px; width: 44px; height: 44px; border-radius: 50%; background: #2f4a3c; color: #fff; display: grid; place-items: center; font: 700 1.3rem Georgia, serif; }
+      .drag { display: inline-block; margin: 10px 0 4px; padding: 16px 30px; border-radius: 999px; background: #2f7a4f; color: #fff; font-weight: 800; font-size: 1.4rem; text-decoration: none; box-shadow: 0 10px 24px rgba(47,122,79,.35); cursor: grab; }
+      kbd { display: inline-block; padding: 2px 9px; border: 1px solid #b8a98f; border-bottom-width: 3px; border-radius: 7px; background: #fffaf2; font: 600 .95rem system-ui, sans-serif; }
+      .safe { margin-top: 30px; padding: 18px 20px; border-radius: 18px; background: #e8f1ea; border: 1px solid #b9d3bf; }
+      .safe h2 { margin: 0 0 6px; font-size: 1.2rem; }
+      small { color: #6d6258; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>ResDiary-knappen</h1>
+      <p class="lead">Gjøres én gang på hver PC. Etterpå er det ett trykk fra ResDiary til Norsken.</p>
+      <ol>
+        <li>Vis bokmerkelinja: trykk <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>
+          <br /><small>(Mac: <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>)</small></li>
+        <li>Dra den grønne knappen opp til bokmerkelinja og slipp:
+          <br /><a class="drag" href="__CODE__" title="Dra meg opp til bokmerkelinja">🍽 Til Norsken</a>
+          <br /><small>Ikke klikk på den her – dra den.</small></li>
+        <li>I ResDiary: gå til <b>Diary → Print</b>, og trykk <b>🍽 Til Norsken</b> på bokmerkelinja.
+          <br />Norsken åpner med dagens bookinger. Velg <b>Lunsj</b>, <b>Middag</b> eller <b>Arrangement</b>, og <b>Skriv ut</b>.</li>
+      </ol>
+      <div class="safe">
+        <h2>🔒 Gjestene blir på denne PC-en</h2>
+        Knappen leser bare tid, antall, etternavn, kommentar og område – aldri telefon eller e-post.
+        Lista sendes ikke til noen server, ikke til GitHub og ikke til noen KI. Den lagres bare i nettleseren på denne PC-en.
+      </div>
+    </main>
+  </body>
+</html>
+"""
+open(os.path.join(root, 'bokmerke.html'), 'w', encoding='utf-8').write(page.replace('__CODE__', _html.escape(_code, quote=True)))
+print('wrote bokmerke.html')
 print('wrote bookmarks into README.md, resdiary/README.md, LES-MEG.txt')
 
 # ---------------------------------------------------------------------------
