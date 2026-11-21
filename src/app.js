@@ -6110,17 +6110,21 @@ function doubleChip(g, en) {
 // ResDiary). The rooms are drawn from Danny's sketch (2026-11-20); move them
 // here when the better drawing comes. x, y, w, h are in the map's own units.
 const HOUSE_ROOMS = [
-  { id: "atheneum", name: "Atheneum", keys: ["atheneum", "ateneum", "athenaeum"], x: 205, y: 145, w: 98, h: 125 },
-  { id: "blarom", name: "Blårom", keys: ["blårom", "blå rom", "blaarom", "blarom", "blått rom"], x: 303, y: 145, w: 74, h: 125 },
-  { id: "arneberg", name: "Arneberg", keys: ["arneberg"], x: 377, y: 145, w: 100, h: 150 },
-  { id: "gang", name: "", keys: [], x: 477, y: 140, w: 38, h: 88, quiet: true },
-  { id: "toddy", name: "Toddy", keys: ["toddy"], x: 515, y: 135, w: 70, h: 90 },
-  { id: "kasse", name: "Kasse", keys: ["kasse"], x: 535, y: 225, w: 62, h: 115, quiet: true },
-  { id: "domino", name: "Domino", keys: ["domino"], x: 585, y: 125, w: 107, h: 110 },
-  { id: "bar", name: "Bar", keys: ["bar"], x: 597, y: 235, w: 95, h: 105 },
-  { id: "spisestua", name: "Spisestua", keys: ["spisestue", "spisestua"], x: 692, y: 125, w: 165, h: 250 },
-  { id: "moterom", name: "Møterom", keys: ["møterom", "moterom", "møte"], x: 290, y: 280, w: 72, h: 52 },
-  { id: "bibliotek", name: "Bibliotek", keys: ["bibliotek", "library"], x: 248, y: 330, w: 66, h: 85 },
+  // the L from the floor plan (Danny 2026-11-21): 1772 down to Atheneum, along
+  // Akersgata to Spisestua. Units follow the drawing, not centimetres.
+  { id: "r1772", name: "1772", keys: ["1772"], x: 1370, y: 710, w: 160, h: 110 },
+  { id: "r1814", name: "1814", keys: ["1814"], x: 1370, y: 820, w: 160, h: 140 },
+  { id: "r1818", name: "1818", keys: ["1818"], x: 1370, y: 960, w: 160, h: 170 },
+  { id: "bibliotek", name: "Bibliotek", keys: ["bibliotek", "library"], x: 1235, y: 800, w: 130, h: 220 },
+  { id: "moterom", name: "Møterom", keys: ["møterom", "moterom", "møte"], x: 1140, y: 1020, w: 130, h: 110 },
+  { id: "atheneum", name: "Atheneum", keys: ["atheneum", "ateneum", "athenaeum", "atheneum"], x: 1300, y: 1135, w: 240, h: 175 },
+  { id: "kristiania", name: "Kristiania", keys: ["kristiania", "christiania"], x: 1140, y: 1135, w: 160, h: 185 },
+  { id: "arneberg", name: "Arneberg", keys: ["arneberg"], x: 985, y: 1020, w: 155, h: 300 },
+  { id: "danske", name: "Danske kjelleret", keys: ["danske", "kjeller"], x: 838, y: 1140, w: 147, h: 180 },
+  { id: "toddy", name: "Toddy", keys: ["toddy"], x: 632, y: 1140, w: 206, h: 180 },
+  { id: "domino", name: "Domino", keys: ["domino"], x: 472, y: 1140, w: 160, h: 180 },
+  { id: "bar", name: "Bar", keys: ["bar"], x: 472, y: 950, w: 230, h: 185 },
+  { id: "spisestua", name: "Spisestua", keys: ["spisestue", "spisestua"], x: 210, y: 870, w: 262, h: 470 },
 ];
 let houseHour = null; // null: the whole day, else the hour shown (guests there then)
 
@@ -6190,11 +6194,16 @@ function renderHouse() {
     const dark = people && people / Math.max(1, most) > 0.55;
     const cx = r.x + r.w / 2;
     const cy = r.y + r.h / 2;
-    const small = r.w < 80 || r.h < 60;
+    // text size: as big as fits the room (the drawing is about 1400 wide)
+    const words = r.name.split(" ");
+    const lines = words.length > 1 && r.w < 200 ? words : [r.name];
+    const longest = Math.max(...lines.map((l) => l.length));
+    const fs = Math.max(18, Math.min(34, (r.w * 0.9) / (longest * 0.58)));
+    const nameY = cy - (people ? fs * 0.55 : 0) - ((lines.length - 1) * fs) / 2;
     return `<g class="house-room${r.quiet ? " quiet" : ""}${houseOpenRoom === r.id ? " open" : ""}" data-house-room="${r.id}" tabindex="0" role="button">
-      <rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="6" fill="${heatColor(people, most)}" />
-      ${r.name ? `<text x="${cx}" y="${cy - (people ? 8 : 0)}" class="hr-name${dark ? " on-dark" : ""}" font-size="${small ? 11 : 15}">${esc(r.name)}</text>` : ""}
-      ${people ? `<text x="${cx}" y="${cy + 14}" class="hr-count${dark ? " on-dark" : ""}" font-size="${small ? 13 : 18}">${people} ${en ? "ppl" : "pers"}</text>` : ""}
+      <rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="10" fill="${heatColor(people, most)}" />
+      <text x="${cx}" y="${nameY}" class="hr-name${dark ? " on-dark" : ""}" font-size="${fs}">${lines.map((l, k) => `<tspan x="${cx}" dy="${k ? fs : 0}">${esc(l)}</tspan>`).join("")}</text>
+      ${people ? `<text x="${cx}" y="${nameY + lines.length * fs + 4}" class="hr-count${dark ? " on-dark" : ""}" font-size="${Math.min(40, fs * 1.15)}">${people} ${en ? "ppl" : "pers"}</text>` : ""}
     </g>`;
   }).join("");
   // rooms in the list that are not on the drawing yet (1772, 1814, 1818 …)
