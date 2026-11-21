@@ -9,6 +9,14 @@ What was decided, and why. Newest first. When something here changes, write the 
 on top and say what it replaces – don't delete the old one.
 
 ## 2026-11-21
+- **The guest list never travels in a web address.** «🍽 Til Norsken» opens the website and hands the
+  list over in memory (`postMessage`), accepted only from a ResDiary page; ResDiary gets «norsken-ok»
+  back. *Replaces:* the `#import=` address, which a privacy review showed stays in the browser history
+  (and can be synced) even after the address bar is wiped. Old buttons still work but ask for the new one.
+- **The hosted copy shares the layout only** – no names, chair notes, allergy marks, typed table names
+  or chairs set by a booking. Each device keeps its own guest fields; a remote layout merges into them.
+  The old stored shared plan was deleted (unread) so nothing guest-related is left there.
+- **The old pasted list (`bookingsText`) is not kept**, and the clipboard is emptied after a pasted import.
 - **Shared notebook** in `notater/` (Obsidian vault) for everything about the project – features,
   rules, decisions, plans. Kept neutral and free of guest data.
 - **History cleaned** so GitHub shows only `uwu6967`: commit messages and old file versions rewritten,
