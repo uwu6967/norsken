@@ -49,6 +49,16 @@ Arrangement, Middag + Arrangement) when «🥂 Aperitiff før pling 18:00» is o
 aperitiff, velkomstdrink, hummer-/krepseaften). Parties sharing a dinner table drink together. The A4
 sheet stays one page; each row gets «🥂 Bar 3» under the dinner table, the title «· pling 18:00».
 
+## Rooms as Danny described them (2026-11-21)
+- **Toddy** (in from the reception door, windows straight ahead): by the windows, left and right, a sofa
+  against the wall, a small oval table and two big armchairs – 4 people, up to 3 more chairs can be
+  added (fixed). By the door, left: a small round table – 2 (at most 4). By the door, right: the grand
+  piano (no seats). Built in as Toddy's ready suggestion («⭐ Legg ut forslaget»).
+- **Domino** (in from Spisestua): one table to the right by the window, two to the left, the opening to
+  the bar in the middle. Used for Domino's «Vanlig oppsett».
+- **Arneberg**: the fireplace sofa groups can be shared; the first fireplace is reserved for the board
+  when they are there.
+
 ## What exists to build on
 - Each room's plan is stored per room (Spisestua, Domino) – see [[Storage and data]].
 - «🏠 Norsken» already has every guest room of the club as a box (see [[House map]]).
