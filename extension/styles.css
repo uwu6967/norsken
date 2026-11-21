@@ -3001,7 +3001,7 @@ a[hidden] {
 }
 .house-room rect {
   stroke: #e8dcc6;
-  stroke-width: 2;
+  stroke-width: 3;
   transition: fill 0.25s;
 }
 .house-room.quiet rect {
@@ -3012,7 +3012,7 @@ a[hidden] {
 .house-room.open rect,
 .house-room:focus-visible rect {
   stroke: #ffd36b;
-  stroke-width: 4;
+  stroke-width: 7;
 }
 .house-room:focus {
   outline: none;
