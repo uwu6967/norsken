@@ -2814,7 +2814,14 @@ function tableButton(table, inTray) {
   const own = customCm(table);
   // The shape already says langbord, so no word on it (user, 2026-11-11);
   // only a per-table custom size is shown.
-  const sizeName = own ? `${cmNum(own.w)}×${cmNum(own.l)}` : table.size === "long" || table.size === "oval" ? "" : copy[table.size];
+  // in the store the shape alone is hard to read: oval and langbord get their word
+  const sizeName = own
+    ? `${cmNum(own.w)}×${cmNum(own.l)}`
+    : table.size === "long" || table.size === "oval"
+      ? inTray
+        ? state.lang === "en" ? (table.size === "oval" ? "Oval" : "Long") : table.size === "oval" ? "Ovalt" : "Langbord"
+        : ""
+      : copy[table.size];
   const seatN = seatsOf(table).length;
   const floorTag = [sizeName, seatN ? `${seatN}p` : ""].filter(Boolean).join(" · ");
   // Wide screen: names sit beside the map with a line to the table
@@ -2916,7 +2923,7 @@ function onMove(event) {
   if (dropBackTable(drag)) {
     document.getElementById("leftcol")?.classList.toggle("drop-back", pointIn(document.getElementById("leftcol"), event.clientX, event.clientY));
   }
-  if (drag.kind === "guest") {
+  if (drag.kind === "guest" || drag.kind === "guestgroup") {
     // near the top or bottom edge of the list, the list scrolls by itself
     const pane = document.querySelector(".leftcol .tab-pane:not([hidden])");
     if (pane && pointIn(pane, event.clientX, Math.min(event.clientY, pane.getBoundingClientRect().bottom - 1))) {
@@ -3024,6 +3031,14 @@ function finishDrag(clientX, clientY) {
     if (!current.moved) return;
     markDragEnded();
     dropCallout(current, clientX, clientY);
+    return;
+  }
+  if (current.kind === "guestgroup") {
+    document.querySelectorAll(".guest-target").forEach((n) => n.classList.remove("guest-target"));
+    if (!current.moved) return;
+    markDragEnded();
+    const hit = guestDropTable(clientX, clientY) || resRowTable(clientX, clientY);
+    if (hit) placeGroup(current.id, hit);
     return;
   }
   if (current.kind === "guest") {
@@ -3163,6 +3178,7 @@ function renderRoom() {
   for (const node of seatNodes()) el.appendChild(node);
 
   for (const table of roomTables()) el.appendChild(tableButton(table, false));
+  joinLangbord(el);
 }
 
 function renderTray() {
@@ -5670,6 +5686,13 @@ function renderReservations() {
         head.textContent = groupKey.startsWith("other:")
           ? `${label} · ${same.length} ${bookingWord(same.length, en)}, ${people} ${en ? "people" : "personer"} – ${en ? "another room, not our tables" : "eget rom, ikke på våre bord"}`
           : `${label} · ${same.length} ${bookingWord(same.length, en)}, ${people} ${en ? "people" : "personer"}`;
+        // a group from another room (Onsdagsklubben …): the heading can be dragged,
+        // and the whole group goes to one table
+        if (groupKey.startsWith("other:")) {
+        head.title = en ? "Drag onto a table to seat the whole group there" : "Dra til et bord for å sette hele gruppen der";
+        head.classList.add("draggable");
+        head.addEventListener("pointerdown", (event) => startDrag(event, { kind: "guestgroup", id: groupKey }, head));
+        }
         list.appendChild(head);
       }
       const li = document.createElement("li");
@@ -6253,3 +6276,49 @@ document.addEventListener("keydown", (event) => {
     event.target.closest("[data-house-room]").dispatchEvent(new MouseEvent("click", { bubbles: true }));
   }
 });
+
+// A langbord with no plate in it is one table: the halves are drawn as one,
+// without the line and round corners where they meet. With plates in the
+// gap it stays in parts, so you see where the plates go.
+function joinLangbord(roomEl) {
+  const done = new Set();
+  for (const table of roomTables()) {
+    if (!table.group || done.has(table.group)) continue;
+    done.add(table.group);
+    const members = orderGroup(groupMembers(table));
+    if (members.length < 2 || members.some((m) => m.kind !== "plate" || gapPlatesOf(m).length)) continue;
+    // only when the halves really touch
+    if (members.slice(1).some((m, i) => gapCm(members[i], m) > 2)) continue;
+    const axis = groupAxis(members);
+    members.forEach((m, i) => {
+      const node = roomEl.querySelector(`.table[data-id="${m.id}"]`);
+      if (!node) return;
+      node.classList.add("joined", `joined-${axis}`);
+      if (i > 0) node.classList.add("join-before");
+      if (i < members.length - 1) node.classList.add("join-after");
+    });
+  }
+}
+
+// Onsdagsklubben and other groups: every booking of the group that has no
+// table yet goes to the same table, in one move.
+function placeGroup(groupKey, table) {
+  const en = state.lang === "en";
+  if (table.lead === false && table.group) table = roomTables().find((t) => t.group === table.group && t.lead !== false) || table;
+  const members = guests.list.filter((g) => isUnplaced(g) && (g.area || "spisestua") === groupKey);
+  if (!members.length) return;
+  const before = guestSnapshot();
+  if (!guests.room) guests.room = {};
+  for (const g of members) {
+    guests.placed[g.id] = table.id;
+    guests.room[g.id] = ROOM_ID;
+    if (guests.redeckHint) delete guests.redeckHint[g.id];
+  }
+  saveGuests();
+  guestSeats(table);
+  save();
+  render();
+  const people = members.reduce((sum, g) => sum + (Number(g.pax) || 0), 0);
+  const label = members[0].areaLabel || (en ? "The group" : "Gruppen");
+  showToast(en ? `${label} (${people} people) at table ${table.label}.` : `${label} (${people} pers) ved bord ${table.label}.`, 8000, () => restoreGuests(before));
+}
