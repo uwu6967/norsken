@@ -28,6 +28,7 @@ def bm(name):
     assert '//' not in code.replace('://', ''), name
     return 'javascript:' + code
 items = [
+    ('til-norsken.js', 'Til Norsken (ett trykk)', 'Åpner Norsken med dagens bookinger med en gang – ingen kopiering. Velg så Lunsj, Middag eller Arrangement. Ingenting sendes til noen server.'),
     ('rydd-liste.js', 'Rydd liste', 'Fjerner tomme rader og kolonnene Telefon, E-post, Booket den, Kundekoder og Forhåndsbestilling.'),
     ('til-bordplan.js', 'Til bordplan', 'Kopierer tid, antall, etternavn, kommentar og område (Spisestue, Domino, Onsdagsklubben …). Trykk så «Lim inn fra ResDiary» under Reservasjoner i bordplanen.'),
     ('last-ned-liste.js', 'Last ned liste', 'Lagrer lista (tid, gjester, navn, bord, kommentar) som en fil i Nedlastinger. Åpne den i bordplanen under Reservasjoner → «Åpne fil». Uten telefon, e-post, booket den, kundekoder og forhåndsbestilling. Fila blir bare på PC-en.'),

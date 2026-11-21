@@ -726,6 +726,24 @@ let guests = loadGuests();
 let guestMsg = "";
 let moveFrom = null; // table id while «Flytt» waits for the target table
 let resQuery = ""; // the search box in Reservasjoner
+// Lunsj · Middag · Arrangement: which part of the day is shown ("" = the whole day)
+const SHIFT_KEY = "norsken-shift";
+const LUNCH_ENDS = 15 * 60;
+const EVENT_WORDS = /fast meny|meny for alle|selskap|arrangement|julebord|bankett|\bkurs\b|\bevent\b|konferanse/i;
+const SHIFTS = [
+  { key: "lunsj", no: "Lunsj", en: "Lunch", icon: "☀️", floor: "lunch" },
+  { key: "middag", no: "Middag", en: "Dinner", icon: "🌙", floor: "usual" },
+  { key: "arrangement", no: "Arrangement", en: "Event", icon: "★", floor: null },
+];
+const TOOLS_KEY = "norsken-tools";
+let SHIFT = (() => {
+  try {
+    const v = localStorage.getItem(SHIFT_KEY) || "";
+    return ["lunsj", "middag", "arrangement"].includes(v) ? v : "";
+  } catch {
+    return "";
+  }
+})();
 let timeUnlock = null; // the table whose times are open for change (Tidspunkt)
 const DIET_WORDS = [
   ["gluten", /glut[e]?n|c[øo]liaki|coeliac|celiac/i],
@@ -1597,7 +1615,7 @@ function clearBookedNames() {
 function assignBookings() {
   // the guests without a table are placed; the ones already placed stay put
   const bookings = guests.list
-    .filter((g) => isUnplaced(g) && (g.area || "spisestua") === ROOM_ID)
+    .filter((g) => isUnplaced(g) && (g.area || "spisestua") === ROOM_ID && inShift(g))
     .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), forced: null, wish: wishedTables(g.note) }));
   clearBookedNames();
   const floor = roomTables().filter((t) => t.lead !== false && t.label);
@@ -1727,7 +1745,7 @@ function assignBookings() {
   const dominoArea = domino
     ? []
     : guests.list
-        .filter((g) => !guests.placed[g.id] && g.area === "domino")
+        .filter((g) => !guests.placed[g.id] && g.area === "domino" && inShift(g))
         .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), area: "domino" }));
   if (!domino) overflowToDomino([...dominoArea, ...rows.filter((row) => !row.table && !row.redeckAt)]); // «Bruk Domino», or the last fallback
   rows.push(...dominoArea);
@@ -3246,11 +3264,11 @@ function renderChrome() {
   const copy = t();
   document.documentElement.lang = state.lang;
   document.getElementById("lang-btn").textContent = state.lang.toUpperCase();
-  document.getElementById("print-btn").textContent = copy.print;
+  document.getElementById("print-btn").textContent = `🖨 ${state.lang === "en" ? "Print" : "Skriv ut"}`;
   const pc = document.getElementById("print-chairs");
   if (pc) {
     const on = !state.printNoChairs;
-    pc.textContent = state.lang === "en" ? (on ? "🪑 with chairs" : "🪑 no chairs") : on ? "🪑 med stoler" : "🪑 uten stoler";
+    pc.innerHTML = `🪑<span class="pc-text"> ${state.lang === "en" ? (on ? "with chairs" : "no chairs") : on ? "med stoler" : "uten stoler"}</span>`;
     pc.setAttribute("aria-pressed", String(on));
     pc.classList.toggle("off", !on);
     pc.title = state.lang === "en" ? "Tap to print with or without chairs" : "Trykk for å skrive ut med eller uten stoler";
@@ -3263,8 +3281,7 @@ function renderChrome() {
   if (share.status !== "local" || window.claude?.use) setShareStatus(share.status, share.at);
   const en = state.lang === "en";
   const roomName = ROOMS[ROOM_ID][en ? "en" : "no"];
-  const kicker = document.querySelector(".topbar .kicker");
-  if (kicker) kicker.textContent = `${roomName} · ${en ? "layout" : "oppsett"}`;
+  // the line over «Norsken» (room · date) is written by renderShell
   document.title = `Norsken — ${roomName}`;
   const setText = (id, text) => {
     const node = document.getElementById(id);
@@ -3903,6 +3920,7 @@ window.addEventListener("resize", () => {
 
 function render() {
   try {
+    renderShell();
     renderChrome();
     renderMeasurePanel();
     renderSeatPalette();
@@ -4611,6 +4629,7 @@ function presetLayout(kind = "usual") {
   state.selected = null;
   relabelRoom();
   if (julBig) planPlates(julBig, 8);
+  state.floorKind = kind; // which ready setup is on the floor (Lunsj/Middag picks it)
   save();
   render();
 }
@@ -4651,6 +4670,7 @@ function loadGuests() {
         redeck: g.redeck && typeof g.redeck === "object" ? g.redeck : {},
         redeckHint: g.redeckHint && typeof g.redeckHint === "object" ? g.redeckHint : {},
         arrived: g.arrived && typeof g.arrived === "object" ? g.arrived : {},
+        day: String(g.day || ""),
       };
     }
   } catch {}
@@ -4745,7 +4765,7 @@ function guestTable(guest) {
 }
 
 function guestsOn(table) {
-  return guests.list.filter((g) => guests.placed[g.id] === table.id && guestRoom(g) === ROOM_ID && table.zone === "room");
+  return guests.list.filter((g) => guests.placed[g.id] === table.id && guestRoom(g) === ROOM_ID && table.zone === "room" && inShift(g));
 }
 
 // Bookings at one table, by time: the same time is one party sitting together
@@ -4891,7 +4911,7 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
     const guestData = JSON.stringify(guests).replace(/</g, "\\u003c");
     const baked = html.replace(
       "<script>",
-      `<script>window.__NORSKEN_STATE__ = ${data}; window.__NORSKEN_GUESTS__ = ${guestData}; window.__NORSKEN_ROOM__ = "${ROOM_ID}";</script>\n    <script>`,
+      `<script>window.__NORSKEN_STATE__ = ${data}; window.__NORSKEN_GUESTS__ = ${guestData}; window.__NORSKEN_ROOM__ = "${ROOM_ID}"; window.__NORSKEN_SHIFT__ = "${SHIFT}";</script>\n    <script>`,
     );
     const day = new Date().toISOString().slice(0, 10);
     await downloads.save({ filename: `norsken-oppsett-${day}.html`, data: baked });
@@ -5416,7 +5436,7 @@ function importBookings(text, source) {
   }
   const seated = roomTables().filter((t) => guestsOn(t).length);
   clearBookedNames();
-  guests = { file: source || "", list: list.sort((p, q) => (p.time || "99").localeCompare(q.time || "99")), placed: {}, room: {}, redeck: {} };
+  guests = { file: source || "", day: dayKey(), list: list.sort((p, q) => (p.time || "99").localeCompare(q.time || "99")), placed: {}, room: {}, redeck: {} };
   saveGuests();
   for (const t of seated) guestSeats(t);
   releaseOtherRoomSeats();
@@ -5579,7 +5599,7 @@ function guestChip(g, en) {
     en ? (inside ? "Arrived – tap to undo" : "Tap when they arrive") : inside ? "Kommet – trykk for å angre" : "Trykk når de kommer"
   }">✓</button>${re}<span class="g-time">${esc(g.time || "–")}</span> ${name}${
     g.pax ? ` <span class="g-pax">${g.pax}p</span>` : ""
-  }${doubleChip(g, en)}${dietChips(g.note)}<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
+  }${starButton(g, en)}${doubleChip(g, en)}${dietChips(g.note)}<button type="button" class="g-x" data-unplace="${g.id}" aria-label="${en ? "Take off the table" : "Ta av bordet"}">✕</button>${g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""}</span>`;
 }
 
 // --- change a name by hand in the Bordene list ---------------------------------
@@ -5650,7 +5670,7 @@ function renderReservations() {
     search.placeholder = en ? "🔍 Search name or table" : "🔍 Søk navn eller bord";
     if (!guests.list.length && resQuery) resQuery = search.value = "";
   }
-  const unplaced = guests.list.filter((g) => isUnplaced(g));
+  const unplaced = guests.list.filter((g) => isUnplaced(g) && inShift(g));
   const placedHere = guests.list.filter((g) => guestTable(g)).length;
   const elsewhere = guests.list.filter((g) => guests.placed[g.id] && guestRoom(g) !== ROOM_ID).length;
   set(
@@ -5703,10 +5723,13 @@ function renderReservations() {
         hint
           ? `<span class="g-redeck">↻ ${en ? `Re-set · table ${esc(hint)} frees up first` : `Dekk om · bord ${esc(hint)} blir ledig først`}</span>`
           : ""
-      }<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${doubleChip(g, en)}${dietChips(g.note)}${
+      }<span class="g-time">${esc(g.time || "–")}</span><span class="g-name">${esc(g.name || "–")}</span>${g.pax ? `<span class="g-pax">${g.pax}p</span>` : ""}${starButton(g, en)}${doubleChip(g, en)}${dietChips(g.note)}${
         g.note ? `<span class="g-note">${esc(g.note)}</span>` : ""
       }`;
-      li.addEventListener("pointerdown", (event) => startDrag(event, { kind: "guest", id: g.id }, li));
+      li.addEventListener("pointerdown", (event) => {
+        if (event.target.closest(".g-star")) return;
+        startDrag(event, { kind: "guest", id: g.id }, li);
+      });
       list.appendChild(li);
     }
   }
@@ -5775,7 +5798,7 @@ function renderReservations() {
     : `<li class="res-empty">${resQuery ? (en ? "No table matches the search." : "Ingen bord passer søket.") : en ? "No tables on the floor yet." : "Ingen bord ute ennå."}</li>`;
   rows.querySelectorAll(".res-guest[data-gid]").forEach((chip) => {
     chip.addEventListener("pointerdown", (event) => {
-      if (event.target.closest(".g-x, .g-in, [data-res-input]")) return;
+      if (event.target.closest(".g-x, .g-in, .g-star, [data-res-input]")) return;
       startDrag(event, { kind: "guest", id: chip.dataset.gid }, chip);
     });
   });
@@ -6141,6 +6164,7 @@ function houseRoomOf(g) {
 function houseCounts() {
   const counts = new Map();
   for (const g of guests.list) {
+    if (!inShift(g)) continue;
     const key = houseRoomOf(g);
     const c = counts.get(key) || { people: 0, bookings: [], label: g.areaLabel || key };
     c.people += Number(g.pax) || 0;
@@ -6304,3 +6328,298 @@ function placeGroup(groupKey, table) {
   const label = members[0].areaLabel || (en ? "The group" : "Gruppen");
   showToast(en ? `${label} (${people} people) at table ${table.label}.` : `${label} (${people} pers) ved bord ${table.label}.`, 8000, () => restoreGuests(before));
 }
+
+// --- Lunsj · Middag · Arrangement -------------------------------------------------
+// Bookings before 15:00 are lunch, from 15:00 dinner. An arrangement is found
+// from Område («Fast meny i Spisestue», «Selskap» …) or the comment (fast meny,
+// selskap, arrangement, julebord, kurs …); the boss can mark or unmark it by
+// hand (★). An arrangement booking is still in Lunsj/Middag by its time, so
+// nobody disappears from the room they sit in.
+function isEvent(g) {
+  if (g.event === true) return true;
+  if (g.event === false) return false;
+  const area = String(g.areaLabel || g.area || "");
+  return EVENT_WORDS.test(area) || EVENT_WORDS.test(String(g.note || ""));
+}
+function shiftOfTime(g) {
+  const m = minutesOf(g.time);
+  return m != null && m < LUNCH_ENDS ? "lunsj" : "middag";
+}
+function inShift(g, shift = SHIFT) {
+  if (!shift) return true;
+  if (shift === "arrangement") return isEvent(g);
+  return shiftOfTime(g) === shift;
+}
+function shiftCounts() {
+  const out = { lunsj: { b: 0, p: 0 }, middag: { b: 0, p: 0 }, arrangement: { b: 0, p: 0 }, "": { b: 0, p: 0 } };
+  for (const g of guests.list) {
+    const p = Number(g.pax) || 0;
+    for (const k of ["lunsj", "middag", "arrangement", ""]) {
+      if (inShift(g, k)) {
+        out[k].b += 1;
+        out[k].p += p;
+      }
+    }
+  }
+  return out;
+}
+function setShift(next) {
+  SHIFT = next || "";
+  try {
+    localStorage.setItem(SHIFT_KEY, SHIFT);
+  } catch {}
+  for (const t of roomTables()) guestSeats(t);
+  save();
+  render();
+}
+
+// --- the new look: shift switch, «I dag» start screen, tools --------------------
+// The boss's way: ResDiary → «Til Norsken» → pick Lunsj / Middag / Arrangement
+// → Skriv ut. Plates, the store and measures sit behind «🧰 Verktøy».
+function toolsOn() {
+  try {
+    return localStorage.getItem(TOOLS_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function todayText(en) {
+  try {
+    return new Date().toLocaleDateString(en ? "en-GB" : "nb-NO", { weekday: "long", day: "numeric", month: "long" });
+  } catch {
+    return "";
+  }
+}
+
+function renderShell() {
+  const en = state.lang === "en";
+  const date = document.getElementById("today-date");
+  if (date) {
+    // short: the room is already on the Domino / Spisestua switch
+    let short = "";
+    try {
+      short = new Date().toLocaleDateString(en ? "en-GB" : "nb-NO", { weekday: "short", day: "numeric", month: "short" });
+    } catch {}
+    date.textContent = short;
+    date.title = todayText(en);
+  }
+  const counts = shiftCounts();
+  const nav = document.getElementById("shift-switch");
+  if (nav) {
+    const items = SHIFTS.filter((sh) => sh.key !== "arrangement" || counts.arrangement.b || SHIFT === "arrangement");
+    nav.innerHTML =
+      items
+        .map(
+          (sh) =>
+            `<button type="button" class="shift-tab${SHIFT === sh.key ? " on" : ""}" data-shift="${sh.key}" aria-pressed="${SHIFT === sh.key}"><span class="st-name">${sh.icon} ${en ? sh.en : sh.no}</span>${
+              guests.list.length ? `<span class="st-count">${counts[sh.key].p} ${en ? "ppl" : "pers"}</span>` : ""
+            }</button>`,
+        )
+        .join("") +
+      `<button type="button" class="shift-tab all${SHIFT ? "" : " on"}" data-shift="" aria-pressed="${!SHIFT}"><span class="st-name">${en ? "All" : "Alle"}</span>${
+        guests.list.length ? `<span class="st-count">${counts[""].p}</span>` : ""
+      }</button>`;
+  }
+  const tools = toolsOn();
+  document.body.classList.toggle("tools-off", !tools);
+  const tb = document.getElementById("tools-btn");
+  if (tb) {
+    tb.classList.toggle("active", tools);
+    tb.setAttribute("aria-pressed", String(tools));
+    tb.title = en ? "Show the store, plates and measures" : "Vis lager, bordplater og mål";
+  }
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  set("today-btn-text", en ? "Today" : "I dag");
+  set("tools-btn-text", en ? "Tools" : "Verktøy");
+  if (!document.getElementById("today")?.hidden) renderToday();
+}
+
+document.getElementById("shift-switch")?.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-shift]");
+  if (!btn) return;
+  setShift(btn.dataset.shift);
+  const en = state.lang === "en";
+  const sh = SHIFTS.find((x) => x.key === SHIFT);
+  showToast(sh ? (en ? `Showing ${sh.en.toLowerCase()} only.` : `Viser bare ${sh.no.toLowerCase()}.`) : en ? "Showing the whole day." : "Viser hele dagen.", 3000);
+});
+document.getElementById("tools-btn")?.addEventListener("click", () => {
+  try {
+    localStorage.setItem(TOOLS_KEY, toolsOn() ? "0" : "1");
+  } catch {}
+  render();
+});
+
+// One press: the setup for that part of the day, the right guests, tables
+// given out. «Angre» puts both the floor and the guests back.
+function chooseShift(key) {
+  const en = state.lang === "en";
+  const sh = SHIFTS.find((x) => x.key === key);
+  const before = guestSnapshot();
+  let floorChanged = false;
+  SHIFT = key;
+  try {
+    localStorage.setItem(SHIFT_KEY, SHIFT);
+  } catch {}
+  if (sh?.floor && ROOM_ID === "spisestua" && state.floorKind !== sh.floor) {
+    presetLayout(sh.floor);
+    floorChanged = true;
+  }
+  for (const t of roomTables()) guestSeats(t);
+  assignBookings();
+  save();
+  render();
+  closeToday();
+  const rows = bookingResult?.rows || [];
+  const placed = rows.filter((r) => r.table).length;
+  const waiting = rows.filter((r) => !r.table).length;
+  const name = sh ? (en ? sh.en : sh.no) : "";
+  showToast(
+    en
+      ? `${name}: ${placed} bookings on tables${waiting ? `, ${waiting} without a table` : ""}${floorChanged ? " (new setup)" : ""}. Ready to print.`
+      : `${name}: ${placed} bookinger ved bord${waiting ? `, ${waiting} uten bord` : ""}${floorChanged ? " (nytt oppsett)" : ""}. Klar til utskrift.`,
+    10000,
+    () => {
+      if (floorChanged) undoFloor();
+      restoreGuests(before);
+    },
+  );
+}
+
+function renderToday() {
+  const en = state.lang === "en";
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  };
+  const hour = new Date().getHours();
+  set("today-kicker", todayText(en));
+  set("today-title", en ? (hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening") : hour < 12 ? "God morgen" : hour < 17 ? "God dag" : "God kveld");
+  set("today-s1-title", en ? "Get today's bookings" : "Hent dagens bookinger");
+  const n = guests.list.length;
+  const fresh = n && guests.day === dayKey();
+  set(
+    "today-s1-note",
+    n
+      ? en
+        ? `${n} bookings in the list${fresh ? " (today)" : " – from an earlier day? Paste today's to start again"}.`
+        : `${n} bookinger i lista${fresh ? " (i dag)" : " – fra en tidligere dag? Lim inn dagens for å starte på nytt"}.`
+      : en
+        ? "Fastest: on the ResDiary print page, press the «Til Norsken» bookmark. Or copy with «Til bordplan» and press the button below."
+        : "Raskest: trykk bokmerket «Til Norsken» på ResDiary-utskriften. Eller kopier med «Til bordplan» og trykk knappen under.",
+  );
+  set("today-paste-text", en ? "Paste from ResDiary" : "Lim inn fra ResDiary");
+  set("today-file-text", en ? "Open file" : "Åpne fil");
+  set("today-s2-title", en ? "Choose" : "Velg");
+  set("today-s3-title", en ? "Print" : "Skriv ut");
+  set("today-print-text", en ? "Print" : "Skriv ut");
+  set("today-look-text", en ? "Look at the map first" : "Se på kartet først");
+  document.getElementById("today-step-1").classList.toggle("done", Boolean(n));
+  document.getElementById("today-step-2").classList.toggle("off", !n);
+  document.getElementById("today-step-3").classList.toggle("off", !n);
+  const counts = shiftCounts();
+  const box = document.getElementById("today-shifts");
+  box.innerHTML = SHIFTS.map((sh) => {
+    const c = counts[sh.key];
+    const empty = !c.b;
+    const floorNote = sh.floor
+      ? sh.floor === "lunch"
+        ? en ? "Lunch setup" : "Lunsj-oppsett"
+        : en ? "Usual setup" : "Vanlig oppsett"
+      : en ? "Keeps the floor as it is" : "Beholder gulvet som det er";
+    return `<button type="button" class="shift-card${SHIFT === sh.key ? " on" : ""}${empty ? " empty" : ""}" data-choose="${sh.key}" ${empty ? "disabled" : ""}>
+      <span class="sc-icon">${sh.icon}</span>
+      <span class="sc-name">${en ? sh.en : sh.no}</span>
+      <span class="sc-count">${empty ? (en ? "No bookings" : "Ingen bookinger") : `${c.b} ${bookingWord(c.b, en)} · ${c.p} ${en ? "guests" : "gjester"}`}</span>
+      <span class="sc-note">${sh.key === "lunsj" ? (en ? "before 15:00" : "før 15:00") : sh.key === "middag" ? (en ? "from 15:00" : "fra 15:00") : en ? "fixed menu, private party …" : "fast meny, selskap …"} · ${floorNote}</span>
+    </button>`;
+  }).join("");
+}
+
+function dayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+}
+function openToday() {
+  renderToday();
+  document.getElementById("today").hidden = false;
+}
+function closeToday() {
+  const el = document.getElementById("today");
+  if (el) el.hidden = true;
+}
+document.getElementById("today-btn")?.addEventListener("click", openToday);
+document.getElementById("today-close")?.addEventListener("click", closeToday);
+document.getElementById("today")?.addEventListener("click", (event) => {
+  if (event.target.id === "today") return closeToday();
+  const card = event.target.closest("[data-choose]");
+  if (card && !card.disabled) chooseShift(card.dataset.choose);
+});
+document.getElementById("today-look")?.addEventListener("click", closeToday);
+document.getElementById("today-print")?.addEventListener("click", () => {
+  closeToday();
+  document.getElementById("print-btn")?.click();
+});
+document.getElementById("today-paste")?.addEventListener("click", () => document.getElementById("res-paste")?.click());
+document.getElementById("today-file")?.addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  importBookings(await file.text(), file.name);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !document.getElementById("today")?.hidden) closeToday();
+});
+
+// «Til Norsken» on ResDiary opens this page with the list after #import= .
+// The part after # never leaves the browser. It is read, then wiped from the
+// address bar, so the names are not left in the address or the history.
+function importFromHash() {
+  const h = location.hash || "";
+  if (!h.startsWith("#import=")) return false;
+  let text = "";
+  try {
+    text = decodeURIComponent(h.slice(8));
+  } catch {
+    text = "";
+  }
+  try {
+    history.replaceState(null, "", location.pathname + location.search);
+  } catch {
+    location.hash = "";
+  }
+  if (!text.trim()) return false;
+  importBookings(text, "ResDiary");
+  openToday();
+  return true;
+}
+window.addEventListener("hashchange", importFromHash);
+if (!importFromHash()) {
+  // a new day (or no list yet): start on «I dag»
+  if (!guests.list.length || guests.day !== dayKey()) openToday();
+}
+
+// ★ = this booking is part of an arrangement. Found by itself from Område and
+// the comment; a tap changes it (the boss decides).
+function starButton(g, en) {
+  const on = isEvent(g);
+  return `<button type="button" class="g-star${on ? " on" : ""}" data-event="${g.id}" aria-pressed="${on}" title="${
+    en ? (on ? "Part of the event – tap to remove" : "Tap to mark as part of the event") : on ? "Del av arrangementet – trykk for å ta bort" : "Trykk for å merke som del av arrangementet"
+  }">${on ? "★" : "☆"}</button>`;
+}
+document.addEventListener(
+  "click",
+  (event) => {
+    const btn = event.target.closest?.("[data-event]");
+    if (!btn) return;
+    event.stopPropagation();
+    const g = guests.list.find((x) => x.id === btn.dataset.event);
+    if (!g) return;
+    g.event = !isEvent(g);
+    saveGuests();
+    render();
+  },
+  true,
+);

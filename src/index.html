@@ -25,14 +25,17 @@
       </div>
       <header class="topbar">
         <div class="brand">
-          <p class="kicker" data-i18n="kicker">Spisestua · oppsett</p>
+          <p class="kicker" id="today-date">I dag</p>
           <h1>Norsken</h1>
         </div>
+        <nav class="shift-switch" id="shift-switch" aria-label="Del av dagen"></nav>
         <nav class="room-switch" aria-label="Rom">
           <button type="button" class="room-tab" data-room="domino">Domino</button>
           <button type="button" class="room-tab" data-room="spisestua">Spisestua</button>
         </nav>
         <div class="topbar-actions">
+          <button type="button" class="chip big today-btn" id="today-btn" aria-haspopup="dialog" aria-controls="today">☀ <span id="today-btn-text">I dag</span></button>
+          <button type="button" class="chip big tools-btn" id="tools-btn" aria-pressed="false">🧰 <span id="tools-btn-text">Verktøy</span></button>
           <button type="button" class="chip big" id="house-btn" aria-haspopup="dialog" aria-controls="house">🏠 <span id="house-btn-text">Norsken</span></button>
           <button type="button" class="chip big" id="mine-btn" aria-haspopup="dialog" aria-controls="mine-panel">★ <span id="mine-btn-text">Oppsett</span></button>
           <span class="print-group">
@@ -48,6 +51,50 @@
 
       <!-- Mine oppsett: lagrede bordoppsett -->
       <div class="settings-backdrop" id="mine-backdrop" hidden></div>
+      <div class="today" id="today" role="dialog" aria-modal="true" aria-labelledby="today-title" hidden>
+        <div class="today-card">
+          <div class="today-head">
+            <div>
+              <p class="kicker" id="today-kicker"></p>
+              <h2 id="today-title">God dag</h2>
+            </div>
+            <button type="button" class="icon-btn settings-close" id="today-close" aria-label="Lukk">✕</button>
+          </div>
+          <ol class="today-steps">
+            <li class="today-step" id="today-step-1">
+              <span class="step-num">1</span>
+              <div class="step-body">
+                <p class="step-title" id="today-s1-title">Hent dagens bookinger</p>
+                <p class="step-note" id="today-s1-note"></p>
+                <div class="step-actions">
+                  <button type="button" class="chip big primary" id="today-paste">📋 <span id="today-paste-text">Lim inn fra ResDiary</span></button>
+                  <label class="chip big">
+                    <input type="file" id="today-file" accept=".csv,.txt,text/csv,text/plain" hidden />
+                    <span id="today-file-text">Åpne fil</span>
+                  </label>
+                </div>
+              </div>
+            </li>
+            <li class="today-step" id="today-step-2">
+              <span class="step-num">2</span>
+              <div class="step-body">
+                <p class="step-title" id="today-s2-title">Velg</p>
+                <div class="today-shifts" id="today-shifts"></div>
+              </div>
+            </li>
+            <li class="today-step" id="today-step-3">
+              <span class="step-num">3</span>
+              <div class="step-body">
+                <p class="step-title" id="today-s3-title">Skriv ut</p>
+                <div class="step-actions">
+                  <button type="button" class="chip big primary" id="today-print">🖨 <span id="today-print-text">Skriv ut</span></button>
+                  <button type="button" class="chip big" id="today-look">👀 <span id="today-look-text">Se på kartet først</span></button>
+                </div>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </div>
       <div class="house" id="house" role="dialog" aria-modal="true" aria-labelledby="house-title" hidden>
         <div class="house-card">
           <div class="house-head">
