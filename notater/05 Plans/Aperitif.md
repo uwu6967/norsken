@@ -6,7 +6,7 @@ updated: 2026-11-21
 # Aperitif
 
 The next big feature: seating parties for the **aperitif** in the other rooms of the club before they
-go to their dinner table. Status: **wanted, being designed** – nothing built yet.
+go to their dinner table. Status: **step 0 done, step 1 next** – see the chosen plan below.
 
 ## What Danny described
 - On arrangement days (any arrangement – a lobster evening, julebord, courses, private parties …)
@@ -17,6 +17,37 @@ go to their dinner table. Status: **wanted, being designed** – nothing built y
 - The tables in the other rooms («innover» – everywhere that is not Spisestua) are not known yet.
   Danny must be able to **place them herself, room by room, on a phone**. Some tables move a bit,
   some are taken out and moved when needed.
+
+## Chosen plan (2026-11-21)
+Picked after comparing three designs (smallest-that-works, boss-simplicity, robust data model). Core of
+the small design, with the phone editor of the boss-simplicity design.
+
+**Step 0 – phone safety (done):** a finger sliding off the map no longer stores a table; «Til lager»
+and drag-to-store have «↶ Angre»; «Hummeraften» no longer lights the shellfish code.
+
+**Step 1 – a table map for every room «innover»**
+- `ROOM_DEFS` at the top of `src/app.js` replaces the two-entry `ROOMS` and the late `HOUSE_ROOMS`
+  (same ids as the house map: `bar`, `bibliotek`, `r1772`, `r1814`, `r1818`, `moterom`, `atheneum`,
+  `kristiania`, `arneberg`, `danske`, `toddy`). Profiles: Spisestua `home`, Domino `domino`, the rest
+  `salong` (plain rooms: no presets, no house numbering rules, numbers given at creation and kept).
+  Storage keys `norsken-layout-<id>-v1`, shared docs `plan/<id>` – layout only.
+- Room bar: Domino · Spisestua · **Innover ▾** (opens «🏠 Norsken», tap a room → «✏️ Lag bordkart»).
+  A salon picked in a tab is remembered for that tab only, so the boss's ResDiary button always lands
+  in Spisestua.
+- Full-screen phone editor «✏️ Flytt bord»: room size in 0.5 m steps the first time; «+ Lite rundt /
+  Stort rundt / Ovalt / Firkant / Langt»; a new table lands in the middle, selected; drops stop at the
+  wall; ← ↑ ↓ → nudges; «Plasser − / +» = capacity; «⟳ Snu»; «🔒 Står fast»; «Ta bort» to a Lager strip
+  that remembers the spot; «Neste rom ›»; «Ferdig»; «↶ Angre».
+- Getting the maps to the boss's PC (each browser has its own storage): «📤 Send bordkart» (a link or
+  the setup file; the maps hold no guest data).
+
+**Step 2 – a second place per booking:** `guests.ap` (aperitif table + room), next to the dinner place
+(`guests.placed`/`guests.room` stay the dinner table). On a salon page the app reads and writes `ap`.
+
+**Step 3 – auto seating + print:** `assignAperitif()` runs inside the boss's one press (Middag,
+Arrangement, Middag + Arrangement) when «🥂 Aperitiff før pling 18:00» is on (suggested by words like
+aperitiff, velkomstdrink, hummer-/krepseaften). Parties sharing a dinner table drink together. The A4
+sheet stays one page; each row gets «🥂 Bar 3» under the dinner table, the title «· pling 18:00».
 
 ## What exists to build on
 - Each room's plan is stored per room (Spisestua, Domino) – see [[Storage and data]].
@@ -32,11 +63,6 @@ go to their dinner table. Status: **wanted, being designed** – nothing built y
 - Do ordinary dinner guests ever get an aperitif spot, or only arrangement guests?
 - On the printout: one sheet with both places per party («Aperitiff: Bibliotek bord 2 → Middag: bord 6»),
   or a separate aperitif sheet?
-
-## Next steps
-1. Phone-friendly table setup for the other rooms (Danny places, moves and removes tables).
-2. Aperitif placement per booking with a time window, auto-filled for the arrangement's guests.
-3. Printout and «🏠 Norsken» show both places.
 
 ## Related
 [[Open questions and ideas]] · [[House map]] · [[Auto seating]] · [[Decisions]]
