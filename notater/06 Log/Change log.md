@@ -9,6 +9,9 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-23
+- Fixes from a review: salons that an older version saved empty now get their ready layout (a room
+  switched off for the aperitif stays off); the aperitif and the sheet read the salons the same way; a
+  «$'» in a booking comment no longer breaks the downloaded printout in the hosted copy.
 - Salons drawn from the staff's aperitif sheet: Toddy, Bar, Arneberg, Blå værelset (= Kristiania),
   Ateneum – fireplaces 🔥, window, sofas, bar counter. Ready to use without drawing anything.
 - «🖨 Aperitiff-ark»: the paper sheet printed filled in – names at the salon tables and the

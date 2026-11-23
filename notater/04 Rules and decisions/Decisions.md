@@ -17,6 +17,9 @@ on top and say what it replaces – don't delete the old one.
   left). Drawn as 🔥 Peis / 🪟 Vindu, never given out.
 - **No chairs drawn in salons** (map and printout): people sit on sofas and armchairs; the table shows
   how many («5+2P»).
+- **An empty salon saved by an older version counts as not drawn** (empty and never sized in the
+  editor → its suggestion). Emptied on purpose in the editor (sized) stays empty. One reader for both
+  the aperitif and the sheet: `salonPlan()`.
 - **A room nobody has drawn uses its ready suggestion** for the aperitif and the sheet. Starter tables
   have fixed ids (`toddy-1` …) so a place given before the room was opened still holds.
 - **«⭐ Begynn på nytt fra forslaget»** is offered in a salon's editor even when it has tables (with

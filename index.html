@@ -5182,7 +5182,11 @@ function loadState() {
 // `state` exists and again for every remote update.
 function normalizeState(parsed) {
   try {
-    if (!parsed?.tables?.length && !(IS_SALON && Array.isArray(parsed?.tables))) return defaultState();
+    // A salon may be saved empty on purpose – but an empty plan of a room that has a ready
+    // suggestion, never sized in the editor, was saved by an older version before the
+    // suggestions existed: it gets the suggestion (keeping a «not for aperitif» choice).
+    const keptEmpty = IS_SALON && Array.isArray(parsed?.tables) && !(ROOMS[ROOM_ID].starter && parsed.sized !== true);
+    if (!parsed?.tables?.length && !keptEmpty) return parsed?.apero === false ? { ...defaultState(), apero: false } : defaultState();
     const next = { ...defaultState(), ...parsed };
     if (!next.fixtures?.length || ROOM_ID !== "spisestua") next.fixtures = defaultFixtures();
     next.paintings = normalizePaintings(parsed.paintings);
@@ -9606,9 +9610,10 @@ document.getElementById("print-btn")?.addEventListener("click", async (event) =>
     const html = window.__NORSKEN_PRINT_SRC__ ? new TextDecoder().decode(Uint8Array.from(atob(window.__NORSKEN_PRINT_SRC__), (ch) => ch.charCodeAt(0))) : await (await fetch("print.html")).text();
     const data = JSON.stringify(state).replace(/</g, "\\u003c");
     const guestData = JSON.stringify(guests).replace(/</g, "\\u003c");
+    // a function, not a string: «$'» or «$&» in a guest's comment must not be read as a pattern
     const baked = html.replace(
       "<script>",
-      `<script>window.__NORSKEN_STATE__ = ${data}; window.__NORSKEN_GUESTS__ = ${guestData}; window.__NORSKEN_ROOM__ = "${ROOM_ID}"; window.__NORSKEN_SHIFT__ = "${SHIFT}";<\/script>\n    <script>`,
+      () => `<script>window.__NORSKEN_STATE__ = ${data}; window.__NORSKEN_GUESTS__ = ${guestData}; window.__NORSKEN_ROOM__ = "${ROOM_ID}"; window.__NORSKEN_SHIFT__ = "${SHIFT}";<\/script>\n    <script>`,
     );
     const day = new Date().toISOString().slice(0, 10);
     await downloads.save({ filename: `norsken-oppsett-${day}.html`, data: baked });
@@ -12018,16 +12023,27 @@ function apOf() {
   return guests.ap;
 }
 
+// A salon's plan as the aperitif and the sheet see it: the open room's own state, the
+// saved plan, or – while the room has never really been drawn – its ready suggestion.
+function salonPlan(r) {
+  let plan = null;
+  if (r.id === ROOM_ID) plan = state;
+  else {
+    try {
+      plan = JSON.parse(localStorage.getItem(ROOMS[r.id].key) || "null");
+    } catch {}
+  }
+  const drawn = Array.isArray(plan?.tables) && (plan.tables.some((t) => t.zone === "room") || plan.sized === true);
+  if (r.starter && !drawn) plan = { ...(plan || {}), tables: roomStarter(r.id), dims: { ...(plan?.dims || {}), room: { ...r.size } } };
+  return plan;
+}
+
 // every aperitif table in the salons, read from their saved maps
 function aperoTables() {
   const out = [];
   for (const r of ROOM_DEFS) {
     if (r.profile !== "salong") continue;
-    let plan = null;
-    try {
-      plan = r.id === ROOM_ID ? state : JSON.parse(localStorage.getItem(ROOMS[r.id].key) || "null");
-    } catch {}
-    if (!plan && r.starter) plan = { tables: roomStarter(r.id) }; // not drawn yet: the sheet's suggestion
+    const plan = salonPlan(r);
     if (!plan || (plan.apero ?? r.apero) === false || !Array.isArray(plan.tables)) continue; // old maps: the room's default
     for (const t of plan.tables) {
       if (t.zone !== "room" || t.piece || t.lead === false) continue;
@@ -12615,8 +12631,7 @@ function aperoSheetData() {
   const rank = (id) => (order.includes(id) ? order.indexOf(id) : order.length);
   const rooms = [];
   for (const r of ROOM_DEFS.filter((x) => x.profile === "salong").sort((a, b) => rank(a.id) - rank(b.id))) {
-    let plan = r.id === ROOM_ID ? state : readRoomPlan(r.id);
-    if (!plan && r.starter) plan = { tables: roomStarter(r.id), dims: { room: { ...r.size } } };
+    const plan = salonPlan(r);
     if (!plan || (plan.apero ?? r.apero) === false || !Array.isArray(plan.tables)) continue;
     const size = plan.dims?.room || r.size;
     const items = [];
@@ -12682,7 +12697,7 @@ document.addEventListener(
       const html = window.__NORSKEN_APERO_SRC__ ? new TextDecoder().decode(Uint8Array.from(atob(window.__NORSKEN_APERO_SRC__), (ch) => ch.charCodeAt(0))) : await (await fetch("apero.html")).text();
       const baked = html.replace(
         "<script>",
-        `<script>window.__NORSKEN_APERO__ = ${json.replace(/</g, "\\u003c")}; window.__NORSKEN_GUESTS__ = ${JSON.stringify(guests).replace(/</g, "\\u003c")};<\/script>\n    <script>`,
+        () => `<script>window.__NORSKEN_APERO__ = ${json.replace(/</g, "\\u003c")}; window.__NORSKEN_GUESTS__ = ${JSON.stringify(guests).replace(/</g, "\\u003c")};<\/script>\n    <script>`,
       );
       const day = new Date().toISOString().slice(0, 10);
       await downloads.save({ filename: `norsken-aperitiff-${day}.html`, data: baked });
