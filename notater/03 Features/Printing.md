@@ -309,17 +309,31 @@ When printing Spisestua locally, Domino is put beside the map, small, if it is i
 CSS for `.window` and `.corner` exists but no element uses it.
 
 ## The aperitif sheet (`apero.html`)
-A second printout, A4 standing, made to look like the staff's own paper aperitif sheet (see [[Aperitif]]):
-the salons as boxes – Toddy, Arneberg, Blå værelset, Ateneum down the left, Bar top right – each table
-with its number (⛔ reserved, 🔗 shared), 🔥/🎹 for fireplace and piano, and the party names in a small
-box beside the table (`layout()` tries under, right, left, over and takes the first spot that covers
-nothing). Under Bar: **Gjesteliste** – ☐ · Navn · Gjester · Tid · 🥂 Plass · Bord – sorted by time, then
-ruled empty lines to the bottom for walk-ins; a long list gets smaller lines (down to 4.2 mm). Always one
-page. It prints by itself on load (`?noprint=1` stops that, for tests).
-Started by the links marked `data-apero-sheet` («🖨 Aperitiff-ark» in Reservasjoner's 🥂 list, «🥂
-Aperitiff-ark» on «☀ I dag» when the aperitif is on). Their click handler first writes
-`norsken-apero-sheet` (`aperoSheetData()`); in the hosted copy it downloads a baked
-`norsken-aperitiff-YYYY-MM-DD.html` instead.
+A second printout, A4 standing, for the aperitif evening. Redesigned on 2026-11-23 (Danny: it does not
+have to look like the old paper sheet): three designs were built and judged on real tasks – the door,
+the salons, the pling, walk-ins – and the «pling» design won, with the door list of another grafted on.
+- **Top:** «APERITIFF», the date, parties and guests, and a boxed «Pling 18:00 – da går alle til bordet
+  under → Bord». One legend line in plain words, only what is on the page (opptatt / ledig / reservert,
+  «Atheneum ❹ = Atheneum, bord 4», «D 1 = Domino, bord 1», «skriv inn», diet codes).
+- **Left: one block per salon** (Toddy, Bar, Arneberg, Blå værelset, Atheneum): a black band with the
+  name and «2 selskap · 12 pers. · 1 ledig», the map (grey = taken, hatched = reserved, the furniture
+  word on each piece, name boxes beside their tables – with the table number as a tab when a box is not
+  tight against its table), and **the room's own pling list**: Nr · Gjest · Pers · **→ Bord** (the
+  dinner table, biggest and boldest). Free tables get a «ledig · 4–7 pl.» write-in row.
+- **Right: «Gjesteliste» A–Å** for the door: letter gutter, 5–6 mm tick boxes (pre-ticked when already
+  arrived), Navn · Pers · Tid · Plass («Arneberg ❸») · → Bord; a dashed line to write in a place when a
+  party has none. Under it «Ledige bord» and at least 5 lines «Uten booking». On a busy night the
+  walk-in block moves under the salons so the list keeps its size.
+- Names: break only at a space or after a hyphen; two lines on quiet nights, smaller or cut only when
+  crowded; never under 7.5 pt with ≤ 20 parties (7 pt otherwise). A map name that would still be cut is
+  left off (the table stays grey and numbered; the list beside it has the name); a map too crowded for
+  readable names shows numbers only.
+- Always exactly one page (checked 0–48 parties, Norwegian and English); prints at full size (ink 196 ×
+  282 mm). On a phone the page is laid out 820 px wide and zoomed out, never cut.
+- Started by the links marked `data-apero-sheet` («🖨 Aperitiff-ark» in Reservasjoner's 🥂 list, «🥂
+  Aperitiff-ark» on «☀ I dag» when the aperitif is on). Their click handler first writes
+  `norsken-apero-sheet` (`aperoSheetData()`); in the hosted copy it downloads a baked
+  `norsken-aperitiff-YYYY-MM-DD.html` instead. `?noprint=1` stops the automatic print (for tests).
 
 ## When you change print.html
 - `tools/build.py` asserts that `src/print.html` has **exactly one** `<script>` (followed by a new

@@ -74,9 +74,8 @@ Danny showed the A4 sheet the staff fill in by hand today: the salons drawn as b
   L-shaped sofa; Ateneum 5 tables + window + fireplace (tables 4 and 5 in front of the fireplace:
   «🔗 Kan deles»). Tables are numbered column by column, left to right. **Seat numbers are guesses.**
 - A room nobody has drawn uses its suggestion for the aperitif straight away.
-- **«🖨 Aperitiff-ark»** (`apero.html`) prints the sheet filled in: each party's name beside its salon
-  table, and the Gjesteliste with Navn · Gjester · Tid · 🥂 Plass · Bord (dinner table) and empty lines
-  to the bottom for walk-ins. Opened from the 🥂 list in Reservasjoner and from «☀ I dag» step 3.
+- **«🖨 Aperitiff-ark»** (`apero.html`): redesigned the same day – per salon a map and a pling list
+  (party → dinner table), the A–Å door list, free tables and walk-in lines. See [[Printing]].
 
 ## What exists to build on
 - Each room's plan is stored per room (Spisestua, Domino) – see [[Storage and data]].

@@ -2,11 +2,15 @@
 <html lang="no">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- a phone shows the whole A4 sheet zoomed out (the page is laid out 820 px wide), never cut off -->
+    <meta name="viewport" content="width=820" />
     <title>Norsken — Aperitiff</title>
     <style>
-      /* The staff's aperitif sheet (A4, standing): the salons down the left, Bar and the
-         guest list on the right – now filled in by Norsken. Black on white, made for paper. */
+      /* The aperitif sheet, room by room. Each salon has its map (who sits where) and its own
+         short list (salon table · party · people → dinner table), so a waiter standing in one
+         salon reads at the pling where each party goes. The guest list for the door runs down the
+         right side A–Å, with the free tables and empty lines for walk-ins at the bottom.
+         A4 standing, black on white, made for paper. */
       @page {
         size: A4 portrait;
         margin: 7mm;
@@ -18,14 +22,14 @@
       body {
         margin: 0;
         background: #e9e5df;
-        color: #111;
-        font-family: "Helvetica Neue", Arial, sans-serif;
+        color: #000;
+        font-family: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
       }
       .toolbar {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         align-items: center;
         justify-content: center;
         flex-wrap: wrap;
@@ -34,7 +38,7 @@
       }
       .toolbar button {
         min-height: 44px;
-        padding: 10px 20px;
+        padding: 10px 22px;
         border: 0;
         border-radius: 999px;
         background: #2f4a3c;
@@ -45,48 +49,202 @@
       }
       .toolbar .hint {
         color: #555;
+        max-width: 60ch;
       }
       .sheet {
         width: 196mm;
         height: 282mm;
-        margin: 0 auto 24px;
-        padding: 0;
+        margin: 7mm auto 28px;
         background: #fff;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 4mm;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
-        outline: 6mm solid #fff;
+        outline: 7mm solid #fff;
       }
-      .col {
+
+      /* ---- top of the page: the day, the counts and the pling ---- */
+      .top {
         display: flex;
-        flex-direction: column;
-        gap: 3mm;
-        min-height: 0;
+        align-items: center;
+        gap: 4mm;
+        padding-bottom: 1.4mm;
+        border-bottom: 0.7mm solid #000;
       }
-      .box {
-        border: 0.7mm solid #111;
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-        padding: 1.2mm 1.6mm 1.6mm;
+      .top .title {
+        flex: 1 1 auto;
+        min-width: 0;
       }
-      .box h2 {
-        margin: 0 0 1mm;
-        text-align: center;
-        font-family: Rockwell, "Roboto Slab", "Courier New", Georgia, serif;
+      .top h1 {
+        margin: 0;
+        font-size: 18pt;
+        line-height: 1;
         font-weight: 800;
-        font-size: 10.5pt;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
       }
-      .room {
+      .top .day {
+        margin-top: 0.7mm;
+        font-size: 10.5pt;
+        line-height: 1.1;
+      }
+      .top .count {
+        font-size: 10pt;
+        line-height: 1.25;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .top .count b {
+        font-size: 12pt;
+      }
+      .pling {
+        display: flex;
+        align-items: center;
+        gap: 1.8mm;
+        border: 0.7mm solid #000;
+        border-radius: 2mm;
+        padding: 1.1mm 3mm 1.1mm 2.2mm;
+        white-space: nowrap;
+      }
+      .pling svg {
+        width: 6.5mm;
+        height: 6.5mm;
+        flex: none;
+      }
+      .pling .when {
+        font-size: 17pt;
+        font-weight: 800;
+        line-height: 1;
+      }
+      .pling .what {
+        font-size: 8pt;
+        line-height: 1.15;
+      }
+      .pling .what b {
+        font-weight: 800;
+      }
+
+      /* ---- one legend line, plain words, only what is on the page ---- */
+      .legend {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 4mm;
+        align-items: center;
+        padding: 1.1mm 0 1.5mm;
+        font-size: 8pt;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .legend > span {
+        flex: none;
+      }
+      .sw {
+        display: inline-block;
+        vertical-align: -0.7mm;
+        width: 4.6mm;
+        height: 3.3mm;
+        margin-right: 1mm;
+        border: 0.3mm solid #000;
+        border-radius: 0.6mm;
+        background: #fff;
+      }
+      .sw.busy {
+        background: #c8c8c8;
+      }
+      .sw.res {
+        background: repeating-linear-gradient(45deg, #fff 0 0.5mm, #000 0.5mm 0.75mm);
+      }
+      .sw.wr {
+        width: 6mm;
+        height: 2mm;
+        border: 0;
+        border-bottom: 0.35mm dashed #000;
+        border-radius: 0;
+        vertical-align: 0.4mm;
+      }
+      .legend .k {
+        font-size: 8pt;
+      }
+      .chip {
+        display: inline-block;
+        min-width: 1.45em;
+        padding: 0 0.55mm;
+        border-radius: 0.7mm;
+        background: #000;
+        color: #fff;
+        font-weight: 800;
+        text-align: center;
+        line-height: 1.2;
+      }
+
+      .body {
         flex: 1 1 0;
+        min-height: 0;
+        display: flex;
+        gap: 3mm;
+      }
+      .rooms {
+        flex: 0 0 106mm;
+        min-width: 0;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2.2mm;
+      }
+
+      /* ---- one salon: black name band, map on the left, its list on the right ---- */
+      .room,
+      .door {
+        border: 0.5mm solid #000;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .room {
+        flex: 1 0 auto;
+      }
+      .rooms.measure .room {
+        flex: 0 0 auto;
+      }
+      .band {
+        margin: 0;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 2mm;
+        padding: 0.8mm 2.2mm 0.7mm;
+        background: #000;
+        color: #fff;
+        font-size: 11.5pt;
+        line-height: 1.1;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .band small {
+        font-size: 8pt;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        /* cut sideways only: «Å» and «É» keep the top of their mark, «g» and «y» their tail */
+        overflow: hidden;
+        overflow-x: clip;
+        overflow-y: visible;
+        text-overflow: ellipsis;
+      }
+      .inner {
+        flex: 1 1 auto;
+        display: flex;
+        gap: 2.4mm;
+        padding: 1.3mm 1.6mm 1.3mm 1.3mm;
+        min-height: 0;
       }
       .stage {
         position: relative;
-        flex: 1 1 0;
-        min-height: 0;
+        flex: 0 0 45mm;
+        min-height: 18mm;
       }
       .map {
         position: absolute;
@@ -101,146 +259,537 @@
         height: 100%;
         overflow: visible;
       }
-      .map svg .t {
+      .map .wall {
+        fill: none;
+        stroke: #000;
+        stroke-width: 0.9px;
+        vector-effect: non-scaling-stroke;
+      }
+      .map .t {
         fill: #fff;
-        stroke: #111;
-        stroke-width: 1.7px;
+        stroke: #000;
+        stroke-width: 1.3px;
         vector-effect: non-scaling-stroke;
       }
-      .map svg .t.busy {
-        fill: #f1f1f1;
+      .map .t.busy {
+        fill: #c8c8c8;
+        stroke-width: 1.8px;
       }
-      .map svg .p {
+      /* furniture: white with a light dotted edge, so it is never read as a grey «taken» table */
+      .map .p {
         fill: #fff;
-        stroke: #111;
-        stroke-width: 1.4px;
+        stroke: #555;
+        stroke-width: 0.8px;
+        stroke-dasharray: 1.6 1.4;
         vector-effect: non-scaling-stroke;
       }
-      .map svg .w {
-        stroke: #111;
-        stroke-width: 1px;
+      .map .w {
+        stroke: #555;
+        stroke-width: 0.8px;
         vector-effect: non-scaling-stroke;
       }
-      .tag {
+      .num {
         position: absolute;
         transform: translate(-50%, -50%);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        font-size: 8pt;
+        font-weight: 800;
+        line-height: 1;
+        white-space: nowrap;
         pointer-events: none;
+      }
+      .num.on-hatch {
+        background: #fff;
+        padding: 0.2mm 0.5mm;
+        border-radius: 0.5mm;
+      }
+      .piece {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        font-size: 7pt;
+        font-style: italic;
+        color: #222;
+        line-height: 1;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+      .piece.over,
+      .piece.win {
+        background: #fff;
+        padding: 0 0.4mm;
       }
       .names {
         position: absolute;
-        pointer-events: none;
         z-index: 1;
-      }
-      .num {
-        font-family: Rockwell, "Roboto Slab", Georgia, serif;
-        font-weight: 800;
-        font-size: 8.5pt;
-        line-height: 1;
-        white-space: nowrap;
+        pointer-events: none;
+        /* its own width, never squeezed by where it sits (a box near the right edge
+           wrapped a name into scraps like «Gu / n…») */
+        width: max-content;
       }
       .who {
+        display: flex;
+        align-items: stretch;
         background: #fff;
-        border: 0.25mm solid #111;
-        border-radius: 1.2mm;
-        padding: 0.4mm 1mm;
-        font-size: 7.4pt;
-        line-height: 1.15;
+        border: 0.25mm solid #000;
+        border-radius: 0.9mm;
+        overflow: hidden;
+        font-size: 7.5pt;
+        line-height: 1.12;
         font-weight: 700;
-        text-align: center;
-        max-width: 34mm;
-        overflow: hidden;
+        max-width: 31mm;
       }
-      .who span {
-        display: block;
+      .who .tab {
+        display: none;
+        flex: none;
+        align-items: center;
+        padding: 0 0.7mm;
+        background: #000;
+        color: #fff;
+        font-weight: 800;
+      }
+      .names.tabbed .who .tab {
+        display: flex;
+      }
+      .who .ln {
+        min-width: 0;
+        padding: 0.4mm 0.8mm 0.2mm;
+      }
+      .who .ln .nl {
+        display: flex;
+        align-items: flex-end;
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
-      .who small {
+      .who .ln .nl > span {
+        display: block;
+        min-width: 0;
+        overflow: hidden;
+        overflow-x: clip;
+        overflow-y: visible;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      /* two lines: the clamp needs a real clip, so the box gets room for «Å» above and «g» below */
+      .who .ln .nl.wrap > span {
+        white-space: normal;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        overflow-wrap: normal;
+        padding: 0.14em 0 0.08em;
+      }
+      .who .ln i {
+        flex: none;
+        padding-left: 0.25em;
+        font-style: normal;
         font-weight: 400;
       }
-      .icon {
-        font-size: 11pt;
-        line-height: 1;
+      .names.res .who {
+        border-style: dashed;
+        font-weight: 400;
+        font-style: italic;
+        font-size: 7pt;
       }
-      .list {
-        flex: 1 1 0;
-      }
-      .list .sub {
-        margin: -0.6mm 0 1.4mm;
-        text-align: center;
-        font-size: 7.5pt;
+      .no-map {
+        margin: auto;
+        font-size: 8pt;
         color: #333;
+        text-align: center;
       }
-      .list .rows {
-        flex: 1 1 0;
-        min-height: 0;
-        overflow: hidden;
-      }
+
+      /* the room's own list: salon table · guest · people → dinner table */
       table {
         width: 100%;
         border-collapse: collapse;
         table-layout: fixed;
       }
-      th {
-        font-family: Rockwell, "Roboto Slab", "Courier New", Georgia, serif;
-        font-weight: 800;
+      .rl {
+        flex: 1 1 0;
+        min-width: 0;
+        align-self: flex-start;
+      }
+      .rl th {
         font-size: 8pt;
+        font-weight: 700;
         text-align: left;
-        padding: 0 0.6mm 0.8mm;
-        text-transform: uppercase;
+        padding: 0 0.6mm 0.5mm;
         white-space: nowrap;
         overflow: hidden;
-      }
-      td {
-        border-bottom: 0.3mm solid #111;
-        padding: 0 0.6mm;
-        height: var(--row, 7mm);
         vertical-align: bottom;
-        font-size: var(--fs, 9pt);
+      }
+      .rl td {
+        height: var(--rh, 6mm);
+        border-bottom: 0.25mm solid #000;
+        padding: 0 0.6mm 0.5mm;
+        vertical-align: bottom;
+        font-size: var(--rfs, 9.5pt);
+        line-height: 1.1;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      td.n {
-        font-weight: 700;
-      }
-      td.c,
-      th.c {
+      .rl td.pl {
+        font-weight: 800;
         text-align: center;
       }
-      td.tick::before {
-        content: "";
+      .rl td.px,
+      .rl th.px {
+        text-align: center;
+      }
+      .rl td.to {
+        border-left: 0.45mm solid #000;
+        text-align: center;
+        font-weight: 800;
+        font-size: calc(var(--rfs, 9.5pt) * 1.3);
+      }
+      .rl th.to {
+        text-align: center;
+        border-left: 0.45mm solid #000;
+      }
+      .rl tr.cont td.pl {
+        color: transparent;
+      }
+      .rl tr:has(+ tr.cont) td {
+        border-bottom: 0.2mm dotted #000;
+      }
+      .rl tr.free td {
+        border-bottom-style: dotted;
+      }
+      .fit {
+        display: flex;
+        align-items: baseline;
+        min-width: 0;
+        overflow: hidden;
+        overflow-x: clip;
+        overflow-y: visible;
+      }
+      .fit .gn {
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        overflow-x: clip;
+        overflow-y: visible;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 700;
+      }
+      .fit .dw {
+        flex: none;
+        margin-left: 1mm;
+        font-style: italic;
+        font-weight: 400;
+        font-size: max(7pt, 0.86em);
+      }
+      .k {
+        flex: none;
         display: inline-block;
-        width: 3mm;
-        height: 3mm;
-        border: 0.3mm solid #111;
-        margin-bottom: 0.4mm;
+        margin-left: 0.8mm;
+        padding: 0 0.5mm;
+        border: 0.25mm solid #000;
+        border-radius: 0.5mm;
+        font-size: 7pt;
+        line-height: 1.2;
+        font-weight: 800;
+        font-style: normal;
       }
-      .col-tick {
-        width: 5mm;
+      .free-word {
+        font-size: 7pt;
+        font-weight: 400;
+        font-style: italic;
+        color: #222;
       }
-      .col-pax {
-        width: 14mm;
+      .rl tr.res td.nm {
+        font-weight: 400;
+        font-style: italic;
+        font-size: 7.5pt;
       }
-      .col-time {
-        width: 10mm;
+      .wr {
+        display: inline-block;
+        width: 80%;
+        max-width: 8mm;
+        height: 0.4em;
+        border-bottom: 0.35mm dashed #000;
       }
-      .col-place {
-        width: 21mm;
+      .rl .col-pl {
+        width: 5.5mm;
       }
-      .col-table {
+      .rl .col-px {
+        width: 7.5mm;
+      }
+      .rl .col-to {
+        width: 12.5mm;
+      }
+
+      /* ---- the door: everyone A–Å, tick when they come, free tables and lines for walk-ins ---- */
+      .door {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .door .rows {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0.4mm 1.2mm 0;
+      }
+      .door th {
+        font-size: 8pt;
+        font-weight: 700;
+        text-align: left;
+        padding: 0 0.5mm 0.5mm;
+        white-space: nowrap;
+        overflow: hidden;
+        vertical-align: bottom;
+        border-bottom: 0.45mm solid #000;
+      }
+      .door td {
+        height: var(--dh, 6mm);
+        border-bottom: 0.25mm solid #000;
+        padding: 0 0.5mm 0.45mm;
+        vertical-align: bottom;
+        font-size: var(--dfs, 9pt);
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .door th.c,
+      .door td.c {
+        text-align: center;
+      }
+      .door td.L {
+        border-bottom: 0;
+        padding: 0 0 0.45mm;
+        text-align: center;
+        font-weight: 800;
+      }
+      .door tr.first td {
+        border-top: 0.6mm solid #000;
+      }
+      .door tr.top1 td {
+        border-top: 0;
+      }
+      .door td.tick {
+        padding: 0 0 0.35mm;
+        vertical-align: bottom;
+      }
+      .box {
+        display: block;
+        margin: 0 auto;
+        width: var(--bx, 5mm);
+        height: var(--bx, 5mm);
+        border: 0.4mm solid #000;
+        border-radius: 0.6mm;
+        font-size: calc(var(--bx, 5mm) * 0.82);
+        line-height: calc(var(--bx, 5mm) - 0.8mm);
+        text-align: center;
+        font-weight: 800;
+      }
+      .door td.nm .fit .gn {
+        font-weight: 700;
+      }
+      td.nm.two {
+        white-space: normal;
+        vertical-align: middle;
+        padding-bottom: 0;
+      }
+      /* the diet word stands on the name's last line */
+      td.nm.two .fit {
+        align-items: flex-end;
+        align-items: last baseline;
+      }
+      /* two lines: the clamp needs a real clip, so a name with «Å», «É», «Ö» … gets room above
+         (.acc) and one with «g», «j», «p», «y» … room below (.tail). The fitting code counts the
+         same (twoEm); Chrome rounds the font's ascent and descent to whole pixels, so it is a little
+         more than the font itself asks for. */
+      td.nm.two .gn {
+        white-space: normal;
+        line-height: 1.04;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        overflow-wrap: normal;
+        padding: 0;
+      }
+      td.nm.two.acc .gn {
+        padding-top: 0.17em;
+      }
+      td.nm.two.tail .gn {
+        padding-bottom: 0.11em;
+      }
+      .door td.tm {
+        font-size: max(7pt, calc(var(--dfs, 9pt) * 0.8));
+      }
+      .door td.pl {
+        font-size: var(--plfs, 8pt);
+        padding-right: 0.3mm;
+      }
+      .door td.pl .rw {
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        overflow-x: clip;
+        overflow-y: visible;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 700;
+      }
+      .door td.pl .chip {
+        flex: none;
+        margin-left: 0.8mm;
+      }
+      .door td.pl .wr {
+        width: 100%;
+        max-width: none;
+      }
+      .door td.to {
+        border-left: 0.35mm solid #000;
+        text-align: center;
+        font-weight: 800;
+        font-size: calc(var(--dfs, 9pt) * 1.1);
+      }
+      .door th.to {
+        border-left: 0.35mm solid #000;
+        text-align: center;
+      }
+      .door td.to .wr {
+        width: 70%;
+      }
+      .door tr.none td {
+        font-size: 8pt;
+        font-style: italic;
+      }
+      /* the walk-in part: free tables, then lines – under the guest list, or under the salons
+         on a busy night when the guest list needs the whole column */
+      .wk tr.freeline td {
+        height: auto;
+        white-space: normal;
+        border-top: 0.7mm solid #000;
+        border-bottom: 0;
+        padding: 0.9mm 0.5mm 0.6mm;
+        font-size: 8pt;
+        font-weight: 400;
+        line-height: 1.25;
+        text-align: left;
+      }
+      .room.walk .wk tr.freeline td {
+        border-top: 0;
+        padding-top: 0.5mm;
+      }
+      .wk tr.freeline .nw {
+        white-space: nowrap;
+      }
+      .wk tr.freeline .lab {
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      .wk tr.walkh td {
+        height: auto;
+        padding: 0.6mm 0.5mm 0.5mm;
+        border-bottom: 0.45mm solid #000;
+        font-size: 8pt;
+        font-weight: 700;
+        line-height: 1.1;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .wk tr.walkh td.c {
+        text-align: center;
+      }
+      .wk tr.walkh td.lab {
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      .wk tr.blank td {
+        height: var(--bh, 6mm);
+        border: 0;
+        padding: 0 1.2mm 0.3mm 0.3mm;
+        vertical-align: bottom;
+      }
+      .wk tr.blank td i {
+        display: block;
+        border-bottom: 0.3mm solid #000;
+      }
+      .room.walk .wkin {
+        padding: 0.4mm 1.6mm 1mm 1.3mm;
+      }
+      .door .wk .w-px {
         width: 9mm;
+      }
+      .door .wk .w-tm {
+        width: 12mm;
+      }
+      .door .wk .w-pl {
+        width: 25mm;
+      }
+      .door .wk .w-to {
+        width: 12.5mm;
+      }
+      .room.walk .w-px {
+        width: 11mm;
+      }
+      .room.walk .w-tm {
+        width: 12mm;
+      }
+      .room.walk .w-pl {
+        width: 30mm;
+      }
+      .room.walk .w-to {
+        width: 16mm;
+      }
+      .walk-ptr {
+        display: flex;
+        align-items: center;
+        gap: 1.4mm;
+        margin: 0;
+        padding: 0.7mm 0.5mm 0;
+        border-top: 0.7mm solid #000;
+        font-size: 8pt;
+        line-height: 1.15;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      .walk-ptr b {
+        flex: none;
+        padding: 0 1mm;
+        background: #000;
+        color: #fff;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+      .walk-ptr .arr {
+        flex: none;
+        font-size: 10pt;
+        line-height: 1;
+        font-weight: 800;
+      }
+      .door .col-L {
+        width: 4.2mm;
+      }
+      .door .col-tick {
+        width: var(--kw, 7mm);
+      }
+      .door .col-px {
+        width: var(--pxw, 7mm);
+      }
+      .door .col-time {
+        width: var(--tw, 9mm);
+      }
+      .door .col-pl {
+        width: var(--plw, 19mm);
+      }
+      .door .col-to {
+        width: var(--tow, 10mm);
       }
       .empty-note {
         margin: auto;
         padding: 6mm;
         text-align: center;
         font-size: 10pt;
-        color: #444;
+        color: #333;
       }
       @media print {
         html,
@@ -256,18 +805,17 @@
           outline: 0;
         }
       }
-      @media screen and (max-width: 820px) {
-        .sheet {
-          transform-origin: top left;
-        }
-      }
     </style>
   </head>
   <body>
-    <div class="toolbar"><button type="button" id="print">🖨 Skriv ut</button><span class="hint" id="hint"></span></div>
+    <div class="toolbar"><button type="button" id="print">Skriv ut</button><span class="hint" id="hint"></span></div>
     <main class="sheet" id="sheet">
-      <div class="col" id="left"></div>
-      <div class="col" id="right"></div>
+      <header class="top" id="top"></header>
+      <div class="legend" id="legend"></div>
+      <div class="body">
+        <div class="rooms" id="rooms"></div>
+        <section class="door" id="door"></section>
+      </div>
     </main>
     <script src="apero.js"></script>
   </body>

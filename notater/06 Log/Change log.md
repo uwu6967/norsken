@@ -9,6 +9,8 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-23
+- New «🖨 Aperitiff-ark»: each salon with its map and its own pling list (party → dinner table), the A–Å
+  guest list for the door with big tick boxes, free tables and walk-in lines. Always one page.
 - The bar PC (1024 × 768): the PC layout with everything on one screen, the top bar in one row, names
   beside the map. (Start screen and dialogs: being checked.)
 - The bar PC, screen by screen: «☀ I dag» fits with all three steps; event days keep one top row (also

@@ -9,6 +9,11 @@ What was decided, and why. Newest first. When something here changes, write the 
 on top and say what it replaces – don't delete the old one.
 
 ## 2026-11-23
+- **The aperitif sheet is redesigned** (Danny: it does not have to look like the paper). Three designs –
+  «door» (arrival list first), «pling» (room by room with each party's dinner table), «fresh» (landscape) –
+  were judged on staff tasks; the judges split door/pling, and **«pling» was chosen** because the pling
+  is the moment Danny wants help with, with the door design's list grafted on (A–Å, big tick boxes, full
+  room names). *Replaces:* the copy of the paper sheet from earlier the same day.
 - **The bar PC (1024 × 768) gets the PC layout**: one screen from 1000 × 540 in landscape (was 1100 ×
   620; a portrait tablet keeps the scrolling page), one top row from 1000 px (shift buttons show name +
   count, «☀ I dag» its icon only below 1100 px), the left column 280–300 px at 1000–1199 px so the names
