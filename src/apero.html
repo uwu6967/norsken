@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Norsken — Aperitiff</title>
+    <style>
+      /* The staff's aperitif sheet (A4, standing): the salons down the left, Bar and the
+         guest list on the right – now filled in by Norsken. Black on white, made for paper. */
+      @page {
+        size: A4 portrait;
+        margin: 7mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #e9e5df;
+        color: #111;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        font-size: 15px;
+      }
+      .toolbar button {
+        min-height: 44px;
+        padding: 10px 20px;
+        border: 0;
+        border-radius: 999px;
+        background: #2f4a3c;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .toolbar .hint {
+        color: #555;
+      }
+      .sheet {
+        width: 196mm;
+        height: 282mm;
+        margin: 0 auto 24px;
+        padding: 0;
+        background: #fff;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4mm;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+        outline: 6mm solid #fff;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 3mm;
+        min-height: 0;
+      }
+      .box {
+        border: 0.7mm solid #111;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 1.2mm 1.6mm 1.6mm;
+      }
+      .box h2 {
+        margin: 0 0 1mm;
+        text-align: center;
+        font-family: Rockwell, "Roboto Slab", "Courier New", Georgia, serif;
+        font-weight: 800;
+        font-size: 10.5pt;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      .room {
+        flex: 1 1 0;
+      }
+      .stage {
+        position: relative;
+        flex: 1 1 0;
+        min-height: 0;
+      }
+      .map {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .map svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .map svg .t {
+        fill: #fff;
+        stroke: #111;
+        stroke-width: 1.7px;
+        vector-effect: non-scaling-stroke;
+      }
+      .map svg .t.busy {
+        fill: #f1f1f1;
+      }
+      .map svg .p {
+        fill: #fff;
+        stroke: #111;
+        stroke-width: 1.4px;
+        vector-effect: non-scaling-stroke;
+      }
+      .map svg .w {
+        stroke: #111;
+        stroke-width: 1px;
+        vector-effect: non-scaling-stroke;
+      }
+      .tag {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+      }
+      .names {
+        position: absolute;
+        pointer-events: none;
+        z-index: 1;
+      }
+      .num {
+        font-family: Rockwell, "Roboto Slab", Georgia, serif;
+        font-weight: 800;
+        font-size: 8.5pt;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .who {
+        background: #fff;
+        border: 0.25mm solid #111;
+        border-radius: 1.2mm;
+        padding: 0.4mm 1mm;
+        font-size: 7.4pt;
+        line-height: 1.15;
+        font-weight: 700;
+        text-align: center;
+        max-width: 34mm;
+        overflow: hidden;
+      }
+      .who span {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .who small {
+        font-weight: 400;
+      }
+      .icon {
+        font-size: 11pt;
+        line-height: 1;
+      }
+      .list {
+        flex: 1 1 0;
+      }
+      .list .sub {
+        margin: -0.6mm 0 1.4mm;
+        text-align: center;
+        font-size: 7.5pt;
+        color: #333;
+      }
+      .list .rows {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      th {
+        font-family: Rockwell, "Roboto Slab", "Courier New", Georgia, serif;
+        font-weight: 800;
+        font-size: 8pt;
+        text-align: left;
+        padding: 0 0.6mm 0.8mm;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      td {
+        border-bottom: 0.3mm solid #111;
+        padding: 0 0.6mm;
+        height: var(--row, 7mm);
+        vertical-align: bottom;
+        font-size: var(--fs, 9pt);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      td.n {
+        font-weight: 700;
+      }
+      td.c,
+      th.c {
+        text-align: center;
+      }
+      td.tick::before {
+        content: "";
+        display: inline-block;
+        width: 3mm;
+        height: 3mm;
+        border: 0.3mm solid #111;
+        margin-bottom: 0.4mm;
+      }
+      .col-tick {
+        width: 5mm;
+      }
+      .col-pax {
+        width: 14mm;
+      }
+      .col-time {
+        width: 10mm;
+      }
+      .col-place {
+        width: 21mm;
+      }
+      .col-table {
+        width: 9mm;
+      }
+      .empty-note {
+        margin: auto;
+        padding: 6mm;
+        text-align: center;
+        font-size: 10pt;
+        color: #444;
+      }
+      @media print {
+        html,
+        body {
+          background: #fff;
+        }
+        .toolbar {
+          display: none;
+        }
+        .sheet {
+          margin: 0;
+          box-shadow: none;
+          outline: 0;
+        }
+      }
+      @media screen and (max-width: 820px) {
+        .sheet {
+          transform-origin: top left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar"><button type="button" id="print">🖨 Skriv ut</button><span class="hint" id="hint"></span></div>
+    <main class="sheet" id="sheet">
+      <div class="col" id="left"></div>
+      <div class="col" id="right"></div>
+    </main>
+    <script>
+      (function () {
+        const PARAMS = new URLSearchParams(location.search);
+        const read = (key) => {
+          try {
+            return JSON.parse(localStorage.getItem(key) || "null");
+          } catch {
+            return null;
+          }
+        };
+        const data = window.__NORSKEN_APERO__ || read("norsken-apero-sheet") || { rooms: [], rows: [] };
+        const store = window.__NORSKEN_GUESTS__ || read("norsken-guests-v1") || { list: [] };
+        const en = data.lang === "en";
+        const T = (no, e) => (en ? e : no);
+        const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+        const byId = new Map((Array.isArray(store.list) ? store.list : []).map((g) => [g.id, g]));
+        // the rows the app chose, joined with the names from this browser's guest list
+        const rows = (Array.isArray(data.rows) ? data.rows : []).map((r) => ({ ...r, g: byId.get(r.id) })).filter((r) => r.g);
+        const atTable = new Map();
+        for (const r of rows) {
+          if (!r.place) continue;
+          if (!atTable.has(r.place)) atTable.set(r.place, []);
+          atTable.get(r.place).push(r.g);
+        }
+        document.documentElement.lang = en ? "en" : "no";
+        document.getElementById("print").textContent = T("🖨 Skriv ut", "🖨 Print");
+        document.getElementById("hint").textContent = T("A4 stående. Blanke linjer nederst er til dem som kommer uten booking.", "A4 portrait. The empty lines are for walk-ins.");
+
+        const PIECE_ICON = { peis: "🔥", flygel: "🎹", bardisk: "", sofa: "", vindu: "" };
+        const rooms = Array.isArray(data.rooms) ? data.rooms : [];
+        // the list's «Plass» column is narrow: short room words, like the staff would write them
+        const SHORT = { kristiania: T("Blå", "Blue"), atheneum: "Aten.", moterom: T("Møter.", "Meet."), arneberg: "Arneb." };
+        const items = new Map();
+        for (const room of rooms) for (const it of room.items || []) items.set(it.id, { room, it });
+        const placeWord = (r) => {
+          const hit = items.get(r.place);
+          if (!hit) return r.label || "–";
+          const name = SHORT[hit.room.id] || (en ? hit.room.nameEn || hit.room.name : hit.room.name);
+          return `${name} ${hit.it.label}`.trim();
+        };
+
+        function roomBox(room) {
+          const box = document.createElement("section");
+          box.className = "box room";
+          const shapes = [];
+          const tags = [];
+          for (const it of room.items || []) {
+            const x = it.x - it.w / 2;
+            const y = it.y - it.h / 2;
+            const cls = it.piece ? "p" : `t${atTable.has(it.id) ? " busy" : ""}`;
+            const sid = `data-id="${esc(it.id)}"`;
+            if (!it.piece && (it.shape === "round" || it.shape === "oval")) {
+              shapes.push(`<ellipse class="${cls}" ${sid} cx="${it.x}" cy="${it.y}" rx="${it.w / 2}" ry="${it.h / 2}"/>`);
+            } else {
+              shapes.push(`<rect class="${cls}" ${sid} x="${x}" y="${y}" width="${it.w}" height="${it.h}"/>`);
+            }
+            if (it.piece === "vindu") {
+              // a window: a line down the middle, like on a floor plan
+              shapes.push(
+                it.h >= it.w
+                  ? `<line class="w" x1="${it.x}" y1="${y}" x2="${it.x}" y2="${y + it.h}"/>`
+                  : `<line class="w" x1="${x}" y1="${it.y}" x2="${x + it.w}" y2="${it.y}"/>`,
+              );
+            }
+            const pos = `left:${(it.x / room.w) * 100}%;top:${(it.y / room.h) * 100}%`;
+            if (it.piece) {
+              if (PIECE_ICON[it.piece]) tags.push(`<div class="tag" style="${pos}"><span class="icon">${PIECE_ICON[it.piece]}</span></div>`);
+              continue;
+            }
+            const here = atTable.get(it.id) || [];
+            const marks = `${it.reserved ? " ⛔" : ""}${it.share ? " 🔗" : ""}`;
+            if (it.label) tags.push(`<div class="tag" style="${pos}"><span class="num">${esc(it.label)}${marks}</span></div>`);
+            if (here.length) {
+              // the names sit beside the table: layout() picks under, over, right or left – where they hit nothing
+              const pc = (v, of) => (v / of) * 100;
+              tags.push(
+                `<div class="names" data-id="${esc(it.id)}" data-cx="${pc(it.x, room.w)}" data-cy="${pc(it.y, room.h)}" data-hw="${pc(it.w / 2, room.w)}" data-hh="${pc(it.h / 2, room.h)}"><div class="who">${here
+                  .map((g) => `<span>${esc(g.name || "–")} <small>${esc(g.pax || "")}</small></span>`)
+                  .join("")}</div></div>`,
+              );
+            }
+          }
+          box.innerHTML = `<h2>${esc(en ? room.nameEn || room.name : room.name)}</h2>
+            <div class="stage"><div class="map" data-w="${room.w}" data-h="${room.h}">
+              <svg viewBox="0 0 ${room.w} ${room.h}" preserveAspectRatio="none" aria-hidden="true">${shapes.join("")}</svg>
+              ${tags.join("")}
+            </div></div>`;
+          return box;
+        }
+
+        function listBox() {
+          const box = document.createElement("section");
+          box.className = "box list";
+          const day = (() => {
+            const m = String(data.day || "").match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+            const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date();
+            return d.toLocaleDateString(en ? "en-GB" : "nb-NO", { weekday: "long", day: "numeric", month: "long" });
+          })();
+          const sub = [day, data.pling ? `pling ${data.pling}` : ""].filter(Boolean).join(" · ");
+          const body = rows
+            .map(
+              (r) => `<tr><td class="tick"></td><td class="n">${esc(r.g.name || "–")}</td><td class="c">${esc(r.g.pax || "")}</td><td class="c">${esc(r.g.time || "")}</td><td>${esc(r.place ? placeWord(r) : "–")}</td><td class="c">${esc(r.table || "")}</td></tr>`,
+            )
+            .join("");
+          box.innerHTML = `<h2>${T("Gjesteliste", "Guest list")}</h2><p class="sub">${esc(sub)}</p>
+            <div class="rows"><table>
+              <colgroup><col class="col-tick"><col><col class="col-pax"><col class="col-time"><col class="col-place"><col class="col-table"></colgroup>
+              <thead><tr><th></th><th>${T("Navn", "Name")}</th><th class="c">${T("Gjester", "Guests")}</th><th class="c">${T("Tid", "Time")}</th><th>🥂 ${T("Plass", "Place")}</th><th class="c">${T("Bord", "Table")}</th></tr></thead>
+              <tbody>${body}</tbody>
+            </table></div>`;
+          return box;
+        }
+
+        const left = document.getElementById("left");
+        const right = document.getElementById("right");
+        // like the paper: Bar (the second room) on top of the guest list, the rest down the left
+        const leftRooms = rooms.filter((_, i) => i !== 1);
+        for (const r of leftRooms) left.appendChild(roomBox(r));
+        if (!rooms.length) {
+          left.innerHTML = `<section class="box room"><p class="empty-note">${T(
+            "Ingen salong har bordkart ennå. Tegn dem i Norsken under «Innover ▾» → «✏️ Flytt bord».",
+            "No salon has a table map yet. Draw them in Norsken under «Innover ▾» → «✏️ Move tables».",
+          )}</p></section>`;
+        }
+        let barBox = null;
+        if (rooms[1]) {
+          barBox = roomBox(rooms[1]);
+          right.appendChild(barBox);
+        }
+        const list = listBox();
+        right.appendChild(list);
+
+        function layout() {
+          // the second room is as tall as one room on the left
+          const n = Math.max(1, left.children.length);
+          const colH = left.getBoundingClientRect().height;
+          const gap = parseFloat(getComputedStyle(left).rowGap) || 0;
+          if (barBox) barBox.style.flex = `0 0 ${(colH - gap * (n - 1)) / n}px`;
+          // each map keeps its room's shape inside its box
+          for (const map of document.querySelectorAll(".map")) {
+            const stage = map.parentElement.getBoundingClientRect();
+            const w = Number(map.dataset.w) || 1;
+            const h = Number(map.dataset.h) || 1;
+            const k = Math.min(stage.width / w, stage.height / h);
+            map.style.width = `${w * k}px`;
+            map.style.height = `${h * k}px`;
+          }
+          // names that do not fit: smaller, then cut
+          for (const who of document.querySelectorAll(".who")) {
+            let fs = 7.4;
+            who.style.fontSize = `${fs}pt`;
+            while (fs > 5.6 && [...who.children].some((s) => s.scrollWidth > s.clientWidth + 1)) {
+              fs -= 0.3;
+              who.style.fontSize = `${fs}pt`;
+            }
+          }
+          // each name box: under the table, else right, left or over – the first place that
+          // covers no other table and no other name box (or the one that covers least)
+          // other tables and name boxes count a little bigger, so a name box never ends up
+          // squeezed between two tables where it could belong to either
+          const pad = (1.3 * 96) / 25.4;
+          const grow = (r) => ({ left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad });
+          const overlap = (a, b) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+          for (const map of document.querySelectorAll(".map")) {
+            const box = map.parentElement.parentElement.getBoundingClientRect();
+            const shapes = [...map.querySelectorAll("svg [data-id]")].map((el) => ({ id: el.dataset.id, r: grow(el.getBoundingClientRect()) }));
+            const placed = [];
+            for (const el of map.querySelectorAll(".names")) {
+              const { cx, cy, hw, hh } = Object.fromEntries(["cx", "cy", "hw", "hh"].map((k) => [k, Number(el.dataset[k])]));
+              const spots = [
+                [cx, cy + hh, "-50%", "0.6mm"], // under
+                [cx + hw, cy, "0.8mm", "-50%"], // right
+                [cx - hw, cy, "calc(-100% - 0.8mm)", "-50%"], // left
+                [cx, cy - hh, "-50%", "calc(-100% - 0.6mm)"], // over
+              ];
+              let best = null;
+              for (const [x, y, tx, ty] of spots) {
+                el.style.left = `${x}%`;
+                el.style.top = `${y}%`;
+                el.style.transform = `translate(${tx}, ${ty})`;
+                const r = el.getBoundingClientRect();
+                const out = Math.max(0, box.left - r.left) + Math.max(0, r.right - box.right) + Math.max(0, box.top - r.top) + Math.max(0, r.bottom - box.bottom);
+                const hit = shapes.filter((s) => s.id !== el.dataset.id).reduce((n, s) => n + overlap(r, s.r), 0) + placed.reduce((n, p) => n + overlap(r, p), 0) * 2 + out * 50;
+                if (!best || hit < best.hit) best = { hit, x, y, tx, ty, r };
+                if (hit === 0) break;
+              }
+              el.style.left = `${best.x}%`;
+              el.style.top = `${best.y}%`;
+              el.style.transform = `translate(${best.tx}, ${best.ty})`;
+              placed.push(grow(el.getBoundingClientRect()));
+            }
+          }
+          // the guest list fills its box with lines, like the paper; a long list gets smaller lines
+          const wrap = list.querySelector(".rows");
+          const tbody = list.querySelector("tbody");
+          for (const tr of [...tbody.querySelectorAll("tr.blank")]) tr.remove();
+          const avail = wrap.getBoundingClientRect().height - list.querySelector("thead").getBoundingClientRect().height;
+          const mm = 96 / 25.4;
+          let row = 7;
+          while (row > 4.2 && rows.length * row * mm > avail) row -= 0.25;
+          list.style.setProperty("--row", `${row}mm`);
+          list.style.setProperty("--fs", `${Math.max(6.5, Math.min(9, row * 1.3))}pt`);
+          const free = Math.floor((avail - rows.length * row * mm) / (row * mm));
+          for (let i = 0; i < free; i += 1) {
+            const tr = document.createElement("tr");
+            tr.className = "blank";
+            tr.innerHTML = '<td class="tick"></td><td></td><td></td><td></td><td></td><td></td>';
+            tbody.appendChild(tr);
+          }
+        }
+        layout();
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
+        window.addEventListener("resize", layout);
+        window.addEventListener("beforeprint", layout);
+        document.getElementById("print").addEventListener("click", () => window.print());
+        if (PARAMS.get("noprint") !== "1") window.addEventListener("load", () => setTimeout(() => window.print(), 350));
+      })();
+    </script>
+  </body>
+</html>

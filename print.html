@@ -560,7 +560,7 @@
         danske: { no: "Danske kjelleret", en: "Danske kjelleret" },
         arneberg: { no: "Arneberg", en: "Arneberg" },
         moterom: { no: "Møterom", en: "Meeting room" },
-        kristiania: { no: "Kristiania", en: "Kristiania" },
+        kristiania: { no: "Blå værelset", en: "Blue room" },
         atheneum: { no: "Atheneum", en: "Atheneum" },
         bibliotek: { no: "Bibliotek", en: "Library" },
         r1818: { no: "1818", en: "1818" },
@@ -1127,7 +1127,8 @@
       const seatNameList = [];
       let markedCount = 0;
       for (const table of tables) {
-        for (const seat of state.printNoChairs ? [] : table.seatsRender || []) {
+        // a salon seats people on sofas and armchairs: no chairs drawn (as in the app)
+        for (const seat of state.printNoChairs || IS_SALON ? [] : table.seatsRender || []) {
           const mark = markOf(seat.mark);
           const el = document.createElement("div");
           el.className = "seat" + (mark ? " marked" : "");

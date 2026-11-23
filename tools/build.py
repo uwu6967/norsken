@@ -7,15 +7,22 @@ b64=base64.b64encode(prn.encode()).decode()
 old='const html = await (await fetch("print.html")).text();'
 assert old in app
 app=app.replace(old,'const html = window.__NORSKEN_PRINT_SRC__ ? new TextDecoder().decode(Uint8Array.from(atob(window.__NORSKEN_PRINT_SRC__), (ch) => ch.charCodeAt(0))) : await (await fetch("print.html")).text();')
+apo=open(d+'apero.html').read()
+old='const html = await (await fetch("apero.html")).text();'
+assert old in app
+app=app.replace(old,'const html = window.__NORSKEN_APERO_SRC__ ? new TextDecoder().decode(Uint8Array.from(atob(window.__NORSKEN_APERO_SRC__), (ch) => ch.charCodeAt(0))) : await (await fetch("apero.html")).text();')
 app=app.replace('</script>','<\\/script>'); assert '</script' not in app
 link='<link rel="stylesheet" href="styles.css?v=23" />'; assert link in idx
 idx=idx.replace(link,'<style>\n'+css+'\n</style>')
 tag='<script src="app.js?v=24"></script>'; assert tag in idx
-idx=idx.replace(tag,'<script>window.__NORSKEN_PRINT_SRC__ = "'+b64+'";</script>\n    <script>\n'+app+'\n</script>')
+b64a=base64.b64encode(apo.encode()).decode()
+idx=idx.replace(tag,'<script>window.__NORSKEN_PRINT_SRC__ = "'+b64+'"; window.__NORSKEN_APERO_SRC__ = "'+b64a+'";</script>\n    <script>\n'+app+'\n</script>')
 out=os.path.join(d, '..', 'index.html')
 open(out,'w').write(idx); print('wrote', os.path.normpath(out), len(idx), 'bytes')
 # print.html next to index.html: the local «Skriv ut» link opens it
 open(os.path.join(d, '..', 'print.html'),'w').write(prn); print('wrote print.html')
+# apero.html (the aperitif sheet) beside it: the «Aperitiff-ark» link opens it
+open(os.path.join(d, '..', 'apero.html'),'w').write(apo); print('wrote apero.html')
 
 # ResDiary bookmarks as PLAIN TEXT (copy/paste as the bookmark's address):
 # written into resdiary/README.md (between the BOKMERKER markers)
@@ -124,6 +131,10 @@ m = re.search(r'<script>\n(.*?)</script>', prn, re.S)
 assert m and prn.count('<script>') == 1
 open(os.path.join(ext, 'print.js'), 'w', encoding='utf-8').write(m.group(1))
 open(os.path.join(ext, 'print.html'), 'w', encoding='utf-8').write(prn.replace(m.group(0), '<script src="print.js"></script>'))
+m = re.search(r'<script>\n(.*?)</script>', apo, re.S)
+assert m and apo.count('<script>') == 1
+open(os.path.join(ext, 'apero.js'), 'w', encoding='utf-8').write(m.group(1))
+open(os.path.join(ext, 'apero.html'), 'w', encoding='utf-8').write(apo.replace(m.group(0), '<script src="apero.js"></script>'))
 open(os.path.join(ext, 'background.js'), 'w', encoding='utf-8').write(
     '// Click the Norsken icon: open the planner in its own tab.\n'
     'chrome.action.onClicked.addListener(() => {\n'

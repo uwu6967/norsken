@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="no">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Norsken — Aperitiff</title>
+    <style>
+      /* The staff's aperitif sheet (A4, standing): the salons down the left, Bar and the
+         guest list on the right – now filled in by Norsken. Black on white, made for paper. */
+      @page {
+        size: A4 portrait;
+        margin: 7mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #e9e5df;
+        color: #111;
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .toolbar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        font-size: 15px;
+      }
+      .toolbar button {
+        min-height: 44px;
+        padding: 10px 20px;
+        border: 0;
+        border-radius: 999px;
+        background: #2f4a3c;
+        color: #fff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .toolbar .hint {
+        color: #555;
+      }
+      .sheet {
+        width: 196mm;
+        height: 282mm;
+        margin: 0 auto 24px;
+        padding: 0;
+        background: #fff;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4mm;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+        outline: 6mm solid #fff;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 3mm;
+        min-height: 0;
+      }
+      .box {
+        border: 0.7mm solid #111;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 1.2mm 1.6mm 1.6mm;
+      }
+      .box h2 {
+        margin: 0 0 1mm;
+        text-align: center;
+        font-family: Rockwell, "Roboto Slab", "Courier New", Georgia, serif;
+        font-weight: 800;
+        font-size: 10.5pt;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+      .room {
+        flex: 1 1 0;
+      }
+      .stage {
+        position: relative;
+        flex: 1 1 0;
+        min-height: 0;
+      }
+      .map {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .map svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        overflow: visible;
+      }
+      .map svg .t {
+        fill: #fff;
+        stroke: #111;
+        stroke-width: 1.7px;
+        vector-effect: non-scaling-stroke;
+      }
+      .map svg .t.busy {
+        fill: #f1f1f1;
+      }
+      .map svg .p {
+        fill: #fff;
+        stroke: #111;
+        stroke-width: 1.4px;
+        vector-effect: non-scaling-stroke;
+      }
+      .map svg .w {
+        stroke: #111;
+        stroke-width: 1px;
+        vector-effect: non-scaling-stroke;
+      }
+      .tag {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        pointer-events: none;
+      }
+      .names {
+        position: absolute;
+        pointer-events: none;
+        z-index: 1;
+      }
+      .num {
+        font-family: Rockwell, "Roboto Slab", Georgia, serif;
+        font-weight: 800;
+        font-size: 8.5pt;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .who {
+        background: #fff;
+        border: 0.25mm solid #111;
+        border-radius: 1.2mm;
+        padding: 0.4mm 1mm;
+        font-size: 7.4pt;
+        line-height: 1.15;
+        font-weight: 700;
+        text-align: center;
+        max-width: 34mm;
+        overflow: hidden;
+      }
+      .who span {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .who small {
+        font-weight: 400;
+      }
+      .icon {
+        font-size: 11pt;
+        line-height: 1;
+      }
+      .list {
+        flex: 1 1 0;
+      }
+      .list .sub {
+        margin: -0.6mm 0 1.4mm;
+        text-align: center;
+        font-size: 7.5pt;
+        color: #333;
+      }
+      .list .rows {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      th {
+        font-family: Rockwell, "Roboto Slab", "Courier New", Georgia, serif;
+        font-weight: 800;
+        font-size: 8pt;
+        text-align: left;
+        padding: 0 0.6mm 0.8mm;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      td {
+        border-bottom: 0.3mm solid #111;
+        padding: 0 0.6mm;
+        height: var(--row, 7mm);
+        vertical-align: bottom;
+        font-size: var(--fs, 9pt);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      td.n {
+        font-weight: 700;
+      }
+      td.c,
+      th.c {
+        text-align: center;
+      }
+      td.tick::before {
+        content: "";
+        display: inline-block;
+        width: 3mm;
+        height: 3mm;
+        border: 0.3mm solid #111;
+        margin-bottom: 0.4mm;
+      }
+      .col-tick {
+        width: 5mm;
+      }
+      .col-pax {
+        width: 14mm;
+      }
+      .col-time {
+        width: 10mm;
+      }
+      .col-place {
+        width: 21mm;
+      }
+      .col-table {
+        width: 9mm;
+      }
+      .empty-note {
+        margin: auto;
+        padding: 6mm;
+        text-align: center;
+        font-size: 10pt;
+        color: #444;
+      }
+      @media print {
+        html,
+        body {
+          background: #fff;
+        }
+        .toolbar {
+          display: none;
+        }
+        .sheet {
+          margin: 0;
+          box-shadow: none;
+          outline: 0;
+        }
+      }
+      @media screen and (max-width: 820px) {
+        .sheet {
+          transform-origin: top left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar"><button type="button" id="print">🖨 Skriv ut</button><span class="hint" id="hint"></span></div>
+    <main class="sheet" id="sheet">
+      <div class="col" id="left"></div>
+      <div class="col" id="right"></div>
+    </main>
+    <script src="apero.js"></script>
+  </body>
+</html>

@@ -308,6 +308,19 @@ When printing Spisestua locally, Domino is put beside the map, small, if it is i
 - The metre numbers (see the map).
 CSS for `.window` and `.corner` exists but no element uses it.
 
+## The aperitif sheet (`apero.html`)
+A second printout, A4 standing, made to look like the staff's own paper aperitif sheet (see [[Aperitif]]):
+the salons as boxes – Toddy, Arneberg, Blå værelset, Ateneum down the left, Bar top right – each table
+with its number (⛔ reserved, 🔗 shared), 🔥/🎹 for fireplace and piano, and the party names in a small
+box beside the table (`layout()` tries under, right, left, over and takes the first spot that covers
+nothing). Under Bar: **Gjesteliste** – ☐ · Navn · Gjester · Tid · 🥂 Plass · Bord – sorted by time, then
+ruled empty lines to the bottom for walk-ins; a long list gets smaller lines (down to 4.2 mm). Always one
+page. It prints by itself on load (`?noprint=1` stops that, for tests).
+Started by the links marked `data-apero-sheet` («🖨 Aperitiff-ark» in Reservasjoner's 🥂 list, «🥂
+Aperitiff-ark» on «☀ I dag» when the aperitif is on). Their click handler first writes
+`norsken-apero-sheet` (`aperoSheetData()`); in the hosted copy it downloads a baked
+`norsken-aperitiff-YYYY-MM-DD.html` instead.
+
 ## When you change print.html
 - `tools/build.py` asserts that `src/print.html` has **exactly one** `<script>` (followed by a new
   line): it is moved to `extension/print.js` because Manifest V3 forbids inline scripts. The hosted

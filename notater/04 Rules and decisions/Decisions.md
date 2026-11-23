@@ -8,6 +8,22 @@ updated: 2026-11-21
 What was decided, and why. Newest first. When something here changes, write the new decision
 on top and say what it replaces – don't delete the old one.
 
+## 2026-11-23
+- **The salons follow the staff's paper aperitif sheet** – same rooms, same shapes, same order – and the
+  printed «🖨 Aperitiff-ark» looks like that sheet, filled in. *Why:* it is what the staff already use.
+- **Kristiania is shown as «Blå værelset»** (Danny: same room). The id stays `kristiania`, ResDiary's
+  «Kristiania» still matches.
+- **X on the sheet = furniture**, not a table: fireplace (Arneberg; Ateneum right) and window (Ateneum
+  left). Drawn as 🔥 Peis / 🪟 Vindu, never given out.
+- **No chairs drawn in salons** (map and printout): people sit on sofas and armchairs; the table shows
+  how many («5+2P»).
+- **A room nobody has drawn uses its ready suggestion** for the aperitif and the sheet. Starter tables
+  have fixed ids (`toddy-1` …) so a place given before the room was opened still holds.
+- **«⭐ Begynn på nytt fra forslaget»** is offered in a salon's editor even when it has tables (with
+  «↶ Angre»).
+- **The aperitif sheet gets the layout only** (`norsken-apero-sheet`: maps, table words, booking ids);
+  the names come from the guest list in the same browser, like the normal printout.
+
 ## 2026-11-21
 - **Mixed tables**: a party put on a table from «🔔 Hvem sitter hvor» **joins** the party there (one
   sitting, chairs add up) – it is never a swap like a drag on the map. Stored as `guests.sat`. Parties

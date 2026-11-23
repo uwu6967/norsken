@@ -8,6 +8,13 @@ updated: 2026-11-21
 What changed, day by day, in plain words. The full notes are the commit messages (they are also the
 release notes on GitHub). Add a line here with every change. Newest first.
 
+## 2026-11-23
+- Salons drawn from the staff's aperitif sheet: Toddy, Bar, Arneberg, Blå værelset (= Kristiania),
+  Ateneum – fireplaces 🔥, window, sofas, bar counter. Ready to use without drawing anything.
+- «🖨 Aperitiff-ark»: the paper sheet printed filled in – names at the salon tables and the
+  Gjesteliste with time, 🥂 place and dinner table, plus blank lines for walk-ins.
+- No chairs drawn in salons; a salon still showing its suggestion prints correctly.
+
 ## 2026-11-21
 - Aperitif fixes from a review: no two parties on one table after changing shift; a moved pling
   takes away places that no longer fit; a hand choice moves the whole party and can be undone;

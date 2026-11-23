@@ -9,13 +9,14 @@
 const ROOM_DEFS = [
   { id: "spisestua", no: "Spisestua", en: "Dining room", profile: "home", key: "norsken-layout-v3", doc: "plan/current", keys: ["spisestue", "spisestua"], x: 210, y: 870, w: 262, h: 470 },
   { id: "domino", no: "Domino", en: "Domino", profile: "domino", key: "norsken-layout-domino-v1", doc: "plan/domino", keys: ["domino"], x: 472, y: 1140, w: 160, h: 180 },
-  { id: "bar", no: "Bar", en: "Bar", profile: "salong", apero: true, keys: ["bar"], x: 472, y: 950, w: 230, h: 185, size: { w: 650, h: 520 } },
-  { id: "toddy", no: "Toddy", en: "Toddy", profile: "salong", apero: true, keys: ["toddy"], x: 632, y: 1140, w: 206, h: 180, size: { w: 800, h: 700 }, starter: "toddy" },
+  { id: "bar", no: "Bar", en: "Bar", profile: "salong", apero: true, keys: ["bar"], x: 472, y: 950, w: 230, h: 185, size: { w: 750, h: 520 }, starter: true },
+  { id: "toddy", no: "Toddy", en: "Toddy", profile: "salong", apero: true, keys: ["toddy"], x: 632, y: 1140, w: 206, h: 180, size: { w: 800, h: 550 }, starter: true },
   { id: "danske", no: "Danske kjelleret", en: "Danske kjelleret", profile: "salong", apero: false, keys: ["danske", "kjeller"], x: 838, y: 1140, w: 147, h: 180, size: { w: 410, h: 500 } },
-  { id: "arneberg", no: "Arneberg", en: "Arneberg", profile: "salong", apero: true, keys: ["arneberg"], x: 985, y: 1020, w: 155, h: 300, size: { w: 430, h: 840 } },
+  { id: "arneberg", no: "Arneberg", en: "Arneberg", profile: "salong", apero: true, keys: ["arneberg"], x: 985, y: 1020, w: 155, h: 300, size: { w: 840, h: 600 }, starter: true },
   { id: "moterom", no: "Møterom", en: "Meeting room", profile: "salong", apero: true, keys: ["møterom", "moterom", "møte"], x: 1140, y: 1020, w: 130, h: 110, size: { w: 360, h: 310 } },
-  { id: "kristiania", no: "Kristiania", en: "Kristiania", profile: "salong", apero: true, keys: ["kristiania", "christiania"], x: 1140, y: 1135, w: 160, h: 185, size: { w: 450, h: 520 } },
-  { id: "atheneum", no: "Atheneum", en: "Atheneum", profile: "salong", apero: true, keys: ["atheneum", "ateneum", "athenaeum"], x: 1300, y: 1135, w: 240, h: 175, size: { w: 670, h: 490 } },
+  // the staff call Kristiania «Blå værelset» (the aperitif sheet does too)
+  { id: "kristiania", no: "Blå værelset", en: "Blue room", profile: "salong", apero: true, keys: ["kristiania", "christiania", "blå", "blaa"], x: 1140, y: 1135, w: 160, h: 185, size: { w: 700, h: 510 }, starter: true },
+  { id: "atheneum", no: "Atheneum", en: "Atheneum", profile: "salong", apero: true, keys: ["atheneum", "ateneum", "athenaeum"], x: 1300, y: 1135, w: 240, h: 175, size: { w: 700, h: 675 }, starter: true },
   { id: "bibliotek", no: "Bibliotek", en: "Library", profile: "salong", apero: false, keys: ["bibliotek", "library"], x: 1235, y: 800, w: 130, h: 220, size: { w: 360, h: 620 } },
   { id: "r1818", no: "1818", en: "1818", profile: "salong", apero: false, keys: ["1818"], x: 1370, y: 960, w: 160, h: 170, size: { w: 450, h: 480 } },
   { id: "r1814", no: "1814", en: "1814", profile: "salong", apero: false, keys: ["1814"], x: 1370, y: 820, w: 160, h: 140, size: { w: 450, h: 390 } },
@@ -792,7 +793,14 @@ let RIG = (() => {
 let rigUndo = [];
 let houseHint = false; // «Innover» opened the house map: tell what to tap
 // Pieces of furniture that are not tables (salons): they take space, never get a number or guests
-const PIECES = { flygel: { no: "🎹 Flygel", en: "🎹 Grand piano" } };
+// furniture in a salon that takes up room but has no seats of its own
+const PIECES = {
+  flygel: { no: "🎹 Flygel", en: "🎹 Grand piano" },
+  peis: { no: "🔥 Peis", en: "🔥 Fireplace" },
+  vindu: { no: "🪟 Vindu", en: "🪟 Window" },
+  sofa: { no: "🛋 Sofa", en: "🛋 Sofa" },
+  bardisk: { no: "🍸 Bardisk", en: "🍸 Bar counter" },
+};
 // Aperitif evenings: words in Område or a comment that suggest the switch
 const APERO_WORDS = /aperitiff|ap[ée]ritif|velkomstdrink|hummer\s?(aften|kveld|fest)|krepse\s?(aften|kveld|fest|lag)/i;
 // the table types in the room editor
@@ -2774,6 +2782,9 @@ function seatNodes() {
   const chair = Math.max(20, state.dims.chairBig.d);
   const nodes = [];
   if (state.hideChairs) return nodes; // «Skjul alle stoler»: only the tables
+  // A salon seats people on sofas and armchairs, not dining chairs: the table shows
+  // how many («5+2P»), like the staff's aperitif sheet – no chairs drawn.
+  if (IS_SALON) return nodes;
   const clash = seatClashes().bad;
   for (const table of roomTables()) {
     for (const seat of seatsOf(table)) {
@@ -4966,6 +4977,12 @@ function renderGuideButtons() {
     const text = el.querySelector("span");
     if (text) text.textContent = en ? "Who sits where" : "Hvem sitter hvor";
   }
+  const sheet = document.getElementById("today-apero-sheet");
+  if (sheet) {
+    sheet.hidden = IS_SALON || !guests.list.length || !guests.ap?.on;
+    const text = sheet.querySelector("span");
+    if (text) text.textContent = en ? "Aperitif sheet" : "Aperitiff-ark";
+  }
   if (document.getElementById("guide")?.hidden === false) renderGuide();
 }
 
@@ -7033,10 +7050,15 @@ function renderRig() {
       <div class="rig-row"><button type="button" class="rig-btn${t.fixed ? " on" : ""}" data-rig="fixed">🔒 ${en ? "Fixed" : "Står fast"}</button><button type="button" class="rig-btn danger" data-rig="remove">${en ? "Take away" : "Ta bort"}</button><button type="button" class="rig-btn primary" data-rig="deselect">✓ ${en ? "Done" : "Ferdig"}</button></div>`;
   } else {
     const stored = state.tables.filter((x) => x.zone === "tray" && (IS_SALON || x.home));
-    const suggest = IS_SALON && ROOMS[ROOM_ID].starter && !roomTables().length;
+    const suggest = IS_SALON && ROOMS[ROOM_ID].starter;
+    const empty = !roomTables().length;
     panel.innerHTML = `${
       suggest
-        ? `<div class="rig-row"><button type="button" class="rig-btn primary wide" data-rig="starter">⭐ ${en ? `Put out the suggestion for ${esc(ROOMS[ROOM_ID].en)}` : `Legg ut forslaget for ${esc(ROOMS[ROOM_ID].no)}`}</button></div>`
+        ? `<div class="rig-row"><button type="button" class="rig-btn${empty ? " primary" : ""} wide" data-rig="starter">⭐ ${
+            empty
+              ? en ? `Put out the suggestion for ${esc(ROOMS[ROOM_ID].en)}` : `Legg ut forslaget for ${esc(ROOMS[ROOM_ID].no)}`
+              : en ? "Start again from the suggestion (the aperitif sheet)" : "Begynn på nytt fra forslaget (aperitiff-arket)"
+          }</button></div>`
         : ""
     }<p class="rig-title">${en ? "Tap a table to change it, or add one:" : "Trykk på et bord for å endre det, eller legg til:"}</p>
       <div class="rig-row wrap">${RIG_SIZES.map((x) => `<button type="button" class="rig-btn" data-rig-add="${x.size}">+ ${esc(x[en ? "en" : "no"])}</button>`).join("")}</div>
@@ -7348,23 +7370,69 @@ function roomMapButton(id, en) {
 // door, left, a small round table (2, at most 4); right, the grand piano.
 function roomStarter(id) {
   const def = ROOMS[id];
-  if (!def || def.starter !== "toddy") return [];
-  const r = def.size;
-  const put = (size, own, cm, extra) => {
-    const t = makeTable(size); // made off the floor: this runs before the room exists
-    t.zone = "room";
-    t.own = own;
-    Object.assign(t, extra);
-    t.x = (cm.x / r.w) * 100;
-    t.y = (cm.y / r.h) * 100;
-    return t;
+  if (!def || !def.starter) return [];
+  // Drawn from the aperitif sheet the staff use (2026-11-23), plus what Danny told
+  // about Toddy. Each entry: size, centre x, y and width × depth in cm, then the rest.
+  // «1»… are the table numbers (left to right, top to bottom); a piece has no seats.
+  // Seat numbers are a first guess – change them in «✏️ Flytt bord».
+  const LAYOUTS = {
+    toddy: [
+      ["oval", 137, 164, 165, 80, { manual: "1", seatCount: 4, extraSeats: 3, fixed: true }],
+      ["oval", 121, 399, 165, 80, { manual: "2", seatCount: 4, extraSeats: 3, fixed: true }],
+      ["oval", 724, 145, 75, 105, { manual: "3", seatCount: 2, extraSeats: 2 }],
+      ["rect", 640, 430, 200, 150, { piece: "flygel", fixed: true }],
+    ],
+    bar: [
+      ["rect", 368, 130, 438, 110, { piece: "bardisk", fixed: true }],
+      ["rect", 38, 414, 76, 188, { piece: "sofa", fixed: true }],
+      ["rect", 170, 455, 188, 107, { piece: "sofa", fixed: true }],
+      ["small", 173, 349, 62, 62, { manual: "1", seatCount: 5, extraSeats: 2 }],
+      ["rect", 696, 412, 87, 193, { piece: "sofa", fixed: true }],
+      ["rect", 559, 455, 188, 107, { piece: "sofa", fixed: true }],
+      ["small", 548, 347, 62, 62, { manual: "2", seatCount: 5, extraSeats: 2 }],
+    ],
+    arneberg: [
+      ["rect", 89, 90, 80, 100, { manual: "1", seatCount: 4 }],
+      ["rect", 56, 492, 80, 102, { manual: "2", seatCount: 4 }],
+      ["rect", 555, 79, 80, 100, { manual: "3", seatCount: 4 }],
+      ["rect", 538, 513, 80, 107, { manual: "4", seatCount: 4 }],
+      // by the fireplace: shared, and kept for the board (direksjonen) – one tap to change
+      ["rect", 734, 319, 130, 118, { manual: "5", seatCount: 6, share: true, reserved: true }],
+      ["rect", 727, 58, 118, 82, { piece: "peis", fixed: true }],
+    ],
+    kristiania: [
+      ["rect", 124, 68, 93, 84, { manual: "1", seatCount: 4 }],
+      ["oval", 117, 165, 55, 75, { manual: "2", seatCount: 2, extraSeats: 1 }],
+      ["oval", 109, 337, 55, 75, { manual: "3", seatCount: 2, extraSeats: 1 }],
+      ["rect", 103, 440, 93, 87, { manual: "4", seatCount: 4 }],
+      ["oval", 547, 197, 55, 75, { manual: "5", seatCount: 3, extraSeats: 1 }],
+      ["oval", 540, 354, 55, 75, { manual: "6", seatCount: 3, extraSeats: 1 }],
+      ["rect", 592, 81, 170, 73, { piece: "sofa", fixed: true }],
+      ["rect", 638, 294, 77, 353, { piece: "sofa", fixed: true }],
+    ],
+    atheneum: [
+      ["rect", 109, 121, 96, 116, { manual: "1", seatCount: 4 }],
+      ["small", 109, 356, 50, 50, { manual: "2", seatCount: 2 }],
+      ["small", 45, 597, 65, 65, { manual: "3", seatCount: 2, extraSeats: 1 }],
+      // the two in front of the fireplace can be shared
+      ["rect", 446, 208, 173, 94, { manual: "4", seatCount: 6, share: true }],
+      ["rect", 437, 469, 173, 100, { manual: "5", seatCount: 6, share: true }],
+      ["rect", 26, 359, 50, 270, { piece: "vindu", fixed: true }],
+      ["rect", 655, 325, 83, 260, { piece: "peis", fixed: true }],
+    ],
   };
-  return [
-    put("oval", { w: 60, l: 110 }, { x: 175, y: 175 }, { manual: "1", seatCount: 4, extraSeats: 3, fixed: true }),
-    put("oval", { w: 60, l: 110 }, { x: r.w - 175, y: 175 }, { manual: "2", seatCount: 4, extraSeats: 3, fixed: true }),
-    put("small", { w: 60, l: 60 }, { x: 170, y: r.h - 120 }, { manual: "3", seatCount: 2, extraSeats: 2 }),
-    put("rect", { w: 150, l: 200 }, { x: r.w - 210, y: r.h - 140 }, { piece: "flygel", rotated: true, fixed: true }),
-  ];
+  const r = def.size;
+  return (LAYOUTS[id] || []).map(([size, x, y, w, l, extra], i) => {
+    const t = makeTable(size); // made off the floor: this runs before the room exists
+    // a fixed id, so an aperitif place given before the room was ever opened still holds
+    t.id = `${id}-${extra.manual || `${extra.piece || "x"}${i}`}`;
+    t.zone = "room";
+    t.own = { w, l };
+    Object.assign(t, extra);
+    t.x = (x / r.w) * 100;
+    t.y = (y / r.h) * 100;
+    return t;
+  });
 }
 
 // the first free spot for a new table: the middle, then rings around it
@@ -7435,6 +7503,7 @@ function aperoTables() {
     try {
       plan = r.id === ROOM_ID ? state : JSON.parse(localStorage.getItem(ROOMS[r.id].key) || "null");
     } catch {}
+    if (!plan && r.starter) plan = { tables: roomStarter(r.id) }; // not drawn yet: the sheet's suggestion
     if (!plan || (plan.apero ?? r.apero) === false || !Array.isArray(plan.tables)) continue; // old maps: the room's default
     for (const t of plan.tables) {
       if (t.zone !== "room" || t.piece || t.lead === false) continue;
@@ -7663,7 +7732,7 @@ function renderAperoList() {
   };
   const placed = rows.filter((g) => ap.placed[g.id]).length;
   box.innerHTML = `<p class="set-title">🥂 ${en ? "Aperitif" : "Aperitiff"} · pling ${esc(ap.pling)} · ${placed}/${rows.length} ${en ? "placed" : "har plass"}</p>
-    <div class="apero-actions"><button type="button" class="chip" data-ap="run">🥂 ${en ? "Give out places" : "Fordel aperitiff"}</button><button type="button" class="chip" data-ap="clear">${en ? "Clear" : "Tøm"}</button><button type="button" class="chip" data-ap="toggle">${en ? "Turn off" : "Slå av"}</button></div>
+    <div class="apero-actions"><button type="button" class="chip" data-ap="run">🥂 ${en ? "Give out places" : "Fordel aperitiff"}</button><button type="button" class="chip" data-ap="clear">${en ? "Clear" : "Tøm"}</button><button type="button" class="chip" data-ap="toggle">${en ? "Turn off" : "Slå av"}</button><a class="chip primary apero-sheet-btn" href="apero.html" target="_blank" rel="noopener" data-apero-sheet>🖨 ${en ? "Aperitif sheet" : "Aperitiff-ark"}</a></div>
     ${
       tables.length
         ? `<ul class="apero-list">${rows
@@ -7737,7 +7806,16 @@ function syncAperoLabels() {
   }
   if (changed) saveGuests();
 }
-document.getElementById("print-btn")?.addEventListener("click", syncAperoLabels, true);
+document.getElementById("print-btn")?.addEventListener(
+  "click",
+  () => {
+    // the printout reads what is saved: a salon still showing its ready suggestion
+    // (never changed, so never saved) must be saved first, or it prints empty
+    if (IS_SALON) save();
+    syncAperoLabels();
+  },
+  true,
+);
 
 // --- «🔔 Hvem sitter hvor»: where each party sits, for the pling ----------------
 // One big list, phone first: a name → its table. A party without a table (free
@@ -7986,3 +8064,108 @@ for (const id of ["guide-btn", "today-guide"]) {
     openGuide();
   });
 }
+
+// --- «🖨 Aperitiff-ark»: the staff's paper sheet, filled in ----------------------
+// apero.html draws the salons like the sheet they print today (Toddy, Bar, Arneberg,
+// Blå værelset, Ateneum) with each party at its table, and the «Gjesteliste». This
+// hands it the maps and table words only; the names it reads from this browser's
+// own guest list, like print.html does.
+function apDinnerLabel(g) {
+  const area = g.area || "spisestua";
+  if (area.startsWith("other:")) return g.areaLabel || area.slice(6);
+  const id = guests.placed[g.id];
+  if (!id) return "";
+  const room = guestRoom(g);
+  if (room === ROOM_ID) {
+    const t = guestTable(g);
+    return t ? `${room === "domino" ? "D " : ""}${t.label}` : "";
+  }
+  const t = readRoomPlan(room)?.tables?.find((x) => x.id === id && x.zone === "room");
+  return t ? `${room === "domino" ? "D " : ""}${t.label || ""}`.trim() : ""; // «D 2» = Domino table 2
+}
+
+function aperoSheetData() {
+  const ap = apOf();
+  syncAperoLabels();
+  const order = ["toddy", "bar", "arneberg", "kristiania", "atheneum"];
+  const rank = (id) => (order.includes(id) ? order.indexOf(id) : order.length);
+  const rooms = [];
+  for (const r of ROOM_DEFS.filter((x) => x.profile === "salong").sort((a, b) => rank(a.id) - rank(b.id))) {
+    let plan = r.id === ROOM_ID ? state : readRoomPlan(r.id);
+    if (!plan && r.starter) plan = { tables: roomStarter(r.id), dims: { room: { ...r.size } } };
+    if (!plan || (plan.apero ?? r.apero) === false || !Array.isArray(plan.tables)) continue;
+    const size = plan.dims?.room || r.size;
+    const items = [];
+    for (const t of plan.tables) {
+      if (t.zone !== "room") continue;
+      const own = customCm(t);
+      const spec = plan.dims?.[t.size] || DEFAULT_DIMS[t.size] || DEFAULT_DIMS.small;
+      let w = own ? own.w : spec.d != null ? spec.d : spec.w;
+      let h = own ? own.l : spec.d != null ? spec.d : spec.l;
+      if (t.rotated) [w, h] = [h, w];
+      const def = RIG_SIZES.find((x) => x.size === t.size);
+      items.push({
+        id: `${r.id}:${t.id}`,
+        label: t.piece || t.lead === false ? "" : String(t.manual || t.label || ""),
+        shape: SIZE_KINDS[t.size] || "round",
+        piece: t.piece || "",
+        x: ((Number(t.x) || 0) / 100) * size.w,
+        y: ((Number(t.y) || 0) / 100) * size.h,
+        w,
+        h,
+        reserved: t.reserved === true,
+        share: t.share === true,
+        cap: t.piece ? 0 : Number.isFinite(t.seatCount) ? t.seatCount : def ? def.seats : 4,
+        extra: Number(t.extraSeats) || 0,
+      });
+    }
+    if (!items.some((i) => !i.piece)) continue; // a room with no tables is not on the sheet
+    rooms.push({ id: r.id, name: r.no, nameEn: r.en, w: size.w, h: size.h, items });
+  }
+  const rows = guests.list
+    .filter((g) => ap.placed[g.id] || (ap.on && wantsApero(g)))
+    .sort((p, q) => (minutesOf(p.time) ?? 1440) - (minutesOf(q.time) ?? 1440) || String(p.name || "").localeCompare(String(q.name || ""), "nb"))
+    .map((g) => ({ id: g.id, place: ap.placed[g.id] || "", label: ap.label[g.id] || "", table: apDinnerLabel(g) }));
+  return { v: 1, lang: state.lang === "en" ? "en" : "no", day: guests.day || "", on: Boolean(ap.on), pling: ap.pling, shift: SHIFT, rooms, rows };
+}
+
+document.addEventListener(
+  "click",
+  async (event) => {
+    const link = event.target.closest("[data-apero-sheet]");
+    if (!link) return;
+    const data = aperoSheetData();
+    const json = JSON.stringify(data);
+    try {
+      localStorage.setItem("norsken-apero-sheet", json);
+    } catch {}
+    if (!window.claude?.use) return; // the link opens apero.html, which prints by itself
+    // the hosted page blocks new tabs: download a copy with everything baked in (as «Skriv ut» does)
+    event.preventDefault();
+    event.stopPropagation();
+    const en = state.lang === "en";
+    let downloads = null;
+    try {
+      downloads = await window.claude.use("downloads");
+    } catch {
+      downloads = null;
+    }
+    if (!downloads) {
+      showToast(en ? "Printing does not work on this web page. Use the Norsken website or the extension." : "Utskrift virker ikke på denne nettsiden. Bruk Norsken-nettsiden eller utvidelsen.");
+      return;
+    }
+    try {
+      const html = await (await fetch("apero.html")).text();
+      const baked = html.replace(
+        "<script>",
+        `<script>window.__NORSKEN_APERO__ = ${json.replace(/</g, "\\u003c")}; window.__NORSKEN_GUESTS__ = ${JSON.stringify(guests).replace(/</g, "\\u003c")};</script>\n    <script>`,
+      );
+      const day = new Date().toISOString().slice(0, 10);
+      await downloads.save({ filename: `norsken-aperitiff-${day}.html`, data: baked });
+      showToast(en ? `The aperitif sheet was downloaded (norsken-aperitiff-${day}.html). Open that file to print.` : `Aperitiff-arket er lastet ned (norsken-aperitiff-${day}.html). Åpne fila for å skrive ut.`);
+    } catch (error) {
+      if (error?.code !== "declined") console.error(error);
+    }
+  },
+  true,
+);

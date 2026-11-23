@@ -49,6 +49,10 @@ Det er alt. Ingenting å installere.
 | sette en hel gruppe sammen | Dra overskriften (f.eks. **Onsdagsklubben**) fra «Uten bord» til et bord. |
 | skrive ut uten stoler | Trykk **med stoler** ved siden av **Skriv ut**, så det står **uten stoler**. |
 | se hele huset | Trykk knappen **🏠 Norsken** øverst: rommene får farge etter hvor mange som er booket der. |
+| gi gjestene aperitiffplass i salongene | Slå på **🥂 Aperitiff før pling** på «☀ I dag» før du trykker Middag/Arrangement. Største selskap får plass først. Flytt et selskap i 🥂-lista under **Reservasjoner**. |
+| skrive ut aperitiff-arket | Trykk **🖨 Aperitiff-ark** (i 🥂-lista, eller på «☀ I dag»). Salongene og gjestelista kommer på ett A4-ark, med navnene ved bordene. |
+| si til gjestene hvor de sitter ved pling | Trykk **🔔 Hvem sitter hvor** under **Reservasjoner**: søk på navnet, så står bordet der. |
+| endre bordene i en salong | **Innover ▾** → velg rommet → **✏️ Flytt bord**. Toddy, Bar, Arneberg, Blå værelset og Ateneum er tegnet etter aperitiff-arket fra før. |
 | hente bord fra lageret, legge til bord, bordplater | Trykk **🧰 Verktøy**. (Bord på kartet kan du dra rett dit du vil.) |
 | angre | Trykk **↶ Angre** i meldingen nederst – rett etterpå, før den forsvinner. |
 | begynne på en ny dag | Trykk **🍽 Til Norsken** i ResDiary igjen – den nye lista erstatter den gamle. |

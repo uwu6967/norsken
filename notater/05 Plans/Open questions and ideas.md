@@ -9,8 +9,12 @@ Things that are not decided yet, and ideas worth trying. Move an item to [[Decis
 settled, or to [[Change log]] when it is built.
 
 ## Waiting for Danny
-- How the other rooms look (Bar, Arneberg, Kristiania, Atheneum, Møterom), so they can get a ready
-  suggestion like Toddy.
+- Seat numbers in the salons (now guesses from the sheet) – Danny can change them in «✏️ Flytt bord».
+- Which Ateneum places count as «by the fireplace» (now tables 4 and 5, shared), and whether Arneberg 5
+  should be «⛔ Reservert» every day or only when the board comes.
+- Toddy on the sheet has its two sofa groups on the left and the small table top right; the piano is
+  not on the sheet (put bottom right, by the door).
+- Møterom: not on the aperitif sheet – should it ever be used for the aperitif?
 - Is one room on the floor plan really called «Danske kjelleret»? The name must match ResDiary's
   Område for the colours in «🏠 Norsken» to work.
 - Should the downstairs rooms (Thorvald M, Billiard) be on the «🏠 Norsken» map as a small

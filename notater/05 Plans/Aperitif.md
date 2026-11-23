@@ -61,6 +61,23 @@ sheet stays one page; each row gets «🥂 Bar 3» under the dinner table, the t
 - **Arneberg**: the fireplace sofa groups can be shared; the first fireplace is reserved for the board
   when they are there.
 
+## The staff's paper sheet (2026-11-23)
+Danny showed the A4 sheet the staff fill in by hand today: the salons drawn as boxes – **Toddy**,
+**Arneberg**, **Blå værelset**, **Ateneum** down the left, **Bar** top right – and a **Gjesteliste**
+(Navn · Gjester · Tid) with ruled lines under it. Norsken now copies it:
+- **Blå værelset is Kristiania** (same room; the app shows «Blå værelset»).
+- The X boxes are not tables: in Arneberg the X is the **fireplace**; in Ateneum the left X is a
+  **window** and the right X the **fireplace**. They are furniture without seats (🔥 Peis, 🪟 Vindu).
+- Each salon got a ready suggestion drawn from the sheet (`roomStarter()`): Toddy 3 tables + grand
+  piano; Bar 2 small round tables in two corner sofas + the bar counter; Arneberg 5 tables + fireplace
+  (table 5 by the fireplace: «🔗 Kan deles» and «⛔ Reservert» for the board); Blå værelset 6 tables + an
+  L-shaped sofa; Ateneum 5 tables + window + fireplace (tables 4 and 5 in front of the fireplace:
+  «🔗 Kan deles»). Tables are numbered column by column, left to right. **Seat numbers are guesses.**
+- A room nobody has drawn uses its suggestion for the aperitif straight away.
+- **«🖨 Aperitiff-ark»** (`apero.html`) prints the sheet filled in: each party's name beside its salon
+  table, and the Gjesteliste with Navn · Gjester · Tid · 🥂 Plass · Bord (dinner table) and empty lines
+  to the bottom for walk-ins. Opened from the 🥂 list in Reservasjoner and from «☀ I dag» step 3.
+
 ## What exists to build on
 - Each room's plan is stored per room (Spisestua, Domino) – see [[Storage and data]].
 - «🏠 Norsken» already has every guest room of the club as a box (see [[House map]]).
