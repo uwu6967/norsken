@@ -2197,7 +2197,7 @@ a[hidden] {
   order: 3;
 }
 
-@media (min-width: 1100px) and (min-height: 620px) {
+@media (min-width: 1000px) and (min-height: 540px) {
   html,
   body {
     height: 100%;
@@ -2367,7 +2367,7 @@ a[hidden] {
 }
 
 /* --- fixes after the one-screen check (2026-11-14) ------------------------ */
-@media (min-width: 1100px) and (min-height: 620px) {
+@media (min-width: 1000px) and (min-height: 540px) {
   .board > .leftcol {
     align-self: stretch;
     height: 100%;
@@ -2378,7 +2378,7 @@ a[hidden] {
     align-items: stretch;
   }
 }
-@media (min-width: 1100px) and (max-width: 1299px) and (min-height: 620px) {
+@media (min-width: 1000px) and (max-width: 1299px) and (min-height: 540px) {
   .board {
     grid-template-columns: minmax(270px, 300px) minmax(0, 1fr) minmax(230px, 260px);
   }
@@ -3213,7 +3213,7 @@ a[hidden] {
 body.tools-off .board > .tray {
   display: none !important;
 }
-@media (min-width: 1100px) and (min-height: 620px) {
+@media (min-width: 1000px) and (min-height: 540px) {
   body.tools-off .board {
     grid-template-columns: minmax(300px, 380px) minmax(0, 1fr) !important;
   }
@@ -3430,7 +3430,7 @@ body.tools-off .board > .tray {
   }
 }
 /* phones and small tablets: wrap again */
-@media (max-width: 1099px) {
+@media (max-width: 999px) {
   .topbar,
   .topbar .topbar-actions {
     flex-wrap: wrap;
@@ -3580,8 +3580,8 @@ body.tools-off .board > .tray {
     display: none;
   }
 }
-/* small laptops: the shift tabs get their own row */
-@media (max-width: 1279px) {
+/* tablets: the shift tabs get their own row (a small PC keeps one row, see the end) */
+@media (max-width: 999px) {
   .topbar,
   .topbar .topbar-actions {
     flex-wrap: wrap;
@@ -4164,4 +4164,76 @@ body.rig .board > .stage {
   background: rgba(60, 40, 20, 0.07);
   color: var(--ink);
   border: 1px solid rgba(60, 40, 20, 0.18);
+}
+
+/* --- small PC screens like the bar PC (1024 × 768 – about 1024 × 640 left for the
+   page under the browser's bars), 2026-11-23: still one screen, one top row ------ */
+@media (min-width: 1000px) and (max-width: 1279px) {
+  .topbar,
+  .topbar .topbar-actions {
+    flex-wrap: nowrap;
+  }
+  .topbar {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .topbar .brand h1 {
+    font-size: 1.15rem;
+  }
+  .topbar #today-date {
+    font-size: 0.62rem;
+  }
+  .shift-switch {
+    order: 0;
+    width: auto;
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 3px;
+    gap: 2px;
+  }
+  .shift-tab,
+  .shift-tab.all {
+    flex: 0 1 auto;
+    min-width: 0;
+    padding: 4px 8px;
+  }
+  .shift-tab .st-icon,
+  .shift-tab .st-word {
+    display: none;
+  }
+  .shift-tab .st-name {
+    font-size: 0.82rem;
+  }
+  .shift-tab.combo .st-name {
+    font-size: 0.72rem;
+  }
+  .shift-tab .st-count {
+    font-size: 0.66rem;
+  }
+  .topbar .room-switch .room-tab {
+    padding: 4px 7px;
+    font-size: 0.8rem;
+    min-height: 38px;
+  }
+  .topbar-actions {
+    gap: 3px;
+  }
+  .topbar-actions .chip.big,
+  .topbar .chip.big {
+    min-height: 40px;
+    padding: 6px 8px;
+  }
+  .topbar-actions #today-btn-text {
+    display: none;
+  }
+}
+@media (min-width: 1000px) and (max-width: 1099px) and (min-height: 540px) {
+  /* a narrower tools column leaves the map room for names beside it */
+  .board {
+    grid-template-columns: minmax(240px, 260px) minmax(0, 1fr) minmax(220px, 240px);
+    gap: 10px;
+  }
+  .app {
+    padding: 8px 10px;
+  }
 }

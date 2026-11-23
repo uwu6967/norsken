@@ -45,7 +45,9 @@ for. If a rule here and the code disagree, the rule wins and the code is a bug.
 - Norwegian UI, few words, big buttons. Made for the boss and older colleagues.
 - One press for the boss's daily flow (import → shift → print). See [[Shifts and start screen]].
 - Every action that removes or replaces something offers «↶ Angre».
-- Works on a phone. The top bar fits one row from 1280 px wide; below that the shift buttons wrap.
+- Works on a phone. **Works on the bar PC: 1024 × 768** (about 1024 × 640 inside Chrome with the
+  taskbar): everything on one screen from 1000 × 540, the top bar in one row from 1000 px wide; below
+  1000 px the shift buttons wrap.
 - The first render must not touch anything declared further down the file (see [[Render loop]]).
 
 ## This notebook

@@ -3849,7 +3849,7 @@ document.getElementById("room")?.addEventListener("dblclick", (event) => {
 // when a guest's name is set on one chair.
 function calloutMode() {
   const wrap = document.querySelector(".room-wrap");
-  return Boolean(wrap && wrap.clientWidth >= 620);
+  return Boolean(wrap && wrap.clientWidth >= 560); // 560: still names beside the map on the bar PC (1024 wide)
 }
 
 function renderCallouts() {
@@ -5523,7 +5523,7 @@ refreshUndo();
 // the map in the middle, Dagens liste and storage on the right. Long lists
 // scroll inside their own box. Phones keep the normal scrolling page.
 function oneScreen() {
-  return window.matchMedia("(min-width: 1100px) and (min-height: 620px)").matches;
+  return window.matchMedia("(min-width: 1000px) and (min-height: 540px)").matches; // the bar PC: 1024 × 768
 }
 function renderTabs() {
   const en = state.lang === "en";

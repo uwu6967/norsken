@@ -68,8 +68,8 @@ Not called from `render()`: `renderMine()` (when «★ Oppsett» opens or its li
 
 ## Layout-dependent rendering
 
-- `oneScreen()` = `matchMedia("(min-width: 1100px) and (min-height: 620px)")`: everything on one screen, lists scroll inside their own boxes (the same media query is used in `src/styles.css`).
-- `calloutMode()` = `.room-wrap` is at least 620 px wide. Then names go beside the map (callouts) and the table only shows its number; otherwise the name is printed inside the table button.
+- `oneScreen()` = `matchMedia("(min-width: 1000px) and (min-height: 540px)")` (was 1100 × 620 until the bar PC, 2026-11-23): everything on one screen, lists scroll inside their own boxes (the same media query is used in `src/styles.css`).
+- `calloutMode()` = `.room-wrap` is at least 560 px wide (620 before 2026-11-23). Then names go beside the map (callouts) and the table only shows its number; otherwise the name is printed inside the table button.
 - In the `oneScreen()` branch `renderRoom()` reads the `.stage` height and padding, so a hidden or zero-size stage gives a tiny map (the 160 px minimum).
 
 ## Gotchas when writing render code

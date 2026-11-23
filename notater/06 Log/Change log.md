@@ -9,6 +9,8 @@ What changed, day by day, in plain words. The full notes are the commit messages
 release notes on GitHub). Add a line here with every change. Newest first.
 
 ## 2026-11-23
+- The bar PC (1024 × 768): the PC layout with everything on one screen, the top bar in one row, names
+  beside the map. (Start screen and dialogs: being checked.)
 - Fixes from a review: salons that an older version saved empty now get their ready layout (a room
   switched off for the aperitif stays off); the aperitif and the sheet read the salons the same way; a
   «$'» in a booking comment no longer breaks the downloaded printout in the hosted copy.
