@@ -5523,7 +5523,7 @@ refreshUndo();
 // the map in the middle, Dagens liste and storage on the right. Long lists
 // scroll inside their own box. Phones keep the normal scrolling page.
 function oneScreen() {
-  return window.matchMedia("(min-width: 1000px) and (min-height: 540px)").matches; // the bar PC: 1024 × 768
+  return window.matchMedia("(min-width: 1100px) and (min-height: 540px), (min-width: 1000px) and (min-height: 540px) and (orientation: landscape)").matches; // the bar PC: 1024 × 768 (not a portrait tablet)
 }
 function renderTabs() {
   const en = state.lang === "en";

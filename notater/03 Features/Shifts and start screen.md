@@ -228,13 +228,22 @@ do nothing; a second press within 4 s goes through.
 - `renderShell()` sets `body.tools-off` when off, and on the button class `active` and `aria-pressed`.
   Title: «Vis lager, bordplater og mål».
 - CSS (`src/styles.css`): `body.tools-off .board > .tray { display: none !important; }` hides the tray –
-  «Lager / ikke i bruk» (the store, with its add row) and «Bordplater» (plates). On screens at least
-  1100 × 620 px the board becomes two columns (`minmax(300px, 380px) minmax(0, 1fr)`) so the map gets the
-  room.
+  «Lager / ikke i bruk» (the store, with its add row) and «Bordplater» (plates). On one-screen PCs (from
+  1000 × 540 px landscape, see [[Render loop]]) the board becomes two columns (`minmax(300px, 380px)
+  minmax(0, 1fr)`; 280–300 px for the left column at 1000–1199 px) so the map gets the room.
 - Only the tray is hidden. The measures (Mål) are in «⚙ Innstillinger» and are not affected, although the
   button's title mentions them.
 - Under 2100 px wide (`max-width: 2099px`) the four small top-bar buttons «🧰 Verktøy», «🏠 Norsken»,
   «★ Oppsett» (`#mine-btn`) and «⚙ Innstillinger» show only their icon.
+
+## On the bar PC (1024 × 768)
+The start screen is compact at 1000–1279 px wide and up to 800 px tall: greeting and date on one line,
+step 1's buttons beside the text once a list is in (the one-time «Få ResDiary-knappen» link only shows
+before that), the aperitif row in one line, shift cards with the icon beside the text, step 3's title
+beside its buttons. All of it fits at 1024 × 600, 640 and 768 without scrolling (a rare day with a lunch
+event and a dinner event scrolls 23 px at 600). In the top bar at 1000–1279 px the 🏠 button is hidden
+(«Innover ▾» opens the same map), and on event days the logo and date too (the date is on the start
+screen); the same on event days at 1280–1439 px (and at 1440–1599 px with six shift buttons).
 
 ## Related
 - [[ResDiary import]]

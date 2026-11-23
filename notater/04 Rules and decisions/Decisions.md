@@ -9,9 +9,14 @@ What was decided, and why. Newest first. When something here changes, write the 
 on top and say what it replaces – don't delete the old one.
 
 ## 2026-11-23
-- **The bar PC (1024 × 768) gets the PC layout**: one screen from 1000 × 540 (was 1100 × 620), one top
-  row from 1000 px (the shift buttons show name + count only, «☀ I dag» shows its icon only), a narrower
-  tools column at 1000–1099 px so the names still fit beside the map (callouts from 560 px).
+- **The bar PC (1024 × 768) gets the PC layout**: one screen from 1000 × 540 in landscape (was 1100 ×
+  620; a portrait tablet keeps the scrolling page), one top row from 1000 px (shift buttons show name +
+  count, «☀ I dag» its icon only below 1100 px), the left column 280–300 px at 1000–1199 px so the names
+  fit beside the map (callouts from 560 px). With «🧰 Verktøy» on, the map shows numbers only there.
+- **Event days stay one top row** on every PC: 🏠 (same map as «Innover ▾») and the logo give way –
+  1000–1439 px, and 1440–1599 px with six shift buttons. *Replaces:* two rows on small laptops, and an
+  older bug where ⚙ was pushed off the screen at 1280–1439 px on event days.
+- **Messages at the bottom are above every dialog** (the «Trykk Ctrl+V» hint was hidden behind «☀ I dag»).
 - **The salons follow the staff's paper aperitif sheet** – same rooms, same shapes, same order – and the
   printed «🖨 Aperitiff-ark» looks like that sheet, filled in. *Why:* it is what the staff already use.
 - **Kristiania is shown as «Blå værelset»** (Danny: same room). The id stays `kristiania`, ResDiary's

@@ -157,7 +157,14 @@ for (const width of [1280, 1366, 1600, 1920]) {
 }
 ```
 
-On 2026-11-21 one row measured `height` 72 / 75 / 78 / 82 px and `spread` 6–8 px at the four widths. At **1279 px** the bar is meant to wrap: `@media (max-width: 1279px)` in `src/styles.css` gives the shift buttons their own row. There it measured 130 px high with a spread of 58 px. Above 1279 px, a jump like that is a regression. The breakpoints in `src/styles.css` that change the top bar are `max-width` 1099 px (phones and small tablets: wraps again), 1279, 1365, 1599 and 2099 px, and 1600–1799 px. [[Rules]] says the top bar fits one row from 1280 px wide.
+On 2026-11-21 one row measured `height` 72 / 75 / 78 / 82 px and `spread` 6–8 px at the four widths. At **1279 px** the bar is meant to wrap: `@media (max-width: 1279px)` in `src/styles.css` gives the shift buttons their own row. There it measured 130 px high with a spread of 58 px. Above 1279 px, a jump like that is a regression. The breakpoints in `src/styles.css` that change the top bar are `max-width` 1099 px (phones and small tablets: wraps again), 1279, 1365, 1599 and 2099 px, and 1600–1799 px. [[Rules]] said the top bar fits one row from 1280 px wide. **Since 2026-11-23 (the bar PC) the top bar is
+one row from 1000 px**, on event days too (5 or 6 shift buttons): at 1000–1279 px it is compact, and on
+event days 🏠 and the logo give way (also at 1280–1439 px, and at 1440–1599 px with six buttons). The
+test for it: for widths 1000, 1024, 1100, 1279, 1280, 1366, 1439, 1440, 1520, 1599, 1600, 1920 and days
+with 3, 5 and 6 shift buttons, no button in `.topbar` may stick out of the bar and no `.shift-tab` may have
+`scrollWidth > clientWidth`. Check the bar PC itself at 1024 × 600, 640 and 768: the page never scrolls
+(`documentElement.scrollHeight === innerHeight`), the «☀ I dag» card has no inner scroll, and
+`calloutMode()` is true with the tools off.
 
 ### 4. The printout fits one page
 With the list from the basic script, and again with a **long** made-up list (40+ bookings, a few long comments, some in Domino so the Domino map joins the sheet):

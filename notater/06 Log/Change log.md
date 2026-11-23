@@ -11,6 +11,10 @@ release notes on GitHub). Add a line here with every change. Newest first.
 ## 2026-11-23
 - The bar PC (1024 × 768): the PC layout with everything on one screen, the top bar in one row, names
   beside the map. (Start screen and dialogs: being checked.)
+- The bar PC, screen by screen: «☀ I dag» fits with all three steps; event days keep one top row (also
+  fixes ⚙ pushed off the screen on 1280–1439 px laptops); toast moved off the list; chair box smaller;
+  «Hvem sitter hvor», ⚙ and ★ keep their title and ✕ while the list scrolls; the room editor's buttons
+  side by side; «Åpne Domino» readable in «🏠 Norsken»; the «Ctrl+V» hint no longer hidden.
 - Fixes from a review: salons that an older version saved empty now get their ready layout (a room
   switched off for the aperitif stays off); the aperitif and the sheet read the salons the same way; a
   «$'» in a booking comment no longer breaks the downloaded printout in the hosted copy.
