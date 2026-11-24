@@ -8,6 +8,9 @@ updated: 2026-11-21
 What was decided, and why. Newest first. When something here changes, write the new decision
 on top and say what it replaces – don't delete the old one.
 
+## 2026-11-24
+- **Toddy and Danske kjelleret are seating plans**, like Spisestua: empty floor, place the tables, names, who sits at which table, print that room. The map name stays «Danske kjelleret»; «Danske værelse» is the same room. *Replaces* the made-up Toddy furniture (sofas, piano) from 2026-11-23 for those two rooms only – there is no furniture photo to copy. The other salons keep their aperitif-sheet suggestions.
+
 ## 2026-11-23
 - **The aperitif sheet is redesigned** (Danny: it does not have to look like the paper). Three designs –
   «door» (arrival list first), «pling» (room by room with each party's dinner table), «fresh» (landscape) –

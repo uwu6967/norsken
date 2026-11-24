@@ -22,6 +22,8 @@
       let ROOM_ID = window.__NORSKEN_ROOM__ || (ROOM_NAMES[PARAMS.get("room")] ? PARAMS.get("room") : "spisestua");
       if (!ROOM_NAMES[ROOM_ID]) ROOM_ID = "spisestua";
       const IS_SALON = ROOM_ID !== "spisestua" && ROOM_ID !== "domino"; // a salon prints its map only
+      // Toddy and Danske kjelleret print like Spisestua: the plan, the names, who sits where
+      const SEAT_PLAN = ROOM_ID === "toddy" || ROOM_ID === "danske";
       if (EMBED) document.documentElement.classList.add("embed");
       const STORAGE_KEY = roomKey(ROOM_ID);
       const SEAT_MARKS = [
@@ -108,7 +110,7 @@
       } catch {}
       let guestStore = null;
       try {
-        if (!IS_SALON) guestStore = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
+        if (!IS_SALON || SEAT_PLAN) guestStore = window.__NORSKEN_GUESTS__ || JSON.parse(localStorage.getItem("norsken-guests-v1") || "null");
       } catch {}
       // only the shift chosen in the app: Lunsj, Middag or Arrangement (app.js inShift)
       let SHIFT = window.__NORSKEN_SHIFT__;
@@ -133,6 +135,15 @@
       const AP = guestStore && guestStore.ap && guestStore.ap.on ? guestStore.ap : null;
       const aperoOf = (id) => (AP && AP.placed && AP.placed[id] && AP.label && AP.label[id]) || "";
       const guestRoomOf = (x) => (guestStore && guestStore.room && guestStore.room[x.id]) || "spisestua";
+      const bookingRoomOf = (x) => {
+        const area = String(x.area || "spisestua");
+        if (ROOM_NAMES[area]) return area;
+        if (!area.startsWith("other:")) return area;
+        const label = String(x.areaLabel || area.slice(6)).toLowerCase();
+        if (label.includes("toddy")) return "toddy";
+        if (label.includes("danske") || label.includes("kjeller")) return "danske";
+        return area;
+      };
       const placedIds = new Set();
       // same as app.js sitKey(): a party that joined another, or that had its aperitif, sits with them
       const sitKey = (x) => {
@@ -203,6 +214,7 @@
       }
       for (const x of guestList) {
         if (placedIds.has(x.id)) continue;
+        if (SEAT_PLAN && bookingRoomOf(x) !== ROOM_ID && guestRoomOf(x) !== ROOM_ID) continue;
         const hint = guestStore.redeckHint && guestStore.redeckHint[x.id];
         const area = String(x.area || "");
         const room = guestRoomOf(x);
@@ -575,7 +587,7 @@
       let markedCount = 0;
       for (const table of tables) {
         // a salon seats people on sofas and armchairs: no chairs drawn (as in the app)
-        for (const seat of state.printNoChairs || IS_SALON ? [] : table.seatsRender || []) {
+        for (const seat of state.printNoChairs || (IS_SALON && !SEAT_PLAN) ? [] : table.seatsRender || []) {
           const mark = markOf(seat.mark);
           const el = document.createElement("div");
           el.className = "seat" + (mark ? " marked" : "");

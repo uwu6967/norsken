@@ -8,6 +8,9 @@ updated: 2026-11-21
 What changed, day by day, in plain words. The full notes are the commit messages (they are also the
 release notes on GitHub). Add a line here with every change. Newest first.
 
+## 2026-11-24
+- Toddy and Danske kjelleret (also matched as «Danske værelse») are real plans in the same editor as Spisestua: an empty floor, tables placed by hand, names, who sits where, and a printout of that room. No furniture is drawn in – there is no photo of those rooms in the repo. The old Toddy suggestion (sofas and a piano) is no longer used.
+
 ## 2026-11-23
 - New «🖨 Aperitiff-ark»: each salon with its map and its own pling list (party → dinner table), the A–Å
   guest list for the door with big tick boxes, free tables and walk-in lines. Always one page.
