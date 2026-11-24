@@ -3,6 +3,9 @@
 // its own storage key and shared doc. Spisestua («home») has the house rules
 // and presets; Domino is the overflow room; the rest («salong», 2026-11-21)
 // are plain rooms Danny draws herself – used for the aperitif before the pling.
+// `seat` (Toddy, Danske kjelleret): the same editor as Spisestua. The floor
+// starts empty – there is no furniture photo to copy – and tables, names and
+// who sits where are placed by hand. Still opened from «Innover».
 // x/y/w/h place the room on the «🏠 Norsken» map (units of the floor plan, not
 // cm); `size` is a first guess of the room in cm, changed in the room editor.
 // The ids are storage keys: never rename them.
@@ -10,8 +13,9 @@ const ROOM_DEFS = [
   { id: "spisestua", no: "Spisestua", en: "Dining room", profile: "home", key: "norsken-layout-v3", doc: "plan/current", keys: ["spisestue", "spisestua"], x: 210, y: 870, w: 262, h: 470 },
   { id: "domino", no: "Domino", en: "Domino", profile: "domino", key: "norsken-layout-domino-v1", doc: "plan/domino", keys: ["domino"], x: 472, y: 1140, w: 160, h: 180 },
   { id: "bar", no: "Bar", en: "Bar", profile: "salong", apero: true, keys: ["bar"], x: 472, y: 950, w: 230, h: 185, size: { w: 750, h: 520 }, starter: true },
-  { id: "toddy", no: "Toddy", en: "Toddy", profile: "salong", apero: true, keys: ["toddy"], x: 632, y: 1140, w: 206, h: 180, size: { w: 800, h: 550 }, starter: true },
-  { id: "danske", no: "Danske kjelleret", en: "Danske kjelleret", profile: "salong", apero: false, keys: ["danske", "kjeller"], x: 838, y: 1140, w: 147, h: 180, size: { w: 410, h: 500 } },
+  { id: "toddy", no: "Toddy", en: "Toddy", profile: "salong", apero: true, seat: true, keys: ["toddy"], x: 632, y: 1140, w: 206, h: 180, size: { w: 800, h: 550 } },
+  // the name on the map stays «Danske kjelleret»; «Danske værelse» is the same room
+  { id: "danske", no: "Danske kjelleret", en: "Danske kjelleret", profile: "salong", apero: false, seat: true, keys: ["danske", "kjeller", "danske værelse", "danske vaerelse"], x: 838, y: 1140, w: 147, h: 180, size: { w: 410, h: 500 } },
   { id: "arneberg", no: "Arneberg", en: "Arneberg", profile: "salong", apero: true, keys: ["arneberg"], x: 985, y: 1020, w: 155, h: 300, size: { w: 840, h: 600 }, starter: true },
   { id: "moterom", no: "Møterom", en: "Meeting room", profile: "salong", apero: true, keys: ["møterom", "moterom", "møte"], x: 1140, y: 1020, w: 130, h: 110, size: { w: 360, h: 310 } },
   // the staff call Kristiania «Blå værelset» (the aperitif sheet does too)
@@ -40,6 +44,8 @@ const ROOM_ID = (() => {
   }
 })();
 const IS_SALON = ROOMS[ROOM_ID].profile === "salong";
+// a seat room uses Spisestua's editor (empty floor, names, who sits where)
+const SEAT_PLAN = IS_SALON && ROOMS[ROOM_ID].seat === true;
 const STORAGE_KEY = ROOMS[ROOM_ID].key;
 // Domino is not measured yet: a placeholder size until Danny sends a photo / tape.
 const DOMINO_ROOM = { w: 500, h: 650 }; // from photos 2026-11-12, NOT measured
@@ -574,9 +580,9 @@ function defaultState() {
       if (IS_SALON) d.room = { ...(ROOMS[ROOM_ID].size || { w: 500, h: 500 }) };
       return d;
     })(),
-    tables: ROOM_ID === "domino" ? dominoStarter() : IS_SALON ? roomStarter(ROOM_ID) : starterTables(),
+    tables: ROOM_ID === "domino" ? dominoStarter() : IS_SALON && !SEAT_PLAN ? roomStarter(ROOM_ID) : starterTables(),
     apero: IS_SALON ? ROOMS[ROOM_ID].apero !== false : undefined, // «🥂 Brukes til aperitiff»
-    sized: IS_SALON ? Boolean(ROOMS[ROOM_ID].starter) : undefined, // the room size has been set in the room editor
+    sized: IS_SALON ? SEAT_PLAN || Boolean(ROOMS[ROOM_ID].starter) : undefined, // the room size has been set in the room editor
     fixtures: defaultFixtures(),
     furniture: defaultFurniture(),
     paintings: defaultPaintings(),
@@ -654,10 +660,23 @@ function loadState() {
   return normalizeState(parsed);
 }
 
+// The old Toddy suggestion (sofas, piano) was drawn without a photo. An untouched
+// copy of it is not a real plan: start from the empty floor instead.
+function untouchedToddySketch(parsed) {
+  if (ROOM_ID !== "toddy" || !Array.isArray(parsed?.tables)) return false;
+  const floor = parsed.tables.filter((t) => t && t.zone === "room");
+  const sketch = ["toddy-1", "toddy-2", "toddy-3", "toddy-flygel"];
+  if (floor.length !== sketch.length) return false;
+  const ids = new Set(floor.map((t) => t.id));
+  if (!sketch.every((id) => ids.has(id))) return false;
+  return floor.every((t) => !t.name && !(t.seatNames && Object.keys(t.seatNames).length));
+}
+
 // Shared by the local cache and the shared plan (db). Pure: runs before
 // `state` exists and again for every remote update.
 function normalizeState(parsed) {
   try {
+    if (untouchedToddySketch(parsed)) return defaultState();
     // A salon may be saved empty on purpose – but an empty plan of a room that has a ready
     // suggestion, never sized in the editor, was saved by an older version before the
     // suggestions existed: it gets the suggestion (keeping a «not for aperitif» choice).
@@ -1715,7 +1734,7 @@ function clearBookedNames() {
 function assignBookings() {
   // the guests without a table are placed; the ones already placed stay put
   const bookings = guests.list
-    .filter((g) => isUnplaced(g) && (g.area || "spisestua") === ROOM_ID && inShift(g))
+    .filter((g) => isUnplaced(g) && bookingRoom(g) === ROOM_ID && inShift(g))
     .map((g, index) => ({ id: g.id, index, time: g.time || "", name: g.name || "", guests: Math.max(1, Number(g.pax) || 2), forced: null, wish: wishedTables(g.note) }));
   clearBookedNames();
   const floor = roomTables().filter((t) => t.lead !== false && t.label);
@@ -1725,13 +1744,15 @@ function assignBookings() {
   }
   const labelMap = new Map(floor.map((t) => [String(t.label).toLowerCase(), t]));
   const domino = ROOM_ID === "domino";
-  const order = domino
+  // Toddy and Danske kjelleret have no house numbering: first free table that fits
+  const plain = domino || SEAT_PLAN;
+  const order = plain
     ? floor.slice().sort(byLabel).map((t) => String(t.label).toLowerCase())
     : String(state.bookingOrder || DEFAULT_BOOKING_ORDER)
         .split(/[^0-9a-z]+/i)
         .map((s) => s.toLowerCase())
         .filter((s) => labelMap.has(s) && isSideTable(labelMap.get(s)));
-  const side = domino
+  const side = plain
     ? []
     : floor
         .filter((t) => isSideTable(t) && !order.includes(String(t.label).toLowerCase()))
@@ -1768,7 +1789,7 @@ function assignBookings() {
     }
   }
   for (const b of free) {
-    if (domino) {
+    if (plain) {
       const pick = order.find((label) => !taken.has(label) && tableCapacity(labelMap.get(label)) >= b.guests);
       if (pick) taken.add(pick);
       rows.push({ ...b, table: pick ? labelMap.get(pick) : null });
@@ -2788,7 +2809,7 @@ function seatNodes() {
   if (state.hideChairs) return nodes; // «Skjul alle stoler»: only the tables
   // A salon seats people on sofas and armchairs, not dining chairs: the table shows
   // how many («5+2P»), like the staff's aperitif sheet – no chairs drawn.
-  if (IS_SALON) return nodes;
+  if (IS_SALON && !SEAT_PLAN) return nodes;
   const clash = seatClashes().bad;
   for (const table of roomTables()) {
     for (const seat of seatsOf(table)) {
@@ -2951,7 +2972,7 @@ function tableButton(table, inTray) {
   const extra = Number(table.extraSeats) || 0;
   const floorTag = table.piece
     ? PIECES[table.piece]?.[state.lang === "en" ? "en" : "no"] || ""
-    : [IS_SALON ? "" : sizeName, seatN ? `${seatN}${extra ? `+${extra}` : ""}p` : "", table.share ? "🔗" : "", table.reserved ? "⛔" : ""].filter(Boolean).join(" · ");
+    : [IS_SALON && !SEAT_PLAN ? "" : sizeName, seatN ? `${seatN}${extra ? `+${extra}` : ""}p` : "", table.share ? "🔗" : "", table.reserved ? "⛔" : ""].filter(Boolean).join(" · ");
   // Wide screen: names sit beside the map with a line to the table
   // (renderCallouts), so the table itself only shows its number.
   const shownName = calloutMode() ? "" : [tableTitle(table), table.redeck ? `↻ ${table.redeck}` : ""].filter(Boolean).join(" · ");
@@ -3428,7 +3449,16 @@ function renderChrome() {
   };
   setText("settings-btn-text", en ? "Settings" : "Innstillinger");
   setText("drawer-empty-title", en ? "Table" : "Bord");
-  setText("drawer-empty-text", en ? "Click a table to change it." : "Klikk på et bord for å endre det.");
+  setText(
+    "drawer-empty-text",
+    SEAT_PLAN && !roomTables().length
+      ? en
+        ? "The floor is empty. Drag a table in from storage on the right."
+        : "Gulvet er tomt. Dra et bord inn fra lageret til høyre."
+      : en
+        ? "Click a table to change it."
+        : "Klikk på et bord for å endre det.",
+  );
   setText("chairs-toggle", state.hideChairs ? (en ? "Show the chairs" : "Vis stolene") : en ? "Hide all chairs" : "Skjul alle stoler");
   document.getElementById("chairs-toggle")?.classList.toggle("active", Boolean(state.hideChairs));
   setText("settings-title", en ? "Settings" : "Innstillinger");
@@ -3447,14 +3477,17 @@ function renderChrome() {
   const presetBtnEl = document.getElementById("preset-btn");
   if (presetBtnEl) presetBtnEl.hidden = IS_SALON;
   const resetBtnEl = document.getElementById("reset-btn");
-  if (resetBtnEl) resetBtnEl.hidden = IS_SALON;
+  if (resetBtnEl) resetBtnEl.hidden = IS_SALON && !SEAT_PLAN;
   const julBtn = document.getElementById("jul-btn");
   if (julBtn) {
     julBtn.hidden = ROOM_ID !== "spisestua";
     if (julBtn.dataset.armed !== "1") julBtn.textContent = en ? "Christmas setup" : "Jul-oppsett";
   }
-  document.getElementById("hint").textContent =
-    ROOM_ID === "domino"
+  document.getElementById("hint").textContent = SEAT_PLAN
+    ? en
+      ? `${roomName} is empty. Turn on Tools and drag tables out of storage, or press «Move tables». Then drag a name onto a table.`
+      : `${roomName} er tomt. Slå på Verktøy og dra bord ut fra lageret, eller trykk «Flytt bord». Dra så et navn til et bord.`
+    : ROOM_ID === "domino"
       ? en
         ? "Domino is the last resort: used only when Spisestua is full. «Assign tables» in Spisestua sends what does not fit here. Top = the windows, right wall = the door to Spisestua."
         : "Domino er siste utvei: brukes bare når Spisestua er full. «Fordel bord» i Spisestua sender det som ikke får plass hit. Øverst = vinduene, høyre vegg = døra til Spisestua."
@@ -4126,7 +4159,7 @@ document.getElementById("book-order")?.addEventListener("change", (event) => {
   render();
 });
 document.getElementById("book-run")?.addEventListener("click", () => {
-  if (IS_SALON) return;
+  if (IS_SALON && !SEAT_PLAN) return;
   const en = state.lang === "en";
   const order = document.getElementById("book-order");
   if (order) state.bookingOrder = order.value.slice(0, 120) || DEFAULT_BOOKING_ORDER;
@@ -4162,7 +4195,7 @@ document.getElementById("book-run")?.addEventListener("click", () => {
   );
 });
 document.getElementById("book-clear")?.addEventListener("click", (event) => {
-  if (IS_SALON) return;
+  if (IS_SALON && !SEAT_PLAN) return;
   if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
   const before = guestSnapshot();
   const seated = roomTables().filter((t) => guestsOn(t).length);
@@ -4973,7 +5006,7 @@ function renderGuests() {
 // «🔔 Hvem sitter hvor» buttons show once there are bookings; an open guide follows every change.
 function renderGuideButtons() {
   const en = state.lang === "en";
-  const any = !IS_SALON && guests.list.some((g) => inShift(g));
+  const any = (!IS_SALON || SEAT_PLAN) && guests.list.some((g) => inShift(g));
   for (const id of ["guide-btn", "today-guide"]) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -4983,7 +5016,7 @@ function renderGuideButtons() {
   }
   const sheet = document.getElementById("today-apero-sheet");
   if (sheet) {
-    sheet.hidden = IS_SALON || !guests.list.length || !guests.ap?.on;
+    sheet.hidden = (IS_SALON && !SEAT_PLAN) || !guests.list.length || !guests.ap?.on;
     const text = sheet.querySelector("span");
     if (text) text.textContent = en ? "Aperitif sheet" : "Aperitiff-ark";
   }
@@ -4998,7 +5031,7 @@ document.getElementById("guest-file")?.addEventListener("change", async (event) 
 });
 
 document.getElementById("guest-clear")?.addEventListener("click", (event) => {
-  if (IS_SALON) return;
+  if (IS_SALON && !SEAT_PLAN) return;
   if (!armed(event.currentTarget, state.lang === "en" ? "Sure? Tap again" : "Sikker? Trykk igjen")) return;
   const before = guestSnapshot();
   const seated = roomTables().filter((t) => guestsOn(t).length);
@@ -5527,7 +5560,7 @@ function oneScreen() {
 }
 function renderTabs() {
   const en = state.lang === "en";
-  if (IS_SALON) activeTab = "table"; // the dinner tools are not used in a salon
+  if (IS_SALON && !SEAT_PLAN) activeTab = "table"; // the dinner tools are not used in a salon
   const names = { table: en ? "Table" : "Bord", book: en ? "Bookings" : "Reservasjoner", marks: en ? "Marks" : "Merking" };
   document.querySelectorAll(".tabs .tab").forEach((tab) => {
     const on = tab.dataset.tab === activeTab;
@@ -5642,7 +5675,7 @@ document.getElementById("res-paste")?.addEventListener("click", async (event) =>
 document.addEventListener("paste", (event) => {
   const target = event.target;
   if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-  if (IS_SALON) return; // a list is pasted in Spisestua
+  if (IS_SALON && !SEAT_PLAN) return; // a list is pasted in Spisestua
   if (!pasteArmed && activeTab !== "book") return;
   const text = event.clipboardData?.getData("text") || "";
   if (!text.trim()) return;
@@ -5690,7 +5723,7 @@ function moveParty(from, to) {
 }
 
 function placeGuest(id, table) {
-  if (IS_SALON) return; // dinner tables are in Spisestua and Domino
+  if (IS_SALON && !SEAT_PLAN) return; // dinner tables are in Spisestua, Domino, Toddy and Danske kjelleret
   const g = guests.list.find((x) => x.id === id);
   if (!g || !table) return;
   if (table.lead === false && table.group) table = roomTables().find((t) => t.group === table.group && t.lead !== false) || table;
@@ -5854,13 +5887,14 @@ function renderReservations() {
   const unplaced = guests.list.filter((g) => isUnplaced(g) && inShift(g));
   const placedHere = guests.list.filter((g) => guestTable(g)).length;
   const elsewhere = guests.list.filter((g) => guests.placed[g.id] && guestRoom(g) !== ROOM_ID).length;
+  const elseWhere = ROOM_ID === "domino" ? "Spisestua" : ROOM_ID === "spisestua" ? "Domino" : en ? "other rooms" : "andre rom";
   set(
     "res-note",
     guestMsg ||
       (guests.list.length
         ? en
-          ? `${guests.list.length} bookings · ${placedHere} at tables here${elsewhere ? ` · ${elsewhere} in ${ROOM_ID === "domino" ? "Spisestua" : "Domino"}` : ""} · ${unplaced.length} without a table. Drag a name onto a table.`
-          : `${guests.list.length} bookinger · ${placedHere} ved bord her${elsewhere ? ` · ${elsewhere} i ${ROOM_ID === "domino" ? "Spisestua" : "Domino"}` : ""} · ${unplaced.length} uten bord. Dra et navn til et bord.`
+          ? `${guests.list.length} bookings · ${placedHere} at tables here${elsewhere ? ` · ${elsewhere} in ${elseWhere}` : ""} · ${unplaced.length} without a table. Drag a name onto a table.`
+          : `${guests.list.length} bookinger · ${placedHere} ved bord her${elsewhere ? ` · ${elsewhere} i ${elseWhere}` : ""} · ${unplaced.length} uten bord. Dra et navn til et bord.`
         : en
           ? "On the ResDiary print page press the «Til bordplan» bookmark, then press «Paste from ResDiary» here (or Ctrl+V)."
           : "På ResDiary-utskriften trykker du bokmerket «Til bordplan», og så «Lim inn fra ResDiary» her (eller Ctrl+V)."),
@@ -5872,18 +5906,18 @@ function renderReservations() {
       ? ""
       : `<li class="res-empty">${guests.list.length ? (en ? "Everyone has a table." : "Alle har bord.") : en ? "No list yet." : "Ingen liste ennå."}</li>`;
     // grouped by Område: this room first, then the other room, then other rooms
-    const rank = (g) => ((g.area || "spisestua") === ROOM_ID ? 0 : String(g.area || "").startsWith("other:") ? 2 : 1);
+    const rank = (g) => (bookingRoom(g) === ROOM_ID ? 0 : String(g.area || "").startsWith("other:") ? 2 : 1);
     const ordered = unplaced.filter((g) => guestMatches(g)).sort((p, q) => rank(p) - rank(q) || String(p.areaLabel || "").localeCompare(String(q.areaLabel || "")) || (p.time || "99").localeCompare(q.time || "99"));
     let lastGroup = null;
     for (const g of ordered) {
-      const groupKey = g.area || "spisestua";
+      const groupKey = bookingRoom(g) === ROOM_ID ? ROOM_ID : g.area || "spisestua";
       if (groupKey !== lastGroup) {
         lastGroup = groupKey;
         const same = ordered.filter((x) => (x.area || "spisestua") === groupKey);
         const people = same.reduce((sum, x) => sum + (Number(x.pax) || 0), 0);
         const head = document.createElement("li");
         head.className = `res-group${groupKey.startsWith("other:") ? " other" : ""}`;
-        const label = g.areaLabel || ROOMS[groupKey]?.[en ? "en" : "no"] || "Spisestua";
+        const label = groupKey === ROOM_ID ? ROOMS[ROOM_ID][en ? "en" : "no"] : g.areaLabel || ROOMS[groupKey]?.[en ? "en" : "no"] || "Spisestua";
         head.textContent = groupKey.startsWith("other:")
           ? `${label} · ${same.length} ${bookingWord(same.length, en)}, ${people} ${en ? "people" : "personer"} – ${en ? "another room, not our tables" : "eget rom, ikke på våre bord"}`
           : `${label} · ${same.length} ${bookingWord(same.length, en)}, ${people} ${en ? "people" : "personer"}`;
@@ -6065,13 +6099,27 @@ document.addEventListener("keydown", (event) => {
 });
 
 // --- Område (area) from ResDiary --------------------------------------------
-// Spisestue -> Spisestua, Domino -> Domino. Anything else (Onsdagsklubben,
-// Møterom …) is another room: shown as its own group, never put on our tables.
+// Spisestue -> Spisestua, Domino -> Domino. Toddy and Danske kjelleret
+// (also «Danske værelse») are real plans. Anything else is another room.
 function areaOf(text) {
   const t = String(text || "").trim();
   if (!t || /spisest/i.test(t)) return { area: "spisestua", areaLabel: "Spisestua" };
   if (/domino/i.test(t)) return { area: "domino", areaLabel: "Domino" };
-  return { area: `other:${t.toLowerCase()}`, areaLabel: t };
+  const label = t.toLowerCase();
+  const hit = ROOM_DEFS.find((r) => r.seat && r.keys.some((k) => label === k || label.includes(k)));
+  if (hit) return { area: hit.id, areaLabel: hit.no };
+  return { area: `other:${label}`, areaLabel: t };
+}
+
+// The room a booking belongs to: its area id, or a seat room matched from an
+// older «other:» label (lists saved before Toddy and Danske kjelleret were plans).
+function bookingRoom(g) {
+  const area = String(g?.area || "spisestua");
+  if (ROOMS[area]) return area;
+  if (!area.startsWith("other:")) return area;
+  const label = String(g.areaLabel || area.slice(6)).toLowerCase();
+  const hit = ROOM_DEFS.find((r) => r.seat && r.keys.some((k) => label === k || label.includes(k)));
+  return hit ? hit.id : area;
 }
 
 // «Skjul alle stoler» in the Bord tab: the map (and the printout) shows only
@@ -6236,24 +6284,26 @@ function releaseEmptySeats(tables) {
 // The other room's plan lives in storage: its tables get their own chairs back
 // when the bookings that sat there are gone (Tøm lista, a new list).
 function releaseOtherRoomSeats() {
-  if (IS_SALON) return;
-  const other = ROOM_ID === "domino" ? "spisestua" : "domino";
-  const plan = readRoomPlan(other);
-  if (!plan) return;
-  let changed = false;
-  for (const t of plan.tables) {
-    if (!t.seatFromGuest) continue;
-    if (guests.list.some((g) => guests.placed[g.id] === t.id && guestRoom(g) === other)) continue;
-    if (Number.isFinite(t.seatBefore)) t.seatCount = t.seatBefore;
-    else delete t.seatCount;
-    delete t.seatFromGuest;
-    delete t.seatBefore;
-    changed = true;
+  if (IS_SALON && !SEAT_PLAN) return;
+  const others = ROOM_DEFS.filter((r) => r.id !== ROOM_ID && (r.profile !== "salong" || r.seat)).map((r) => r.id);
+  for (const other of others) {
+    const plan = readRoomPlan(other);
+    if (!plan) continue;
+    let changed = false;
+    for (const t of plan.tables) {
+      if (!t.seatFromGuest) continue;
+      if (guests.list.some((g) => guests.placed[g.id] === t.id && guestRoom(g) === other)) continue;
+      if (Number.isFinite(t.seatBefore)) t.seatCount = t.seatBefore;
+      else delete t.seatCount;
+      delete t.seatFromGuest;
+      delete t.seatBefore;
+      changed = true;
+    }
+    if (!changed) continue;
+    try {
+      localStorage.setItem(ROOMS[other].key, JSON.stringify(plan));
+    } catch {}
   }
-  if (!changed) return;
-  try {
-    localStorage.setItem(ROOMS[other].key, JSON.stringify(plan));
-  } catch {}
 }
 
 // «Angre» for the guest list: Ta alle av bordene, Tøm lista, a name dragged back
@@ -6443,7 +6493,7 @@ document.getElementById("house-close")?.addEventListener("click", closeHouse);
 document.getElementById("house")?.addEventListener("click", (event) => {
   if (event.target.id === "house") return closeHouse(); // the dark backdrop
   const go = event.target.closest("[data-go-room]");
-  if (go) return goRoom(go.dataset.goRoom, ROOMS[go.dataset.goRoom]?.profile === "salong");
+  if (go) return goRoom(go.dataset.goRoom, ROOMS[go.dataset.goRoom]?.profile === "salong" && !ROOMS[go.dataset.goRoom]?.seat);
   const roomEl = event.target.closest("[data-house-room]");
   if (roomEl) {
     const id = roomEl.dataset.houseRoom;
@@ -6606,13 +6656,13 @@ function renderShell() {
         guests.list.length ? `<span class="st-count">${counts[""].p}</span>` : ""
       }</button>`;
   }
-  document.body.classList.toggle("salon", IS_SALON);
+  document.body.classList.toggle("salon", IS_SALON && !SEAT_PLAN);
   const inn = document.getElementById("room-innover");
   if (inn) {
     inn.textContent = IS_SALON ? `${ROOMS[ROOM_ID][en ? "en" : "no"]} ▾` : en ? "Other rooms ▾" : "Innover ▾";
     inn.classList.toggle("on", IS_SALON);
   }
-  const tools = toolsOn();
+  const tools = toolsOn() || (SEAT_PLAN && !roomTables().length);
   document.body.classList.toggle("tools-off", !tools);
   const tb = document.getElementById("tools-btn");
   if (tb) {
@@ -6648,7 +6698,7 @@ document.getElementById("tools-btn")?.addEventListener("click", () => {
 // given out. «Angre» puts both the floor and the guests back.
 function chooseShift(key) {
   const en = state.lang === "en";
-  if (IS_SALON) {
+  if (IS_SALON && !SEAT_PLAN) {
     // the seating is done in Spisestua: go there and press the card again
     try {
       sessionStorage.setItem("norsken-pending-shift", key);
@@ -6845,7 +6895,7 @@ function importFromHash() {
 window.addEventListener("hashchange", importFromHash);
 if (!importFromHash() && !(location.hash || "").startsWith("#kart=")) {
   // a new day (or no list yet): start on «I dag»
-  if (!IS_SALON && (!guests.list.length || guests.day !== dayKey())) openToday();
+  if ((!IS_SALON || SEAT_PLAN) && (!guests.list.length || guests.day !== dayKey())) openToday();
 }
 
 // ★ = this booking is part of an arrangement. Found by itself from Område and
@@ -7354,7 +7404,7 @@ window.addEventListener("hashchange", importMapsFromHash);
 function roomMapButton(id, en) {
   const r = ROOMS[id];
   if (!r) return "";
-  if (r.profile !== "salong") {
+  if (r.profile !== "salong" || r.seat) {
     return id === ROOM_ID ? "" : `<button type="button" class="chip big house-go" data-go-room="${id}">${en ? "Open" : "Åpne"} ${esc(r[en ? "en" : "no"])}</button>`;
   }
   let n = 0;
@@ -7367,26 +7417,19 @@ function roomMapButton(id, en) {
   }</button>`;
 }
 
-// --- Ready suggestions for the rooms, from Danny's descriptions ----------------
-
-// Toddy (2026-11-21), seen from the reception door with the windows ahead:
-// by the windows, left and right, a sofa against the wall, a small oval table
-// and two big armchairs – 4 people, up to 3 more chairs can be added; by the
-// door, left, a small round table (2, at most 4); right, the grand piano.
+// --- Ready suggestions for the rooms, from the staff's aperitif sheet ----------
+// Toddy and Danske kjelleret are not suggestions: no furniture photo is in the
+// repo, so those two start as an empty floor in the same editor as Spisestua.
 function roomStarter(id) {
   const def = ROOMS[id];
   if (!def || !def.starter) return [];
-  // Drawn from the aperitif sheet the staff use (2026-11-23), plus what Danny told
-  // about Toddy. Each entry: size, centre x, y and width × depth in cm, then the rest.
+  // Drawn from the aperitif sheet the staff use (2026-11-23).
+  // Toddy and Danske kjelleret are not here: there is no furniture photo, so
+  // those rooms start empty and the tables are placed in the Spisestua editor.
+  // Each entry: size, centre x, y and width × depth in cm, then the rest.
   // «1»… are the table numbers (left to right, top to bottom); a piece has no seats.
   // Seat numbers are a first guess – change them in «✏️ Flytt bord».
   const LAYOUTS = {
-    toddy: [
-      ["oval", 137, 164, 165, 80, { manual: "1", seatCount: 4, extraSeats: 3, fixed: true }],
-      ["oval", 121, 399, 165, 80, { manual: "2", seatCount: 4, extraSeats: 3, fixed: true }],
-      ["oval", 724, 145, 75, 105, { manual: "3", seatCount: 2, extraSeats: 2 }],
-      ["rect", 640, 430, 200, 150, { piece: "flygel", fixed: true }],
-    ],
     bar: [
       ["rect", 368, 130, 438, 110, { piece: "bardisk", fixed: true }],
       ["rect", 38, 414, 76, 188, { piece: "sofa", fixed: true }],
@@ -7854,9 +7897,12 @@ function sitKey(g) {
 // Where a booking goes: { label, table, room, mates } – or { label: "" } with no table yet.
 function guideWhere(g, en) {
   const area = g.area || "spisestua";
-  if (area.startsWith("other:")) return { label: g.areaLabel || area.slice(6), other: true };
+  const home = bookingRoom(g);
+  if (String(area).startsWith("other:") && home !== ROOM_ID) return { label: g.areaLabel || area.slice(6), other: true };
   const room = guestRoom(g);
   const id = guests.placed[g.id];
+  // a Toddy or Danske kjelleret party is seated in that room, not from here
+  if (!id && ROOMS[home]?.seat && home !== ROOM_ID) return { label: ROOMS[home][en ? "en" : "no"], other: true };
   if (!id) return { label: "" };
   if (room !== ROOM_ID) {
     const plan = readRoomPlan(room);
@@ -7966,7 +8012,7 @@ function renderGuide() {
           const dest = where.label
             ? `<span class="guide-dest">→ ${esc(where.label)}</span>`
             : `<span class="guide-dest none">${en ? "no table yet" : "ikke bord ennå"}</span>`;
-          const canPut = !IS_SALON && !where.other && (!where.room || where.room === ROOM_ID);
+          const canPut = (!IS_SALON || SEAT_PLAN) && !where.other && (!where.room || where.room === ROOM_ID) && (!SEAT_PLAN || bookingRoom(g) === ROOM_ID || where.room === ROOM_ID);
           const put = canPut
             ? `<button type="button" class="chip big${where.label ? "" : " primary"}" data-guide-pick="${g.id}">${where.label ? (en ? "Move" : "Flytt") : en ? "Seat at a table" : "Sett ved bord"}</button>`
             : "";
@@ -7999,7 +8045,8 @@ function closeGuide() {
 // sitting, the chairs add up) – never a swap like a drag on the map.
 function guidePut(id, table) {
   const g = guests.list.find((x) => x.id === id);
-  if (!g || !table || IS_SALON) return;
+  if (!g || !table || (IS_SALON && !SEAT_PLAN)) return;
+  if (SEAT_PLAN && bookingRoom(g) !== ROOM_ID && guestRoom(g) !== ROOM_ID) return;
   if (table.lead === false && table.group) table = roomTables().find((t) => t.group === table.group && t.lead !== false) || table;
   const before = guestSnapshot();
   const from = guestTable(g);

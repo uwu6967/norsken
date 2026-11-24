@@ -15,8 +15,7 @@ settled, or to [[Change log]] when it is built.
 - Toddy on the sheet has its two sofa groups on the left and the small table top right; the piano is
   not on the sheet (put bottom right, by the door).
 - Møterom: not on the aperitif sheet – should it ever be used for the aperitif?
-- Is one room on the floor plan really called «Danske kjelleret»? The name must match ResDiary's
-  Område for the colours in «🏠 Norsken» to work.
+- Is one room on the floor plan really called «Danske kjelleret»? The map keeps that name. «Danske værelse» is treated as the same room. The name must still match ResDiary's Område for the colours in «🏠 Norsken» to work.
 - Should the downstairs rooms (Thorvald M, Billiard) be on the «🏠 Norsken» map as a small
   «Underetasje» box?
 - Room names that ResDiary spells differently than the map (add them to the room's `keys` in
